@@ -166,3 +166,30 @@ export async function countMiembrosVencenHoy(
   if (error) return 0;
   return count ?? 0;
 }
+
+/**
+ * Búsqueda rápida de miembros para el flujo de check-in (kiosco).
+ * Limita a 6 resultados para mostrar como autocomplete.
+ */
+export async function searchMiembrosForCheckin(
+  tenantId: string,
+  query: string
+): Promise<
+  Pick<Miembro, "id" | "nombre" | "telefono" | "fecha_vencimiento">[]
+> {
+  if (!query || query.trim().length < 2) return [];
+
+  const supabase = await createClient();
+  const q = query.trim();
+
+  const { data, error } = await supabase
+    .from("miembros")
+    .select("id, nombre, telefono, fecha_vencimiento")
+    .eq("tenant_id", tenantId)
+    .or(`nombre.ilike.%${q}%,telefono.ilike.%${q}%`)
+    .order("nombre")
+    .limit(6);
+
+  if (error) return [];
+  return data ?? [];
+}

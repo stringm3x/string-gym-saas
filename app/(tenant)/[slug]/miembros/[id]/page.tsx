@@ -3,8 +3,11 @@ import { notFound } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { getMiembro } from "@/lib/queries/miembros.queries";
+import { listCheckinsByMiembro } from "@/lib/queries/checkins.queries";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
+import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
+import { CheckinsHistory } from "@/components/checkins/CheckinsHistory";
 
 interface PageProps {
   params: Promise<{ slug: string; id: string }>;
@@ -14,14 +17,17 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
   const tenant = await getTenant();
 
-  const miembro = await getMiembro(tenant.id, id);
+  const [miembro, checkins] = await Promise.all([
+    getMiembro(tenant.id, id),
+    listCheckinsByMiembro(tenant.id, id, 20),
+  ]);
 
   if (!miembro) {
     notFound();
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <Link
           href={`/${slug}/miembros`}
@@ -31,16 +37,30 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           Volver a miembros
         </Link>
 
-        <div className="mt-2 flex items-center gap-3">
-          <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-            {miembro.nombre}
-          </h2>
-          <MiembroStatusBadge fechaVencimiento={miembro.fecha_vencimiento} />
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+              {miembro.nombre}
+            </h2>
+            <MiembroStatusBadge fechaVencimiento={miembro.fecha_vencimiento} />
+          </div>
+
+          <ManualCheckinButton
+            miembroId={miembro.id}
+            miembroNombre={miembro.nombre}
+          />
         </div>
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-6">
         <MiembroForm mode="edit" slug={slug} miembro={miembro} />
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-text-primary">
+          Historial de check-ins
+        </h3>
+        <CheckinsHistory checkins={checkins} />
       </div>
     </div>
   );
