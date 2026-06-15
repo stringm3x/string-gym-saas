@@ -26,18 +26,23 @@ export function formatMoneda(valor: number): string {
   return formatterMoneda.format(valor);
 }
 
+function toDate(fecha: string | Date): Date {
+  if (typeof fecha !== "string") return fecha;
+  // Si ya es ISO completo (contiene "T"), parsear directo.
+  // Si es solo fecha "YYYY-MM-DD", añadir medianoche local para evitar desfase UTC.
+  return fecha.includes("T") ? new Date(fecha) : new Date(fecha + "T00:00:00");
+}
+
 export function formatFecha(fecha: string | Date | null | undefined): string {
   if (!fecha) return "—";
-  const d = typeof fecha === "string" ? new Date(fecha + "T00:00:00") : fecha;
-  return formatterFecha.format(d);
+  return formatterFecha.format(toDate(fecha));
 }
 
 export function formatFechaCorta(
   fecha: string | Date | null | undefined
 ): string {
   if (!fecha) return "—";
-  const d = typeof fecha === "string" ? new Date(fecha + "T00:00:00") : fecha;
-  return formatterFechaCorta.format(d);
+  return formatterFechaCorta.format(toDate(fecha));
 }
 
 export function formatFechaHora(

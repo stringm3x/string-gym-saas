@@ -8,6 +8,7 @@ import {
   updateMiembro as dbUpdateMiembro,
 } from "@/lib/queries/miembros.queries";
 import { miembroSchema } from "@/lib/validations/miembro.schema";
+import { updateEstadoProspecto } from "@/lib/queries/prospectos.queries";
 
 export interface MiembroFormState {
   ok: boolean;
@@ -32,6 +33,7 @@ function parseFormData(formData: FormData) {
     fecha_inscripcion: String(formData.get("fecha_inscripcion") ?? ""),
     fecha_vencimiento: String(formData.get("fecha_vencimiento") ?? ""),
     notas: String(formData.get("notas") ?? ""),
+    prospecto_id: String(formData.get("prospecto_id") ?? ""),
   };
 }
 
@@ -41,8 +43,9 @@ export async function createMiembroAction(
 ): Promise<MiembroFormState> {
   const tenant = await getTenant();
   const raw = parseFormData(formData);
+  const { prospecto_id, ...miembroRaw } = raw;
 
-  const parsed = miembroSchema.safeParse(raw);
+  const parsed = miembroSchema.safeParse(miembroRaw);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
     for (const issue of parsed.error.issues) {
@@ -55,6 +58,11 @@ export async function createMiembroAction(
   const result = await dbCreateMiembro(tenant.id, parsed.data);
   if (!result.ok) {
     return { ...emptyState, error: result.error };
+  }
+
+  if (prospecto_id) {
+    await updateEstadoProspecto(tenant.id, prospecto_id, "convertido");
+    revalidatePath(`/${tenant.slug}/prospectos`);
   }
 
   revalidatePath(`/${tenant.slug}/miembros`);

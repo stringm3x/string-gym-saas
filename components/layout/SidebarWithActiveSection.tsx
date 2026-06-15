@@ -11,6 +11,7 @@ interface SidebarWithActiveSectionProps {
     miembros?: number;
     inventario?: number;
     prospectos?: number;
+    alertas?: number;
   };
 }
 

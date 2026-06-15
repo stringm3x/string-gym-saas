@@ -1,13 +1,22 @@
 import Link from "next/link";
-import { LuArrowLeft } from "react-icons/lu";
+import { LuArrowLeft, LuArrowRightLeft } from "react-icons/lu";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
+import { getTenant } from "@/lib/tenant";
+import { getProspecto } from "@/lib/queries/prospectos.queries";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ prospecto_id?: string }>;
 }
 
-export default async function NuevoMiembroPage({ params }: PageProps) {
+export default async function NuevoMiembroPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const { prospecto_id } = await searchParams;
+
+  const tenant = await getTenant();
+  const prospecto = prospecto_id
+    ? await getProspecto(tenant.id, prospecto_id)
+    : null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -29,8 +38,43 @@ export default async function NuevoMiembroPage({ params }: PageProps) {
         </p>
       </div>
 
+      {prospecto && (
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-brand-green/30 bg-brand-green/10 px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <LuArrowRightLeft className="h-4 w-4 shrink-0 text-brand-green" />
+            <div>
+              <p className="text-sm font-medium text-brand-green">
+                Convirtiendo prospecto: {prospecto.nombre}
+              </p>
+              <p className="text-xs text-brand-green/70">
+                Los datos han sido prellenados. Completa la fecha de inscripción y plan.
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/${slug}/prospectos`}
+            className="shrink-0 text-xs font-medium text-brand-green/70 underline underline-offset-2 hover:text-brand-green"
+          >
+            Cancelar conversión
+          </Link>
+        </div>
+      )}
+
       <div className="rounded-xl border border-border bg-surface p-6">
-        <MiembroForm mode="create" slug={slug} />
+        <MiembroForm
+          mode="create"
+          slug={slug}
+          defaultValues={
+            prospecto
+              ? {
+                  nombre: prospecto.nombre,
+                  telefono: prospecto.telefono,
+                  email: prospecto.email ?? "",
+                }
+              : undefined
+          }
+          prospectoId={prospecto?.id}
+        />
       </div>
     </div>
   );

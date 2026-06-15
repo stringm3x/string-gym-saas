@@ -5,6 +5,7 @@ import {
   LuWallet,
   LuPackage,
   LuTarget,
+  LuBell,
   LuSettings,
 } from "react-icons/lu";
 import { SidebarLink } from "./SidebarLink";
@@ -23,6 +24,7 @@ interface SidebarProps {
     miembros?: number;
     inventario?: number;
     prospectos?: number;
+    alertas?: number;
   };
 }
 
@@ -91,6 +93,17 @@ export function Sidebar({
             icon={<LuTarget size={18} />}
             active={activeSection === "prospectos"}
             badge={badges.prospectos}
+          />
+        )}
+
+        {hasFeature(plan, "alertas_dueno") && (
+          <SidebarLink
+            href={`${base}/alertas`}
+            label="Alertas"
+            icon={<LuBell size={18} />}
+            active={activeSection === "alertas"}
+            badge={badges.alertas}
+            badgeVariant="danger"
           />
         )}
       </nav>

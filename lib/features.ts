@@ -17,6 +17,7 @@ export type Feature =
   | "inventario"
   | "dashboard_completo"
   | "prospectos"
+  | "alertas_dueno"
   | "alertas_whatsapp"
   | "seguimiento_whatsapp"
   | "reportes_avanzados";
@@ -34,7 +35,7 @@ const PLAN_ORDER: Plan[] = ["basico", "pro", "escala"];
 const FEATURES_BY_PLAN: Record<Plan, Feature[]> = {
   basico: ["miembros", "checkins", "caja", "dashboard_simple"],
   pro: ["inventario", "dashboard_completo", "prospectos"],
-  escala: ["alertas_whatsapp", "seguimiento_whatsapp", "reportes_avanzados"],
+  escala: ["alertas_dueno", "alertas_whatsapp", "seguimiento_whatsapp", "reportes_avanzados"],
 };
 
 /**

@@ -17,6 +17,8 @@ interface MiembroFormProps {
   mode: "create" | "edit";
   slug: string;
   miembro?: Miembro;
+  defaultValues?: { nombre?: string; telefono?: string; email?: string };
+  prospectoId?: string;
 }
 
 const initialState: MiembroFormState = {
@@ -25,7 +27,7 @@ const initialState: MiembroFormState = {
   fieldErrors: {},
 };
 
-export function MiembroForm({ mode, slug, miembro }: MiembroFormProps) {
+export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId }: MiembroFormProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
 
@@ -48,13 +50,17 @@ export function MiembroForm({ mode, slug, miembro }: MiembroFormProps) {
 
   return (
     <form action={formAction} className="space-y-6">
+      {prospectoId && (
+        <input type="hidden" name="prospecto_id" value={prospectoId} />
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Input
             label="Nombre completo"
             name="nombre"
             required
-            defaultValue={miembro?.nombre}
+            defaultValue={miembro?.nombre ?? defaultValues?.nombre}
             placeholder="Ej. Juan Pérez"
             error={state.fieldErrors.nombre}
             autoComplete="name"
@@ -65,7 +71,7 @@ export function MiembroForm({ mode, slug, miembro }: MiembroFormProps) {
           label="Teléfono"
           name="telefono"
           type="tel"
-          defaultValue={miembro?.telefono ?? ""}
+          defaultValue={miembro?.telefono ?? defaultValues?.telefono ?? ""}
           placeholder="55 1234 5678"
           error={state.fieldErrors.telefono}
           autoComplete="tel"
@@ -76,7 +82,7 @@ export function MiembroForm({ mode, slug, miembro }: MiembroFormProps) {
           label="Correo"
           name="email"
           type="email"
-          defaultValue={miembro?.email ?? ""}
+          defaultValue={miembro?.email ?? defaultValues?.email ?? ""}
           placeholder="correo@ejemplo.com"
           error={state.fieldErrors.email}
           autoComplete="email"
