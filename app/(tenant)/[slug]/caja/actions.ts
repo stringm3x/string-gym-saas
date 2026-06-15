@@ -17,6 +17,7 @@ export async function registerPagoAction(
 ): Promise<PagoResult> {
   const tenant = await getTenant();
 
+  const cantidadRaw = formData.get("cantidad_producto");
   const raw = {
     miembro_id: String(formData.get("miembro_id") ?? ""),
     concepto: String(formData.get("concepto") ?? "membresia") as
@@ -33,6 +34,9 @@ export async function registerPagoAction(
     periodo_fin: String(formData.get("periodo_fin") ?? ""),
     plan_id: String(formData.get("plan_id") ?? ""),
     promocion_id: String(formData.get("promocion_id") ?? ""),
+    producto_id: String(formData.get("producto_id") ?? ""),
+    cantidad_producto:
+      cantidadRaw && String(cantidadRaw).trim() ? Number(cantidadRaw) : null,
   };
 
   const parsed = pagoSchema.safeParse(raw);
@@ -56,6 +60,10 @@ export async function registerPagoAction(
   revalidatePath(`/${tenant.slug}/miembros`);
   if (parsed.data.miembro_id) {
     revalidatePath(`/${tenant.slug}/miembros/${parsed.data.miembro_id}`);
+  }
+  if (parsed.data.producto_id) {
+    revalidatePath(`/${tenant.slug}/inventario/productos`);
+    revalidatePath(`/${tenant.slug}/inventario/movimientos`);
   }
 
   return { ok: true, error: null, fieldErrors: {} };

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { PagoInput } from "@/lib/validations/pago.schema";
+import { aplicarMovimiento } from "@/lib/queries/productos.queries";
 
 export type CategoriaCaja = "all" | "membresia" | "producto" | "otros";
 
@@ -15,6 +16,7 @@ export interface Pago {
   periodo_fin: string | null;
   plan_id: string | null;
   promocion_id: string | null;
+  producto_id: string | null;
   created_at: string;
 }
 
@@ -43,6 +45,7 @@ export async function createPago(
     periodo_fin: input.periodo_fin || null,
     plan_id: input.plan_id || null,
     promocion_id: input.promocion_id || null,
+    producto_id: input.producto_id || null,
   };
 
   const { data, error } = await supabase
@@ -56,6 +59,30 @@ export async function createPago(
       ok: false,
       error: error?.message ?? "No se pudo registrar el pago",
     };
+  }
+
+  // Si es venta de producto, descontar del stock con un movimiento de salida.
+  if (input.concepto === "producto" && input.producto_id) {
+    const cantidad = input.cantidad_producto ?? 1;
+    const movResult = await aplicarMovimiento(
+      tenantId,
+      {
+        producto_id: input.producto_id,
+        tipo: "salida",
+        cantidad,
+        motivo: "Venta en caja",
+      },
+      data.id
+    );
+
+    if (!movResult.ok) {
+      return {
+        ok: false,
+        error:
+          "El pago se registró, pero hubo un problema con el stock: " +
+          movResult.error,
+      };
+    }
   }
 
   // Si es pago de membresía, actualizar fecha_vencimiento del miembro.
@@ -108,7 +135,7 @@ export async function listPagosDelDia(
   let q = supabase
     .from("pagos")
     .select(
-      "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, plan_id, promocion_id, created_at, miembros(nombre)"
+      "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, plan_id, promocion_id, producto_id, created_at, miembros(nombre)"
     )
     .eq("tenant_id", tenantId)
     .gte("fecha_pago", inicioHoy.toISOString())
@@ -135,6 +162,7 @@ export async function listPagosDelDia(
     periodo_fin: row.periodo_fin,
     plan_id: row.plan_id,
     promocion_id: row.promocion_id,
+    producto_id: row.producto_id,
     created_at: row.created_at,
     miembro_nombre: row.miembros?.nombre ?? null,
   }));

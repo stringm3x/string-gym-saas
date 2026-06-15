@@ -8,12 +8,6 @@ export const conceptoPagoEnum = z.enum([
 ]);
 export const metodoPagoEnum = z.enum(["efectivo", "tarjeta", "transferencia"]);
 
-/**
- * Schema base de un pago.
- * - `miembro_id` requerido para membresia y visita; opcional para producto/otro.
- * - `periodo_inicio`/`periodo_fin` solo aplican para membresia.
- * - `plan_id` / `promocion_id` opcionales: si se aplica un catálogo o promo.
- */
 export const pagoSchema = z
   .object({
     miembro_id: z
@@ -39,6 +33,9 @@ export const pagoSchema = z
       .or(z.literal("")),
     plan_id: z.string().uuid().optional().or(z.literal("")),
     promocion_id: z.string().uuid().optional().or(z.literal("")),
+    producto_id: z.string().uuid().optional().or(z.literal("")),
+    /** Cantidad vendida del producto (descuenta del stock). Default 1. */
+    cantidad_producto: z.number().int().positive().optional().nullable(),
   })
   .refine(
     (data) => {

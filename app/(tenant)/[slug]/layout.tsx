@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getTenant } from "@/lib/tenant";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { countMiembrosVencenHoy } from "@/lib/queries/miembros.queries";
+import { countStockBajo } from "@/lib/queries/productos.queries";
 import { SidebarWithActiveSection } from "@/components/layout/SidebarWithActiveSection";
 import { Header } from "@/components/layout/Header";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -16,15 +17,14 @@ export default async function TenantLayout({
   const { slug } = await params;
   const tenant = await getTenant();
 
-  // Seguridad adicional: el slug de la URL debe coincidir con el
-  // tenant resuelto por el middleware (defensa en profundidad).
   if (tenant.slug !== slug) {
     redirect("/login");
   }
 
-  const [gym, miembrosVencenHoy] = await Promise.all([
+  const [gym, miembrosVencenHoy, stockBajo] = await Promise.all([
     getGymInfo(tenant.id),
     countMiembrosVencenHoy(tenant.id),
+    countStockBajo(tenant.id),
   ]);
 
   if (!gym) {
@@ -33,8 +33,7 @@ export default async function TenantLayout({
 
   const badges = {
     miembros: miembrosVencenHoy,
-    // TODO (Fase 5/6): conectar inventario y prospectos.
-    inventario: undefined,
+    inventario: stockBajo,
     prospectos: undefined,
   };
 

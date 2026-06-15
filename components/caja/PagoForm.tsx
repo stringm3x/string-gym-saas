@@ -27,6 +27,7 @@ import {
 } from "@/app/(tenant)/[slug]/caja/actions";
 import type { PlanMembresia } from "@/lib/queries/planes.queries";
 import type { Promocion } from "@/lib/queries/promociones.queries";
+import type { ProductoConStock } from "@/lib/queries/productos.queries";
 import {
   PlanPromoSelector,
   type SeleccionMembresia,
@@ -50,6 +51,7 @@ interface PagoFormProps {
   planes: PlanMembresia[];
   promocionesMembresia: Promocion[];
   promocionesProducto: Promocion[];
+  productos: ProductoConStock[];
 }
 
 const initial: PagoResult = { ok: false, error: null, fieldErrors: {} };
@@ -93,6 +95,7 @@ export function PagoForm({
   planes,
   promocionesMembresia,
   promocionesProducto,
+  productos,
 }: PagoFormProps) {
   const { success, error: toastError } = useToast();
   const [state, formAction, isPending] = useActionState(
@@ -112,69 +115,74 @@ export function PagoForm({
     "1_mes"
   );
   const [montoCustom, setMontoCustom] = useState<string>("");
+  const [cantidadProducto, setCantidadProducto] = useState<number>(1);
   const [periodoInicio, setPeriodoInicio] = useState<string>("");
   const [periodoFin, setPeriodoFin] = useState<string>("");
 
   const requiereMiembro = concepto === "membresia" || concepto === "visita";
   const requierePeriodo = concepto === "membresia";
 
-  // Derivar monto, días, y rango según la selección y concepto
-  const { montoFinal, diasDuracion, planId, promocionId } = (() => {
+  // Derivar valores según selección y concepto
+  const { montoFinal, planId, promocionId, productoId } = (() => {
     if (concepto === "membresia") {
       if (selMem.kind === "plan") {
         return {
           montoFinal: selMem.plan.precio,
-          diasDuracion: selMem.plan.dias_duracion,
           planId: selMem.plan.id,
           promocionId: "",
+          productoId: "",
         };
       }
       if (selMem.kind === "promo") {
         return {
           montoFinal: selMem.promo.precio,
-          diasDuracion: selMem.promo.dias_duracion ?? 0,
           planId: "",
           promocionId: selMem.promo.id,
+          productoId: "",
         };
       }
-      // custom membresía
-      const days =
-        customPreset === "manual" ? 0 : duracionPresets[customPreset].dias;
       return {
         montoFinal: Number(montoCustom) || 0,
-        diasDuracion: days,
         planId: "",
         promocionId: "",
+        productoId: "",
       };
     }
 
     if (concepto === "producto") {
+      if (selProd.kind === "producto") {
+        return {
+          montoFinal: selProd.producto.precio * cantidadProducto,
+          planId: "",
+          promocionId: "",
+          productoId: selProd.producto.id,
+        };
+      }
       if (selProd.kind === "promo") {
         return {
           montoFinal: selProd.promo.precio,
-          diasDuracion: 0,
           planId: "",
           promocionId: selProd.promo.id,
+          productoId: "",
         };
       }
       return {
         montoFinal: Number(montoCustom) || 0,
-        diasDuracion: 0,
         planId: "",
         promocionId: "",
+        productoId: "",
       };
     }
 
-    // visita y otro
     return {
       montoFinal: Number(montoCustom) || 0,
-      diasDuracion: 0,
       planId: "",
       promocionId: "",
+      productoId: "",
     };
   })();
 
-  // Recalcular rango cuando cambia selección/miembro/concepto
+  // Recalcular rango cuando cambia selección/miembro
   useEffect(() => {
     if (!requierePeriodo) {
       setPeriodoInicio("");
@@ -197,7 +205,7 @@ export function PagoForm({
       setPeriodoInicio(rango.periodo_inicio);
       setPeriodoFin(rango.periodo_fin);
     } else if (selMem.kind === "custom") {
-      if (customPreset === "manual") return; // user pone fechas
+      if (customPreset === "manual") return;
       const rango = calcularRangoMembresia(
         customPreset,
         miembro?.fecha_vencimiento
@@ -213,7 +221,13 @@ export function PagoForm({
     setSelProd({ kind: "custom" });
     setMontoCustom("");
     setCustomPreset("1_mes");
+    setCantidadProducto(1);
   }, [concepto]);
+
+  // Reset cantidad cuando cambia producto
+  useEffect(() => {
+    setCantidadProducto(1);
+  }, [selProd]);
 
   // Success
   useEffect(() => {
@@ -227,10 +241,14 @@ export function PagoForm({
       setSelProd({ kind: "custom" });
       setCustomPreset("1_mes");
       setMontoCustom("");
+      setCantidadProducto(1);
     } else if (state.error && Object.keys(state.fieldErrors).length === 0) {
       toastError("No se pudo registrar", state.error);
     }
   }, [state, success, toastError]);
+
+  const maxCantidad =
+    selProd.kind === "producto" ? selProd.producto.stock_actual : null;
 
   return (
     <form ref={formRef} action={formAction} className="space-y-6">
@@ -281,7 +299,7 @@ export function PagoForm({
         </div>
       )}
 
-      {/* Selector membresía */}
+      {/* Membresía */}
       {concepto === "membresia" && (
         <div className="space-y-3">
           <Label>Plan o promoción</Label>
@@ -318,15 +336,38 @@ export function PagoForm({
         </div>
       )}
 
-      {/* Selector producto */}
+      {/* Producto */}
       {concepto === "producto" && (
         <div className="space-y-3">
           <Label>Producto o promoción</Label>
           <ProductoPromoSelector
+            productos={productos}
             promocionesProducto={promocionesProducto}
             value={selProd}
             onChange={setSelProd}
           />
+
+          {selProd.kind === "producto" && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input
+                label="Cantidad"
+                type="number"
+                inputMode="numeric"
+                step="1"
+                min="1"
+                max={maxCantidad ?? undefined}
+                value={cantidadProducto}
+                onChange={(e) =>
+                  setCantidadProducto(Math.max(1, Number(e.target.value) || 1))
+                }
+                description={
+                  maxCantidad !== null
+                    ? `Stock disponible: ${maxCantidad}`
+                    : undefined
+                }
+              />
+            </div>
+          )}
 
           {selProd.kind === "custom" && (
             <Input
@@ -345,7 +386,7 @@ export function PagoForm({
         </div>
       )}
 
-      {/* Visita y otro: solo monto */}
+      {/* Visita y otro */}
       {(concepto === "visita" || concepto === "otro") && (
         <Input
           label="Monto"
@@ -361,7 +402,7 @@ export function PagoForm({
         />
       )}
 
-      {/* Método de pago */}
+      {/* Método */}
       <div className="space-y-1.5">
         <Label>Método de pago</Label>
         <div className="grid grid-cols-3 gap-2">
@@ -388,14 +429,20 @@ export function PagoForm({
         <input type="hidden" name="metodo_pago" value={metodo} />
       </div>
 
-      {/* Hidden fields derivados */}
+      {/* Hidden fields */}
       <input type="hidden" name="monto" value={montoFinal} />
       <input type="hidden" name="periodo_inicio" value={periodoInicio} />
       <input type="hidden" name="periodo_fin" value={periodoFin} />
       <input type="hidden" name="plan_id" value={planId} />
       <input type="hidden" name="promocion_id" value={promocionId} />
+      <input type="hidden" name="producto_id" value={productoId} />
+      <input
+        type="hidden"
+        name="cantidad_producto"
+        value={productoId ? cantidadProducto : ""}
+      />
 
-      {/* Resumen y submit */}
+      {/* Resumen + submit */}
       <div className="flex items-center justify-between border-t border-border pt-4">
         <div>
           <p className="text-xs uppercase tracking-wider text-text-muted">
@@ -631,7 +678,6 @@ function MiembroAutocomplete({
   );
 }
 
-// Helper: cuando ya tenemos los días, replicamos la lógica de extender desde vencimiento.
 function calcularRangoMembresiaPorDias(
   dias: number,
   fechaVencimientoActual: string | null | undefined,

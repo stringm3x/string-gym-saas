@@ -5,6 +5,7 @@ import {
 } from "@/lib/queries/pagos.queries";
 import { listPlanes } from "@/lib/queries/planes.queries";
 import { listPromociones } from "@/lib/queries/promociones.queries";
+import { listProductosParaVenta } from "@/lib/queries/productos.queries";
 import { getTenant } from "@/lib/tenant";
 import { formatMoneda } from "@/lib/utils/format";
 import { PagoForm } from "@/components/caja/PagoForm";
@@ -31,20 +32,24 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
 
   const categoria = parseCategoria(sp.cat);
 
-  const [pagos, resumen, planes, promocionesMembresia, promocionesProducto] =
-    await Promise.all([
-      listPagosDelDia(tenant.id, categoria, 50),
-      getResumenCaja(tenant.id, categoria),
-      listPlanes(tenant.id, { soloActivos: true }),
-      listPromociones(tenant.id, {
-        soloActivasVigentes: true,
-        tipo: "membresia",
-      }),
-      listPromociones(tenant.id, {
-        soloActivasVigentes: true,
-        tipo: "producto",
-      }),
-    ]);
+  const [
+    pagos,
+    resumen,
+    planes,
+    promocionesMembresia,
+    promocionesProducto,
+    productos,
+  ] = await Promise.all([
+    listPagosDelDia(tenant.id, categoria, 50),
+    getResumenCaja(tenant.id, categoria),
+    listPlanes(tenant.id, { soloActivos: true }),
+    listPromociones(tenant.id, {
+      soloActivasVigentes: true,
+      tipo: "membresia",
+    }),
+    listPromociones(tenant.id, { soloActivasVigentes: true, tipo: "producto" }),
+    listProductosParaVenta(tenant.id),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -60,7 +65,6 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
         <CajaFilters />
       </div>
 
-      {/* Resumen día / semana / mes */}
       <div className="grid gap-3 sm:grid-cols-3">
         <ResumenCard
           label="Hoy"
@@ -86,6 +90,7 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
             planes={planes}
             promocionesMembresia={promocionesMembresia}
             promocionesProducto={promocionesProducto}
+            productos={productos}
           />
         </div>
 
