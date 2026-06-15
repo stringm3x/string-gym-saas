@@ -17,7 +17,7 @@ export const pagoSchema = z
       .or(z.literal("")),
     concepto: conceptoPagoEnum,
     monto: z
-      .number({ invalid_type_error: "Monto inválido" })
+      .number({ error: "Monto inválido" })
       .positive("El monto debe ser mayor a 0")
       .max(1_000_000, "Monto demasiado alto"),
     metodo_pago: metodoPagoEnum,

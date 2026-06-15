@@ -1,70 +1,108 @@
 "use client";
 
-import { LuTag } from "react-icons/lu";
+import { useState } from "react";
+import { LuTag, LuPackage, LuSearch } from "react-icons/lu";
+import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils/cn";
 import { formatMoneda } from "@/lib/utils/format";
 import type { Promocion } from "@/lib/queries/promociones.queries";
+import type { ProductoConStock } from "@/lib/queries/productos.queries";
 
 export type SeleccionProducto =
+  | { kind: "producto"; producto: ProductoConStock }
   | { kind: "promo"; promo: Promocion }
   | { kind: "custom" };
 
 interface ProductoPromoSelectorProps {
+  productos: ProductoConStock[];
   promocionesProducto: Promocion[];
   value: SeleccionProducto;
   onChange: (sel: SeleccionProducto) => void;
 }
 
 export function ProductoPromoSelector({
+  productos,
   promocionesProducto,
   value,
   onChange,
 }: ProductoPromoSelectorProps) {
+  const [search, setSearch] = useState("");
+
+  const productosFiltrados = search.trim()
+    ? productos.filter((p) =>
+        p.nombre.toLowerCase().includes(search.trim().toLowerCase())
+      )
+    : productos;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {promocionesProducto.length > 0 && (
-        <>
-          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-text-muted">
-            <LuTag className="h-3.5 w-3.5" />
-            Promociones de producto
-          </p>
+        <Section
+          title="Promociones vigentes"
+          icon={<LuTag className="h-3.5 w-3.5" />}
+        >
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {promocionesProducto.map((promo) => {
               const selected =
                 value.kind === "promo" && value.promo.id === promo.id;
               return (
-                <button
+                <SelectorCard
                   key={promo.id}
-                  type="button"
+                  selected={selected}
                   onClick={() => onChange({ kind: "promo", promo })}
-                  className={cn(
-                    "flex flex-col gap-1 rounded-xl border p-3 text-left transition-colors duration-150",
-                    selected
-                      ? "border-brand-green bg-brand-green/10"
-                      : "border-border bg-surface hover:border-text-muted"
-                  )}
-                >
-                  <p
-                    className={cn(
-                      "truncate text-sm font-medium",
-                      selected ? "text-brand-green" : "text-text-primary"
-                    )}
-                  >
-                    {promo.nombre}
-                  </p>
-                  <p
-                    className={cn(
-                      "mt-1 font-mono text-base font-bold tabular-nums",
-                      selected ? "text-brand-green" : "text-text-primary"
-                    )}
-                  >
-                    {formatMoneda(promo.precio)}
-                  </p>
-                </button>
+                  title={promo.nombre}
+                  subtitle="Promoción"
+                  price={formatMoneda(promo.precio)}
+                  badge="Promo"
+                />
               );
             })}
           </div>
-        </>
+        </Section>
+      )}
+
+      {productos.length > 0 ? (
+        <Section title="Catálogo" icon={<LuPackage className="h-3.5 w-3.5" />}>
+          {productos.length > 6 && (
+            <Input
+              type="search"
+              placeholder="Buscar producto…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              leftSlot={<LuSearch className="h-4 w-4" />}
+              aria-label="Buscar producto"
+            />
+          )}
+
+          {productosFiltrados.length === 0 ? (
+            <p className="text-xs text-text-secondary">
+              Sin coincidencias para "{search}".
+            </p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {productosFiltrados.map((p) => {
+                const selected =
+                  value.kind === "producto" && value.producto.id === p.id;
+                return (
+                  <SelectorCard
+                    key={p.id}
+                    selected={selected}
+                    onClick={() => onChange({ kind: "producto", producto: p })}
+                    title={p.nombre}
+                    subtitle={`Stock: ${p.stock_actual}`}
+                    subtitleVariant={p.stock_bajo ? "danger" : "muted"}
+                    price={formatMoneda(p.precio)}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </Section>
+      ) : (
+        <p className="rounded-xl border border-dashed border-border bg-surface/50 px-4 py-3 text-xs text-text-secondary">
+          Aún no tienes productos en el catálogo. Agrégalos en Inventario para
+          venderlos desde aquí.
+        </p>
       )}
 
       <button
@@ -77,10 +115,91 @@ export function ProductoPromoSelector({
             : "border-border bg-surface text-text-secondary hover:text-text-primary"
         )}
       >
-        {promocionesProducto.length === 0
-          ? "Capturar monto"
-          : "Capturar monto personalizado"}
+        Capturar monto personalizado
       </button>
     </div>
+  );
+}
+
+function Section({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-text-muted">
+        {icon}
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function SelectorCard({
+  selected,
+  onClick,
+  title,
+  subtitle,
+  subtitleVariant = "muted",
+  price,
+  badge,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  title: string;
+  subtitle: string;
+  subtitleVariant?: "muted" | "danger";
+  price: string;
+  badge?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex flex-col gap-1 rounded-xl border p-3 text-left transition-colors duration-150",
+        selected
+          ? "border-brand-green bg-brand-green/10"
+          : "border-border bg-surface hover:border-text-muted"
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p
+          className={cn(
+            "truncate text-sm font-medium",
+            selected ? "text-brand-green" : "text-text-primary"
+          )}
+        >
+          {title}
+        </p>
+        {badge && (
+          <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold">
+            {badge}
+          </span>
+        )}
+      </div>
+      <p
+        className={cn(
+          "text-xs",
+          subtitleVariant === "danger" ? "text-danger" : "text-text-secondary"
+        )}
+      >
+        {subtitle}
+      </p>
+      <p
+        className={cn(
+          "mt-1 font-mono text-base font-bold tabular-nums",
+          selected ? "text-brand-green" : "text-text-primary"
+        )}
+      >
+        {price}
+      </p>
+    </button>
   );
 }

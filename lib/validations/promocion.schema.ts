@@ -11,7 +11,7 @@ export const promocionSchema = z
       .max(80, "El nombre es demasiado largo"),
     tipo: tipoPromocionEnum,
     precio: z
-      .number({ invalid_type_error: "Precio inválido" })
+      .number({ error: "Precio inválido" })
       .nonnegative("El precio no puede ser negativo")
       .max(1_000_000, "Precio demasiado alto"),
     dias_duracion: z.number().int().positive().max(3650).optional().nullable(),
