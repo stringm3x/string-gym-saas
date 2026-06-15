@@ -1,0 +1,60 @@
+import { LuWallet } from "react-icons/lu";
+import { formatMoneda, formatFecha } from "@/lib/utils/format";
+import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/EmptyState";
+import type { Pago } from "@/lib/queries/pagos.queries";
+
+interface PagosHistoryProps {
+  pagos: Pago[];
+}
+
+const conceptoLabels: Record<string, string> = {
+  membresia: "Membresía",
+  visita: "Visita",
+  producto: "Producto",
+  otro: "Otro",
+};
+
+export function PagosHistory({ pagos }: PagosHistoryProps) {
+  if (pagos.length === 0) {
+    return (
+      <EmptyState
+        icon={<LuWallet className="h-5 w-5" />}
+        title="Sin pagos registrados"
+        description="Los pagos de este miembro aparecerán aquí."
+      />
+    );
+  }
+
+  return (
+    <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+      {pagos.map((p) => (
+        <li
+          key={p.id}
+          className="flex items-center justify-between gap-4 px-4 py-3"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <Badge variant="neutral" className="shrink-0">
+              {conceptoLabels[p.concepto] ?? p.concepto}
+            </Badge>
+            <div className="min-w-0">
+              <p className="text-xs text-text-secondary">
+                {formatFecha(p.fecha_pago)} · {p.metodo_pago}
+              </p>
+              {p.periodo_inicio && p.periodo_fin && (
+                <p className="text-xs text-text-muted">
+                  Vigencia: {formatFecha(p.periodo_inicio)} →{" "}
+                  {formatFecha(p.periodo_fin)}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <span className="shrink-0 font-mono text-sm font-semibold text-text-primary tabular-nums">
+            {formatMoneda(p.monto)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}

@@ -4,10 +4,12 @@ import { LuArrowLeft } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { getMiembro } from "@/lib/queries/miembros.queries";
 import { listCheckinsByMiembro } from "@/lib/queries/checkins.queries";
+import { listPagosByMiembro } from "@/lib/queries/pagos.queries";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
 import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
 import { CheckinsHistory } from "@/components/checkins/CheckinsHistory";
+import { PagosHistory } from "@/components/caja/PagosHistory";
 
 interface PageProps {
   params: Promise<{ slug: string; id: string }>;
@@ -17,9 +19,10 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
   const tenant = await getTenant();
 
-  const [miembro, checkins] = await Promise.all([
+  const [miembro, checkins, pagos] = await Promise.all([
     getMiembro(tenant.id, id),
     listCheckinsByMiembro(tenant.id, id, 20),
+    listPagosByMiembro(tenant.id, id, 30),
   ]);
 
   if (!miembro) {
@@ -56,11 +59,20 @@ export default async function MiembroDetailPage({ params }: PageProps) {
         <MiembroForm mode="edit" slug={slug} miembro={miembro} />
       </div>
 
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-text-primary">
-          Historial de check-ins
-        </h3>
-        <CheckinsHistory checkins={checkins} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-text-primary">
+            Historial de pagos
+          </h3>
+          <PagosHistory pagos={pagos} />
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-text-primary">
+            Historial de check-ins
+          </h3>
+          <CheckinsHistory checkins={checkins} />
+        </div>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import {
   LuWallet,
   LuPackage,
   LuTarget,
+  LuSettings,
 } from "react-icons/lu";
 import { SidebarLink } from "./SidebarLink";
 import { hasFeature, type Plan } from "@/lib/features";
@@ -93,6 +94,15 @@ export function Sidebar({
           />
         )}
       </nav>
+
+      <div className="mt-auto border-t border-border pt-3">
+        <SidebarLink
+          href={`${base}/configuracion`}
+          label="Configuración"
+          icon={<LuSettings size={18} />}
+          active={activeSection === "configuracion"}
+        />
+      </div>
     </aside>
   );
 }
