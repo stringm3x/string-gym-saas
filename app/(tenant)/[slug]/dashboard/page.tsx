@@ -1,25 +1,125 @@
+import {
+  LuUsers,
+  LuCircleCheck,
+  LuTriangleAlert,
+  LuWallet,
+  LuScanLine,
+  LuCalendarDays,
+  LuTrendingUp,
+} from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
-import { PLAN_LABELS } from "@/lib/features";
+import {
+  getMiembrosStats,
+  getIngresosStats,
+  getCheckinsStats,
+  listMiembrosPorVencer,
+} from "@/lib/queries/dashboard.queries";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { CheckinsChart } from "@/components/dashboard/CheckinsChart";
+import { PorVencerList } from "@/components/dashboard/PorVencerList";
 
-export default async function DashboardPage() {
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function DashboardPage({ params }: PageProps) {
+  const { slug } = await params;
   const tenant = await getTenant();
 
+  const [miembros, ingresos, checkins, porVencer] = await Promise.all([
+    getMiembrosStats(tenant.id),
+    getIngresosStats(tenant.id),
+    getCheckinsStats(tenant.id),
+    listMiembrosPorVencer(tenant.id, 7),
+  ]);
+
+  // Calcular delta del mes vs mes anterior
+  const deltaMes = (() => {
+    if (ingresos.mesAnterior === 0) {
+      return ingresos.mes > 0
+        ? { value: 100, direction: "up" as const }
+        : { value: 0, direction: "flat" as const };
+    }
+    const pct =
+      ((ingresos.mes - ingresos.mesAnterior) / ingresos.mesAnterior) * 100;
+    if (Math.abs(pct) < 1) return { value: 0, direction: "flat" as const };
+    return {
+      value: pct,
+      direction: pct > 0 ? ("up" as const) : ("down" as const),
+    };
+  })();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
           Dashboard
         </h2>
         <p className="mt-1 text-sm text-text-secondary">
-          Bienvenido al panel — plan {PLAN_LABELS[tenant.plan]}
+          Estado del gimnasio en tiempo real.
         </p>
       </div>
 
-      <div className="rounded-xl border border-border bg-surface p-6">
-        <p className="text-sm text-text-secondary">
-          Sin datos todavía. Cuando agregues miembros y registres pagos, las
-          métricas aparecerán aquí.
-        </p>
+      {/* Métricas de miembros */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Miembros activos"
+          value={miembros.activos}
+          variant="success"
+          icon={<LuCircleCheck className="h-4 w-4" />}
+          hint={`de ${miembros.total} totales`}
+        />
+        <StatCard
+          label="Por vencer (7 días)"
+          value={miembros.por_vencer}
+          variant="warning"
+          icon={<LuTriangleAlert className="h-4 w-4" />}
+        />
+        <StatCard
+          label="Inactivos"
+          value={miembros.inactivos}
+          variant="default"
+          icon={<LuUsers className="h-4 w-4" />}
+        />
+        <StatCard
+          label="Check-ins hoy"
+          value={checkins.hoy}
+          variant="default"
+          icon={<LuScanLine className="h-4 w-4" />}
+        />
+      </div>
+
+      {/* Métricas de ingresos */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatCard
+          label="Ingresos hoy"
+          value={ingresos.hoy}
+          format="currency"
+          variant="success"
+          icon={<LuWallet className="h-4 w-4" />}
+        />
+        <StatCard
+          label="Esta semana"
+          value={ingresos.semana}
+          format="currency"
+          variant="default"
+          icon={<LuCalendarDays className="h-4 w-4" />}
+        />
+        <StatCard
+          label="Este mes"
+          value={ingresos.mes}
+          format="currency"
+          variant="default"
+          icon={<LuTrendingUp className="h-4 w-4" />}
+          delta={deltaMes}
+          hint="vs mes anterior"
+        />
+      </div>
+
+      {/* Gráfica de check-ins y lista de por vencer */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CheckinsChart data={checkins.ultimos7Dias} />
+        <PorVencerList miembros={porVencer} slug={slug} />
       </div>
     </div>
   );
