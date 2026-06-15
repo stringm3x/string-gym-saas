@@ -1,21 +1,50 @@
-import { listPagosDelDia, getResumenDia } from "@/lib/queries/pagos.queries";
+import {
+  listPagosDelDia,
+  getResumenCaja,
+  type CategoriaCaja,
+} from "@/lib/queries/pagos.queries";
+import { listPlanes } from "@/lib/queries/planes.queries";
+import { listPromociones } from "@/lib/queries/promociones.queries";
 import { getTenant } from "@/lib/tenant";
 import { formatMoneda } from "@/lib/utils/format";
 import { PagoForm } from "@/components/caja/PagoForm";
 import { PagosFeed } from "@/components/caja/PagosFeed";
+import { CajaFilters } from "@/components/caja/CajaFilters";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ cat?: string }>;
 }
 
-export default async function CajaPage({ params }: PageProps) {
-  const { slug } = await params;
-  const tenant = await getTenant();
+function parseCategoria(value?: string): CategoriaCaja {
+  if (value === "membresia" || value === "producto" || value === "otros")
+    return value;
+  return "all";
+}
 
-  const [pagos, resumen] = await Promise.all([
-    listPagosDelDia(tenant.id, 50),
-    getResumenDia(tenant.id),
+export default async function CajaPage({ params, searchParams }: PageProps) {
+  const [{ slug }, sp, tenant] = await Promise.all([
+    params,
+    searchParams,
+    getTenant(),
   ]);
+
+  const categoria = parseCategoria(sp.cat);
+
+  const [pagos, resumen, planes, promocionesMembresia, promocionesProducto] =
+    await Promise.all([
+      listPagosDelDia(tenant.id, categoria, 50),
+      getResumenCaja(tenant.id, categoria),
+      listPlanes(tenant.id, { soloActivos: true }),
+      listPromociones(tenant.id, {
+        soloActivasVigentes: true,
+        tipo: "membresia",
+      }),
+      listPromociones(tenant.id, {
+        soloActivasVigentes: true,
+        tipo: "producto",
+      }),
+    ]);
 
   return (
     <div className="space-y-8">
@@ -25,23 +54,39 @@ export default async function CajaPage({ params }: PageProps) {
             Caja
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
-            Registra pagos de membresías, visitas, productos y otros conceptos.
+            Registra pagos y revisa totales por día, semana y mes.
           </p>
         </div>
+        <CajaFilters />
+      </div>
 
-        <div className="flex gap-3">
-          <ResumenCard
-            label="Total hoy"
-            value={formatMoneda(resumen.total)}
-            prominent
-          />
-          <ResumenCard label="Pagos" value={resumen.cantidad.toString()} />
-        </div>
+      {/* Resumen día / semana / mes */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <ResumenCard
+          label="Hoy"
+          total={formatMoneda(resumen.dia.total)}
+          cantidad={resumen.dia.cantidad}
+          prominent
+        />
+        <ResumenCard
+          label="Esta semana"
+          total={formatMoneda(resumen.semana.total)}
+          cantidad={resumen.semana.cantidad}
+        />
+        <ResumenCard
+          label="Este mes"
+          total={formatMoneda(resumen.mes.total)}
+          cantidad={resumen.mes.cantidad}
+        />
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="rounded-xl border border-border bg-surface p-6">
-          <PagoForm />
+          <PagoForm
+            planes={planes}
+            promocionesMembresia={promocionesMembresia}
+            promocionesProducto={promocionesProducto}
+          />
         </div>
 
         <div className="space-y-3">
@@ -57,26 +102,31 @@ export default async function CajaPage({ params }: PageProps) {
 
 function ResumenCard({
   label,
-  value,
+  total,
+  cantidad,
   prominent = false,
 }: {
   label: string;
-  value: string;
+  total: string;
+  cantidad: number;
   prominent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface px-4 py-3">
+    <div className="rounded-xl border border-border bg-surface px-5 py-4">
       <p className="text-xs uppercase tracking-wider text-text-muted">
         {label}
       </p>
       <p
         className={`mt-1 font-mono tabular-nums ${
           prominent
-            ? "text-2xl font-bold text-brand-green"
-            : "text-lg font-semibold text-text-primary"
+            ? "text-3xl font-bold text-brand-green"
+            : "text-xl font-semibold text-text-primary"
         }`}
       >
-        {value}
+        {total}
+      </p>
+      <p className="mt-1 text-xs text-text-secondary">
+        {cantidad} {cantidad === 1 ? "pago" : "pagos"}
       </p>
     </div>
   );

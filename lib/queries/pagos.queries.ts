@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { PagoInput } from "@/lib/validations/pago.schema";
 
+export type CategoriaCaja = "all" | "membresia" | "producto" | "otros";
+
 export interface Pago {
   id: string;
   tenant_id: string;
@@ -11,6 +13,8 @@ export interface Pago {
   fecha_pago: string;
   periodo_inicio: string | null;
   periodo_fin: string | null;
+  plan_id: string | null;
+  promocion_id: string | null;
   created_at: string;
 }
 
@@ -37,6 +41,8 @@ export async function createPago(
     metodo_pago: input.metodo_pago,
     periodo_inicio: input.periodo_inicio || null,
     periodo_fin: input.periodo_fin || null,
+    plan_id: input.plan_id || null,
+    promocion_id: input.promocion_id || null,
   };
 
   const { data, error } = await supabase
@@ -64,8 +70,6 @@ export async function createPago(
       .eq("id", input.miembro_id);
 
     if (updError) {
-      // El pago ya quedó registrado — devolvemos warning, no rollback.
-      // En un sistema con RPC se haría como transacción.
       return {
         ok: false,
         error:
@@ -78,10 +82,22 @@ export async function createPago(
 }
 
 /**
- * Pagos del día actual con nombre del miembro embebido.
+ * Convierte categoría de UI a array de conceptos de DB.
+ */
+function categoriaAConceptos(cat: CategoriaCaja): string[] | null {
+  if (cat === "all") return null;
+  if (cat === "membresia") return ["membresia", "visita"];
+  if (cat === "producto") return ["producto"];
+  if (cat === "otros") return ["otro"];
+  return null;
+}
+
+/**
+ * Lista pagos del día (filtrable por categoría) con miembro embebido.
  */
 export async function listPagosDelDia(
   tenantId: string,
+  categoria: CategoriaCaja = "all",
   limit = 50
 ): Promise<PagoConMiembro[]> {
   const supabase = await createClient();
@@ -89,16 +105,22 @@ export async function listPagosDelDia(
   const inicioHoy = new Date();
   inicioHoy.setHours(0, 0, 0, 0);
 
-  const { data, error } = await supabase
+  let q = supabase
     .from("pagos")
     .select(
-      "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, created_at, miembros(nombre)"
+      "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, plan_id, promocion_id, created_at, miembros(nombre)"
     )
     .eq("tenant_id", tenantId)
     .gte("fecha_pago", inicioHoy.toISOString())
     .order("fecha_pago", { ascending: false })
     .limit(limit);
 
+  const conceptos = categoriaAConceptos(categoria);
+  if (conceptos) {
+    q = q.in("concepto", conceptos);
+  }
+
+  const { data, error } = await q;
   if (error || !data) return [];
 
   return data.map((row: any) => ({
@@ -111,43 +133,81 @@ export async function listPagosDelDia(
     fecha_pago: row.fecha_pago,
     periodo_inicio: row.periodo_inicio,
     periodo_fin: row.periodo_fin,
+    plan_id: row.plan_id,
+    promocion_id: row.promocion_id,
     created_at: row.created_at,
     miembro_nombre: row.miembros?.nombre ?? null,
   }));
 }
 
-export interface ResumenDia {
+export interface ResumenPeriodo {
   total: number;
   cantidad: number;
-  porMetodo: Record<"efectivo" | "tarjeta" | "transferencia", number>;
 }
 
-export async function getResumenDia(tenantId: string): Promise<ResumenDia> {
+export interface ResumenCaja {
+  dia: ResumenPeriodo;
+  semana: ResumenPeriodo;
+  mes: ResumenPeriodo;
+}
+
+/**
+ * Calcula totales día/semana/mes para la categoría seleccionada.
+ * Una sola query (rango mensual) y se subdividen en memoria.
+ */
+export async function getResumenCaja(
+  tenantId: string,
+  categoria: CategoriaCaja = "all"
+): Promise<ResumenCaja> {
   const supabase = await createClient();
-  const inicioHoy = new Date();
-  inicioHoy.setHours(0, 0, 0, 0);
 
-  const { data, error } = await supabase
+  const ahora = new Date();
+  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+  const inicioDia = new Date(ahora);
+  inicioDia.setHours(0, 0, 0, 0);
+
+  // Semana: lunes 00:00 de esta semana.
+  const inicioSemana = new Date(inicioDia);
+  const dow = inicioSemana.getDay(); // 0=domingo, 1=lunes...
+  const diasARestar = dow === 0 ? 6 : dow - 1;
+  inicioSemana.setDate(inicioSemana.getDate() - diasARestar);
+
+  let q = supabase
     .from("pagos")
-    .select("monto, metodo_pago")
+    .select("monto, fecha_pago, concepto")
     .eq("tenant_id", tenantId)
-    .gte("fecha_pago", inicioHoy.toISOString());
+    .gte("fecha_pago", inicioMes.toISOString());
 
-  const resumen: ResumenDia = {
-    total: 0,
-    cantidad: 0,
-    porMetodo: { efectivo: 0, tarjeta: 0, transferencia: 0 },
+  const conceptos = categoriaAConceptos(categoria);
+  if (conceptos) {
+    q = q.in("concepto", conceptos);
+  }
+
+  const { data, error } = await q;
+
+  const empty: ResumenPeriodo = { total: 0, cantidad: 0 };
+  const resumen: ResumenCaja = {
+    dia: { ...empty },
+    semana: { ...empty },
+    mes: { ...empty },
   };
 
   if (error || !data) return resumen;
 
   for (const p of data) {
     const monto = Number(p.monto);
-    resumen.total += monto;
-    resumen.cantidad += 1;
-    if (p.metodo_pago && p.metodo_pago in resumen.porMetodo) {
-      resumen.porMetodo[p.metodo_pago as keyof typeof resumen.porMetodo] +=
-        monto;
+    const fecha = new Date(p.fecha_pago);
+
+    resumen.mes.total += monto;
+    resumen.mes.cantidad += 1;
+
+    if (fecha >= inicioSemana) {
+      resumen.semana.total += monto;
+      resumen.semana.cantidad += 1;
+    }
+    if (fecha >= inicioDia) {
+      resumen.dia.total += monto;
+      resumen.dia.cantidad += 1;
     }
   }
 

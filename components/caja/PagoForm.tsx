@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  useActionState,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
   LuSearch,
   LuX,
@@ -22,7 +14,7 @@ import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils/cn";
-import { formatFecha, formatMoneda } from "@/lib/utils/format";
+import { formatFecha } from "@/lib/utils/format";
 import {
   calcularRangoMembresia,
   duracionPresets,
@@ -33,6 +25,16 @@ import {
   registerPagoAction,
   type PagoResult,
 } from "@/app/(tenant)/[slug]/caja/actions";
+import type { PlanMembresia } from "@/lib/queries/planes.queries";
+import type { Promocion } from "@/lib/queries/promociones.queries";
+import {
+  PlanPromoSelector,
+  type SeleccionMembresia,
+} from "./PlanPromoSelector";
+import {
+  ProductoPromoSelector,
+  type SeleccionProducto,
+} from "./ProductoPromoSelector";
 
 type Concepto = "membresia" | "visita" | "producto" | "otro";
 type Metodo = "efectivo" | "tarjeta" | "transferencia";
@@ -42,6 +44,12 @@ interface MiembroLite {
   nombre: string;
   telefono: string | null;
   fecha_vencimiento: string | null;
+}
+
+interface PagoFormProps {
+  planes: PlanMembresia[];
+  promocionesMembresia: Promocion[];
+  promocionesProducto: Promocion[];
 }
 
 const initial: PagoResult = { ok: false, error: null, fieldErrors: {} };
@@ -72,7 +80,7 @@ const metodoOptions: { value: Metodo; label: string; icon: React.ReactNode }[] =
     },
   ];
 
-const presets: DuracionPreset[] = [
+const customPresets: DuracionPreset[] = [
   "1_semana",
   "15_dias",
   "1_mes",
@@ -81,7 +89,11 @@ const presets: DuracionPreset[] = [
   "anual",
 ];
 
-export function PagoForm() {
+export function PagoForm({
+  planes,
+  promocionesMembresia,
+  promocionesProducto,
+}: PagoFormProps) {
   const { success, error: toastError } = useToast();
   const [state, formAction, isPending] = useActionState(
     registerPagoAction,
@@ -92,27 +104,118 @@ export function PagoForm() {
   const [concepto, setConcepto] = useState<Concepto>("membresia");
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
   const [miembro, setMiembro] = useState<MiembroLite | null>(null);
-  const [preset, setPreset] = useState<DuracionPreset | "custom">("1_mes");
+
+  const [selMem, setSelMem] = useState<SeleccionMembresia>({ kind: "custom" });
+  const [selProd, setSelProd] = useState<SeleccionProducto>({ kind: "custom" });
+
+  const [customPreset, setCustomPreset] = useState<DuracionPreset | "manual">(
+    "1_mes"
+  );
+  const [montoCustom, setMontoCustom] = useState<string>("");
   const [periodoInicio, setPeriodoInicio] = useState<string>("");
   const [periodoFin, setPeriodoFin] = useState<string>("");
 
   const requiereMiembro = concepto === "membresia" || concepto === "visita";
   const requierePeriodo = concepto === "membresia";
 
-  // Recalcular rango automáticamente cuando cambia preset o miembro.
+  // Derivar monto, días, y rango según la selección y concepto
+  const { montoFinal, diasDuracion, planId, promocionId } = (() => {
+    if (concepto === "membresia") {
+      if (selMem.kind === "plan") {
+        return {
+          montoFinal: selMem.plan.precio,
+          diasDuracion: selMem.plan.dias_duracion,
+          planId: selMem.plan.id,
+          promocionId: "",
+        };
+      }
+      if (selMem.kind === "promo") {
+        return {
+          montoFinal: selMem.promo.precio,
+          diasDuracion: selMem.promo.dias_duracion ?? 0,
+          planId: "",
+          promocionId: selMem.promo.id,
+        };
+      }
+      // custom membresía
+      const days =
+        customPreset === "manual" ? 0 : duracionPresets[customPreset].dias;
+      return {
+        montoFinal: Number(montoCustom) || 0,
+        diasDuracion: days,
+        planId: "",
+        promocionId: "",
+      };
+    }
+
+    if (concepto === "producto") {
+      if (selProd.kind === "promo") {
+        return {
+          montoFinal: selProd.promo.precio,
+          diasDuracion: 0,
+          planId: "",
+          promocionId: selProd.promo.id,
+        };
+      }
+      return {
+        montoFinal: Number(montoCustom) || 0,
+        diasDuracion: 0,
+        planId: "",
+        promocionId: "",
+      };
+    }
+
+    // visita y otro
+    return {
+      montoFinal: Number(montoCustom) || 0,
+      diasDuracion: 0,
+      planId: "",
+      promocionId: "",
+    };
+  })();
+
+  // Recalcular rango cuando cambia selección/miembro/concepto
   useEffect(() => {
     if (!requierePeriodo) {
       setPeriodoInicio("");
       setPeriodoFin("");
       return;
     }
-    if (preset === "custom") return; // no tocar, el usuario los pone manual
-    const rango = calcularRangoMembresia(preset, miembro?.fecha_vencimiento);
-    setPeriodoInicio(rango.periodo_inicio);
-    setPeriodoFin(rango.periodo_fin);
-  }, [preset, miembro, requierePeriodo]);
 
-  // Toast + reset on success
+    if (selMem.kind === "plan") {
+      const rango = calcularRangoMembresiaPorDias(
+        selMem.plan.dias_duracion,
+        miembro?.fecha_vencimiento
+      );
+      setPeriodoInicio(rango.periodo_inicio);
+      setPeriodoFin(rango.periodo_fin);
+    } else if (selMem.kind === "promo" && selMem.promo.dias_duracion) {
+      const rango = calcularRangoMembresiaPorDias(
+        selMem.promo.dias_duracion,
+        miembro?.fecha_vencimiento
+      );
+      setPeriodoInicio(rango.periodo_inicio);
+      setPeriodoFin(rango.periodo_fin);
+    } else if (selMem.kind === "custom") {
+      if (customPreset === "manual") return; // user pone fechas
+      const rango = calcularRangoMembresia(
+        customPreset,
+        miembro?.fecha_vencimiento
+      );
+      setPeriodoInicio(rango.periodo_inicio);
+      setPeriodoFin(rango.periodo_fin);
+    }
+  }, [selMem, miembro, customPreset, requierePeriodo]);
+
+  // Reset al cambiar concepto
+  useEffect(() => {
+    setSelMem({ kind: "custom" });
+    setSelProd({ kind: "custom" });
+    setMontoCustom("");
+    setCustomPreset("1_mes");
+  }, [concepto]);
+
+  // Success
   useEffect(() => {
     if (state.ok) {
       success("Pago registrado");
@@ -120,7 +223,10 @@ export function PagoForm() {
       setMiembro(null);
       setConcepto("membresia");
       setMetodo("efectivo");
-      setPreset("1_mes");
+      setSelMem({ kind: "custom" });
+      setSelProd({ kind: "custom" });
+      setCustomPreset("1_mes");
+      setMontoCustom("");
     } else if (state.error && Object.keys(state.fieldErrors).length === 0) {
       toastError("No se pudo registrar", state.error);
     }
@@ -175,129 +281,241 @@ export function PagoForm() {
         </div>
       )}
 
-      {/* Periodo solo para membresía */}
-      {requierePeriodo && (
-        <div className="space-y-2">
-          <Label required>Duración</Label>
-          <div className="flex flex-wrap gap-2">
-            {presets.map((p) => {
-              const active = preset === p;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPreset(p)}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
-                    active
-                      ? "border-brand-green bg-brand-green/10 text-brand-green"
-                      : "border-border bg-surface text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  {duracionPresets[p].label}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => setPreset("custom")}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
-                preset === "custom"
-                  ? "border-brand-green bg-brand-green/10 text-brand-green"
-                  : "border-border bg-surface text-text-secondary hover:text-text-primary"
-              )}
-            >
-              Personalizar
-            </button>
-          </div>
+      {/* Selector membresía */}
+      {concepto === "membresia" && (
+        <div className="space-y-3">
+          <Label>Plan o promoción</Label>
+          <PlanPromoSelector
+            planes={planes}
+            promocionesMembresia={promocionesMembresia}
+            value={selMem}
+            onChange={setSelMem}
+          />
 
-          {preset === "custom" ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                label="Desde"
-                name="periodo_inicio"
-                type="date"
-                value={periodoInicio}
-                onChange={(e) => setPeriodoInicio(e.target.value)}
-                error={state.fieldErrors.periodo_inicio}
-              />
-              <Input
-                label="Hasta"
-                name="periodo_fin"
-                type="date"
-                value={periodoFin}
-                onChange={(e) => setPeriodoFin(e.target.value)}
-                error={state.fieldErrors.periodo_fin}
-              />
-            </div>
-          ) : (
-            <>
-              <input
-                type="hidden"
-                name="periodo_inicio"
-                value={periodoInicio}
-              />
-              <input type="hidden" name="periodo_fin" value={periodoFin} />
-              {periodoInicio && periodoFin && (
-                <p className="text-xs text-text-muted">
-                  Vigencia: {formatFecha(periodoInicio)} →{" "}
-                  {formatFecha(periodoFin)}
-                </p>
-              )}
-            </>
+          {selMem.kind === "custom" && (
+            <CustomMembresiaInputs
+              customPreset={customPreset}
+              setCustomPreset={setCustomPreset}
+              montoCustom={montoCustom}
+              setMontoCustom={setMontoCustom}
+              periodoInicio={periodoInicio}
+              setPeriodoInicio={setPeriodoInicio}
+              periodoFin={periodoFin}
+              setPeriodoFin={setPeriodoFin}
+              presets={customPresets}
+              fieldErrors={state.fieldErrors}
+            />
+          )}
+
+          {(selMem.kind === "plan" || selMem.kind === "promo") &&
+            periodoInicio &&
+            periodoFin && (
+              <p className="text-xs text-text-muted">
+                Vigencia: {formatFecha(periodoInicio)} →{" "}
+                {formatFecha(periodoFin)}
+              </p>
+            )}
+        </div>
+      )}
+
+      {/* Selector producto */}
+      {concepto === "producto" && (
+        <div className="space-y-3">
+          <Label>Producto o promoción</Label>
+          <ProductoPromoSelector
+            promocionesProducto={promocionesProducto}
+            value={selProd}
+            onChange={setSelProd}
+          />
+
+          {selProd.kind === "custom" && (
+            <Input
+              label="Monto"
+              type="number"
+              inputMode="decimal"
+              step="1"
+              min="0"
+              required
+              value={montoCustom}
+              onChange={(e) => setMontoCustom(e.target.value)}
+              leftSlot="$"
+              error={state.fieldErrors.monto}
+            />
           )}
         </div>
       )}
 
-      {/* Monto y método */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Visita y otro: solo monto */}
+      {(concepto === "visita" || concepto === "otro") && (
         <Input
           label="Monto"
-          name="monto"
           type="number"
           inputMode="decimal"
           step="1"
           min="0"
           required
-          placeholder="0"
+          value={montoCustom}
+          onChange={(e) => setMontoCustom(e.target.value)}
           leftSlot="$"
           error={state.fieldErrors.monto}
         />
+      )}
 
-        <div className="space-y-1.5">
-          <Label>Método de pago</Label>
-          <div className="grid grid-cols-3 gap-2">
-            {metodoOptions.map((opt) => {
-              const active = metodo === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setMetodo(opt.value)}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-medium transition-colors duration-150",
-                    active
-                      ? "border-brand-green bg-brand-green/10 text-brand-green"
-                      : "border-border bg-surface text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  {opt.icon}
-                  <span>{opt.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <input type="hidden" name="metodo_pago" value={metodo} />
+      {/* Método de pago */}
+      <div className="space-y-1.5">
+        <Label>Método de pago</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {metodoOptions.map((opt) => {
+            const active = metodo === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setMetodo(opt.value)}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-medium transition-colors duration-150",
+                  active
+                    ? "border-brand-green bg-brand-green/10 text-brand-green"
+                    : "border-border bg-surface text-text-secondary hover:text-text-primary"
+                )}
+              >
+                {opt.icon}
+                <span>{opt.label}</span>
+              </button>
+            );
+          })}
         </div>
+        <input type="hidden" name="metodo_pago" value={metodo} />
       </div>
 
-      <div className="flex justify-end border-t border-border pt-4">
+      {/* Hidden fields derivados */}
+      <input type="hidden" name="monto" value={montoFinal} />
+      <input type="hidden" name="periodo_inicio" value={periodoInicio} />
+      <input type="hidden" name="periodo_fin" value={periodoFin} />
+      <input type="hidden" name="plan_id" value={planId} />
+      <input type="hidden" name="promocion_id" value={promocionId} />
+
+      {/* Resumen y submit */}
+      <div className="flex items-center justify-between border-t border-border pt-4">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-text-muted">
+            Total a cobrar
+          </p>
+          <p className="font-mono text-2xl font-bold tabular-nums text-brand-green">
+            ${montoFinal.toLocaleString("es-MX")}
+          </p>
+        </div>
         <Button type="submit" loading={isPending} size="lg">
           Registrar pago
         </Button>
       </div>
     </form>
+  );
+}
+
+// ============================================================
+// Subcomponentes
+// ============================================================
+
+function CustomMembresiaInputs({
+  customPreset,
+  setCustomPreset,
+  montoCustom,
+  setMontoCustom,
+  periodoInicio,
+  setPeriodoInicio,
+  periodoFin,
+  setPeriodoFin,
+  presets,
+  fieldErrors,
+}: {
+  customPreset: DuracionPreset | "manual";
+  setCustomPreset: (p: DuracionPreset | "manual") => void;
+  montoCustom: string;
+  setMontoCustom: (v: string) => void;
+  periodoInicio: string;
+  setPeriodoInicio: (v: string) => void;
+  periodoFin: string;
+  setPeriodoFin: (v: string) => void;
+  presets: DuracionPreset[];
+  fieldErrors: Partial<Record<string, string>>;
+}) {
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-bg/40 p-4">
+      <div className="space-y-2">
+        <Label>Duración</Label>
+        <div className="flex flex-wrap gap-2">
+          {presets.map((p) => {
+            const active = customPreset === p;
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setCustomPreset(p)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+                  active
+                    ? "border-brand-green bg-brand-green/10 text-brand-green"
+                    : "border-border bg-surface text-text-secondary hover:text-text-primary"
+                )}
+              >
+                {duracionPresets[p].label}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setCustomPreset("manual")}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+              customPreset === "manual"
+                ? "border-brand-green bg-brand-green/10 text-brand-green"
+                : "border-border bg-surface text-text-secondary hover:text-text-primary"
+            )}
+          >
+            Fechas manuales
+          </button>
+        </div>
+      </div>
+
+      {customPreset === "manual" && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input
+            label="Desde"
+            type="date"
+            value={periodoInicio}
+            onChange={(e) => setPeriodoInicio(e.target.value)}
+            error={fieldErrors.periodo_inicio}
+          />
+          <Input
+            label="Hasta"
+            type="date"
+            value={periodoFin}
+            onChange={(e) => setPeriodoFin(e.target.value)}
+            error={fieldErrors.periodo_fin}
+          />
+        </div>
+      )}
+
+      <Input
+        label="Monto"
+        type="number"
+        inputMode="decimal"
+        step="1"
+        min="0"
+        required
+        value={montoCustom}
+        onChange={(e) => setMontoCustom(e.target.value)}
+        leftSlot="$"
+        error={fieldErrors.monto}
+      />
+
+      {customPreset !== "manual" && periodoInicio && periodoFin && (
+        <p className="text-xs text-text-muted">
+          Vigencia: {formatFecha(periodoInicio)} → {formatFecha(periodoFin)}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -411,4 +629,38 @@ function MiembroAutocomplete({
       )}
     </div>
   );
+}
+
+// Helper: cuando ya tenemos los días, replicamos la lógica de extender desde vencimiento.
+function calcularRangoMembresiaPorDias(
+  dias: number,
+  fechaVencimientoActual: string | null | undefined,
+  hoy: Date = new Date()
+): { periodo_inicio: string; periodo_fin: string } {
+  const inicioHoy = new Date(hoy);
+  inicioHoy.setHours(0, 0, 0, 0);
+
+  let inicio = inicioHoy;
+  if (fechaVencimientoActual) {
+    const vencActual = new Date(fechaVencimientoActual + "T00:00:00");
+    if (vencActual > inicioHoy) {
+      inicio = new Date(vencActual);
+      inicio.setDate(inicio.getDate() + 1);
+    }
+  }
+
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + dias - 1);
+
+  const toISODate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  return {
+    periodo_inicio: toISODate(inicio),
+    periodo_fin: toISODate(fin),
+  };
 }

@@ -12,6 +12,7 @@ export const metodoPagoEnum = z.enum(["efectivo", "tarjeta", "transferencia"]);
  * Schema base de un pago.
  * - `miembro_id` requerido para membresia y visita; opcional para producto/otro.
  * - `periodo_inicio`/`periodo_fin` solo aplican para membresia.
+ * - `plan_id` / `promocion_id` opcionales: si se aplica un catálogo o promo.
  */
 export const pagoSchema = z
   .object({
@@ -36,6 +37,8 @@ export const pagoSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
       .optional()
       .or(z.literal("")),
+    plan_id: z.string().uuid().optional().or(z.literal("")),
+    promocion_id: z.string().uuid().optional().or(z.literal("")),
   })
   .refine(
     (data) => {

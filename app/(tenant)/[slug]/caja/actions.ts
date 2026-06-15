@@ -31,6 +31,8 @@ export async function registerPagoAction(
       | "transferencia",
     periodo_inicio: String(formData.get("periodo_inicio") ?? ""),
     periodo_fin: String(formData.get("periodo_fin") ?? ""),
+    plan_id: String(formData.get("plan_id") ?? ""),
+    promocion_id: String(formData.get("promocion_id") ?? ""),
   };
 
   const parsed = pagoSchema.safeParse(raw);
