@@ -7,6 +7,7 @@ import {
   updateProspecto,
   updateEstadoProspecto,
 } from "@/lib/queries/prospectos.queries";
+import { syncTagsForProspecto } from "@/lib/queries/tags.queries";
 import { prospectoSchema } from "@/lib/validations/prospecto.schema";
 import type { ProspectoEstado } from "@/lib/validations/prospecto.schema";
 
@@ -31,6 +32,7 @@ function parseFormData(formData: FormData) {
     estado: String(formData.get("estado") ?? "nuevo"),
     fecha_prueba_agendada: String(formData.get("fecha_prueba_agendada") ?? ""),
     notas: String(formData.get("notas") ?? ""),
+    tag_ids: formData.getAll("tag_ids").map(String),
   };
 }
 
@@ -49,7 +51,8 @@ export async function createProspectoAction(
   formData: FormData
 ): Promise<ProspectoFormState> {
   const tenant = await getTenant();
-  const raw = { ...parseFormData(formData), estado: "nuevo" as const };
+  const { tag_ids, ...rest } = parseFormData(formData);
+  const raw = { ...rest, estado: "nuevo" as const };
 
   const parsed = prospectoSchema.safeParse(raw);
   if (!parsed.success) {
@@ -65,6 +68,8 @@ export async function createProspectoAction(
     return { ...emptyState, error: result.error };
   }
 
+  await syncTagsForProspecto(tenant.id, result.id, tag_ids);
+
   revalidatePath(`/${tenant.slug}/prospectos`);
   return { ok: true, error: null, fieldErrors: {} };
 }
@@ -75,7 +80,7 @@ export async function updateProspectoAction(
   formData: FormData
 ): Promise<ProspectoFormState> {
   const tenant = await getTenant();
-  const raw = parseFormData(formData);
+  const { tag_ids, ...raw } = parseFormData(formData);
 
   const parsed = prospectoSchema.safeParse(raw);
   if (!parsed.success) {
@@ -90,6 +95,8 @@ export async function updateProspectoAction(
   if (!result.ok) {
     return { ...emptyState, error: result.error };
   }
+
+  await syncTagsForProspecto(tenant.id, id, tag_ids);
 
   revalidatePath(`/${tenant.slug}/prospectos`);
   return { ok: true, error: null, fieldErrors: {} };

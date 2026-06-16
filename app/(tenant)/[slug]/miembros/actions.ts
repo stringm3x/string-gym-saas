@@ -9,6 +9,7 @@ import {
 } from "@/lib/queries/miembros.queries";
 import { miembroSchema } from "@/lib/validations/miembro.schema";
 import { updateEstadoProspecto } from "@/lib/queries/prospectos.queries";
+import { syncTagsForMiembro } from "@/lib/queries/tags.queries";
 
 export interface MiembroFormState {
   ok: boolean;
@@ -34,6 +35,7 @@ function parseFormData(formData: FormData) {
     fecha_vencimiento: String(formData.get("fecha_vencimiento") ?? ""),
     notas: String(formData.get("notas") ?? ""),
     prospecto_id: String(formData.get("prospecto_id") ?? ""),
+    tag_ids: formData.getAll("tag_ids").map(String),
   };
 }
 
@@ -43,7 +45,7 @@ export async function createMiembroAction(
 ): Promise<MiembroFormState> {
   const tenant = await getTenant();
   const raw = parseFormData(formData);
-  const { prospecto_id, ...miembroRaw } = raw;
+  const { prospecto_id, tag_ids, ...miembroRaw } = raw;
 
   const parsed = miembroSchema.safeParse(miembroRaw);
   if (!parsed.success) {
@@ -59,6 +61,8 @@ export async function createMiembroAction(
   if (!result.ok) {
     return { ...emptyState, error: result.error };
   }
+
+  await syncTagsForMiembro(tenant.id, result.id, tag_ids);
 
   if (prospecto_id) {
     await updateEstadoProspecto(tenant.id, prospecto_id, "convertido");
@@ -76,8 +80,9 @@ export async function updateMiembroAction(
 ): Promise<MiembroFormState> {
   const tenant = await getTenant();
   const raw = parseFormData(formData);
+  const { tag_ids, prospecto_id: _pid, ...miembroRaw } = raw;
 
-  const parsed = miembroSchema.safeParse(raw);
+  const parsed = miembroSchema.safeParse(miembroRaw);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
     for (const issue of parsed.error.issues) {
@@ -91,6 +96,8 @@ export async function updateMiembroAction(
   if (!result.ok) {
     return { ...emptyState, error: result.error };
   }
+
+  await syncTagsForMiembro(tenant.id, id, tag_ids);
 
   revalidatePath(`/${tenant.slug}/miembros`);
   revalidatePath(`/${tenant.slug}/miembros/${id}`);

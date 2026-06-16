@@ -8,8 +8,9 @@ import { KanbanColumn } from "./KanbanColumn";
 import { ProspectoCard } from "./ProspectoCard";
 import { ProspectoModal } from "./ProspectoModal";
 import { cambiarEstadoAction } from "@/app/(tenant)/[slug]/prospectos/actions";
-import type { Prospecto } from "@/lib/queries/prospectos.queries";
+import type { ProspectoConTags } from "@/lib/queries/prospectos.queries";
 import type { ProspectoEstado } from "@/lib/validations/prospecto.schema";
+import type { Tag } from "@/lib/queries/tags.queries";
 
 const COLUMNS: { estado: ProspectoEstado; label: string; colorClass: string }[] = [
   { estado: "nuevo", label: "Nuevo", colorClass: "text-text-secondary" },
@@ -19,9 +20,9 @@ const COLUMNS: { estado: ProspectoEstado; label: string; colorClass: string }[] 
   { estado: "descartado", label: "Descartado", colorClass: "text-text-muted" },
 ];
 
-type ColumnMap = Record<ProspectoEstado, Prospecto[]>;
+type ColumnMap = Record<ProspectoEstado, ProspectoConTags[]>;
 
-function buildColumnMap(prospectos: Prospecto[]): ColumnMap {
+function buildColumnMap(prospectos: ProspectoConTags[]): ColumnMap {
   const map: ColumnMap = {
     nuevo: [],
     contactado: [],
@@ -36,18 +37,19 @@ function buildColumnMap(prospectos: Prospecto[]): ColumnMap {
 }
 
 interface ProspectosKanbanProps {
-  prospectos: Prospecto[];
+  prospectos: ProspectoConTags[];
   slug: string;
+  availableTags?: Tag[];
 }
 
-export function ProspectosKanban({ prospectos, slug }: ProspectosKanbanProps) {
+export function ProspectosKanban({ prospectos, slug, availableTags = [] }: ProspectosKanbanProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
 
   const [columns, setColumns] = useState<ColumnMap>(() =>
     buildColumnMap(prospectos)
   );
-  const [selectedProspecto, setSelectedProspecto] = useState<Prospecto | null>(null);
+  const [selectedProspecto, setSelectedProspecto] = useState<ProspectoConTags | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -55,7 +57,7 @@ export function ProspectosKanban({ prospectos, slug }: ProspectosKanbanProps) {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  function findProspecto(id: string): Prospecto | undefined {
+  function findProspecto(id: string): ProspectoConTags | undefined {
     for (const col of Object.values(columns)) {
       const found = col.find((p) => p.id === id);
       if (found) return found;
@@ -80,7 +82,7 @@ export function ProspectosKanban({ prospectos, slug }: ProspectosKanbanProps) {
 
     // Optimistic update
     setColumns((prev) => {
-      const next = { ...prev };
+      const next = { ...prev } as ColumnMap;
       next[estadoAnterior] = next[estadoAnterior].filter((p) => p.id !== prospecto.id);
       next[nuevoEstado] = [{ ...prospecto, estado: nuevoEstado }, ...next[nuevoEstado]];
       return next;
@@ -91,7 +93,7 @@ export function ProspectosKanban({ prospectos, slug }: ProspectosKanbanProps) {
     if (!result.ok) {
       // Revert
       setColumns((prev) => {
-        const next = { ...prev };
+        const next = { ...prev } as ColumnMap;
         next[nuevoEstado] = next[nuevoEstado].filter((p) => p.id !== prospecto.id);
         next[estadoAnterior] = [prospecto, ...next[estadoAnterior]];
         return next;
@@ -102,7 +104,7 @@ export function ProspectosKanban({ prospectos, slug }: ProspectosKanbanProps) {
     }
   }
 
-  const handleCardClick = useCallback((prospecto: Prospecto) => {
+  const handleCardClick = useCallback((prospecto: ProspectoConTags) => {
     setSelectedProspecto(prospecto);
     setIsCreating(false);
     setIsModalOpen(true);
@@ -164,6 +166,7 @@ export function ProspectosKanban({ prospectos, slug }: ProspectosKanbanProps) {
         onClose={handleModalClose}
         slug={slug}
         prospecto={isCreating ? undefined : selectedProspecto ?? undefined}
+        availableTags={availableTags}
         onSuccess={handleModalSuccess}
       />
     </>

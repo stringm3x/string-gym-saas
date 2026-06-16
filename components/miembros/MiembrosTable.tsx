@@ -2,10 +2,11 @@ import Link from "next/link";
 import { LuPhone, LuMail } from "react-icons/lu";
 import { formatFecha } from "@/lib/utils/format";
 import { MiembroStatusBadge } from "./MiembroStatusBadge";
-import type { Miembro } from "@/lib/queries/miembros.queries";
+import { TagBadges } from "@/components/ui/TagSelector";
+import type { MiembroConTags } from "@/lib/queries/miembros.queries";
 
 interface MiembrosTableProps {
-  miembros: Miembro[];
+  miembros: MiembroConTags[];
   slug: string;
 }
 
@@ -20,6 +21,7 @@ export function MiembrosTable({ miembros, slug }: MiembrosTableProps) {
             <Th>Inscripción</Th>
             <Th>Vencimiento</Th>
             <Th>Estado</Th>
+            <Th>Tags</Th>
           </tr>
         </thead>
 
@@ -69,6 +71,10 @@ export function MiembrosTable({ miembros, slug }: MiembrosTableProps) {
 
               <Td>
                 <MiembroStatusBadge fechaVencimiento={m.fecha_vencimiento} />
+              </Td>
+
+              <Td>
+                <TagBadges tags={m.tags} max={3} />
               </Td>
             </tr>
           ))}

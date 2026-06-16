@@ -3,6 +3,7 @@ import { LuArrowLeft, LuArrowRightLeft } from "react-icons/lu";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { getTenant } from "@/lib/tenant";
 import { getProspecto } from "@/lib/queries/prospectos.queries";
+import { listTags } from "@/lib/queries/tags.queries";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -14,9 +15,10 @@ export default async function NuevoMiembroPage({ params, searchParams }: PagePro
   const { prospecto_id } = await searchParams;
 
   const tenant = await getTenant();
-  const prospecto = prospecto_id
-    ? await getProspecto(tenant.id, prospecto_id)
-    : null;
+  const [prospecto, availableTags] = await Promise.all([
+    prospecto_id ? getProspecto(tenant.id, prospecto_id) : Promise.resolve(null),
+    listTags(tenant.id),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -74,6 +76,7 @@ export default async function NuevoMiembroPage({ params, searchParams }: PagePro
               : undefined
           }
           prospectoId={prospecto?.id}
+          availableTags={availableTags}
         />
       </div>
     </div>

@@ -8,13 +8,15 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { TagSelector } from "@/components/ui/TagSelector";
 import {
   createProspectoAction,
   updateProspectoAction,
   type ProspectoFormState,
 } from "@/app/(tenant)/[slug]/prospectos/actions";
 import { ORIGENES, ESTADOS } from "@/lib/validations/prospecto.schema";
-import type { Prospecto } from "@/lib/queries/prospectos.queries";
+import type { ProspectoConTags } from "@/lib/queries/prospectos.queries";
+import type { Tag } from "@/lib/queries/tags.queries";
 
 const origenLabels: Record<(typeof ORIGENES)[number], string> = {
   landing: "Landing",
@@ -35,7 +37,8 @@ interface ProspectoModalProps {
   open: boolean;
   onClose: () => void;
   slug: string;
-  prospecto?: Prospecto;
+  prospecto?: ProspectoConTags;
+  availableTags?: Tag[];
   onSuccess?: () => void;
 }
 
@@ -50,6 +53,7 @@ export function ProspectoModal({
   onClose,
   slug,
   prospecto,
+  availableTags = [],
   onSuccess,
 }: ProspectoModalProps) {
   const { success, error: toastError } = useToast();
@@ -179,6 +183,16 @@ export function ProspectoModal({
               className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
             />
           </div>
+
+          {availableTags.length > 0 && (
+            <div className="sm:col-span-2">
+              <TagSelector
+                tags={availableTags}
+                initialSelectedIds={prospecto?.tags.map((t) => t.id) ?? []}
+                label="Tags"
+              />
+            </div>
+          )}
         </div>
 
         {state.error && Object.keys(state.fieldErrors).length === 0 && (

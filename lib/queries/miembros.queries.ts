@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { MiembroInput } from "@/lib/validations/miembro.schema";
+import type { Tag } from "@/lib/queries/tags.queries";
 
 export interface Miembro {
   id: string;
@@ -14,28 +15,51 @@ export interface Miembro {
   created_at: string;
 }
 
+export interface MiembroConTags extends Miembro {
+  tags: Tag[];
+}
+
 export interface MiembrosListParams {
   tenantId: string;
   search?: string;
-  /**
-   * Filtro de estado calculado en la query a partir de fecha_vencimiento
-   * y la columna estado. 'all' devuelve todos.
-   */
   filter?: "all" | "activos" | "inactivos" | "por_vencer";
+  tagId?: string;
 }
+
+type MiembroRaw = Miembro & {
+  miembros_tags: { tags: Tag | null }[];
+};
 
 export async function listMiembros({
   tenantId,
   search,
   filter = "all",
-}: MiembrosListParams): Promise<Miembro[]> {
+  tagId,
+}: MiembrosListParams): Promise<MiembroConTags[]> {
   const supabase = await createClient();
+
+  // Si hay filtro por tag, primero obtenemos los IDs de miembros con ese tag.
+  let allowedIds: string[] | null = null;
+  if (tagId) {
+    const { data: tagged } = await supabase
+      .from("miembros_tags")
+      .select("miembro_id")
+      .eq("tenant_id", tenantId)
+      .eq("tag_id", tagId);
+
+    allowedIds = (tagged ?? []).map((r) => r.miembro_id as string);
+    if (allowedIds.length === 0) return [];
+  }
 
   let query = supabase
     .from("miembros")
-    .select("*")
+    .select("*, miembros_tags(tags(id, nombre, color, tenant_id, created_at))")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false });
+
+  if (allowedIds !== null) {
+    query = query.in("id", allowedIds);
+  }
 
   if (search && search.trim().length > 0) {
     const q = search.trim();
@@ -49,7 +73,6 @@ export async function listMiembros({
   } else if (filter === "inactivos") {
     query = query.eq("estado", "inactivo");
   } else if (filter === "por_vencer") {
-    // Próximos 7 días, sin incluir vencidos.
     const hoy = new Date();
     const en7 = new Date(hoy);
     en7.setDate(hoy.getDate() + 7);
@@ -67,7 +90,14 @@ export async function listMiembros({
     return [];
   }
 
-  return data ?? [];
+  return ((data ?? []) as unknown as MiembroRaw[]).map(
+    ({ miembros_tags, ...rest }) => ({
+      ...rest,
+      tags: (miembros_tags ?? [])
+        .map((mt) => mt.tags)
+        .filter((t): t is Tag => t !== null),
+    })
+  );
 }
 
 export async function getMiembro(

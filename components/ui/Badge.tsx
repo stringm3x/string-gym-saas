@@ -1,6 +1,12 @@
 import { cn } from "@/lib/utils/cn";
 
-type BadgeVariant = "success" | "warning" | "danger" | "neutral" | "info";
+export type BadgeVariant =
+  | "success"
+  | "warning"
+  | "danger"
+  | "neutral"
+  | "info"
+  | "gold";
 
 interface BadgeProps {
   variant?: BadgeVariant;
@@ -14,6 +20,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   danger: "bg-danger/15 text-danger border-danger/30",
   neutral: "bg-surface text-text-secondary border-border",
   info: "bg-gold/15 text-gold border-gold/30",
+  gold: "bg-gold/15 text-gold border-gold/30",
 };
 
 export function Badge({

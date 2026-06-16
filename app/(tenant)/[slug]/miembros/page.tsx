@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LuPlus, LuUsers } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { listMiembros } from "@/lib/queries/miembros.queries";
+import { listTags } from "@/lib/queries/tags.queries";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MiembrosToolbar } from "@/components/miembros/MiembrosToolbar";
@@ -9,7 +10,7 @@ import { MiembrosTable } from "@/components/miembros/MiembrosTable";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ q?: string; filter?: string }>;
+  searchParams: Promise<{ q?: string; filter?: string; tag?: string }>;
 }
 
 export default async function MiembrosPage({
@@ -29,11 +30,15 @@ export default async function MiembrosPage({
       ? sp.filter
       : "all";
 
-  const miembros = await listMiembros({
-    tenantId: tenant.id,
-    search: sp.q,
-    filter,
-  });
+  const [miembros, availableTags] = await Promise.all([
+    listMiembros({
+      tenantId: tenant.id,
+      search: sp.q,
+      filter,
+      tagId: sp.tag,
+    }),
+    listTags(tenant.id),
+  ]);
 
   const isFiltered = filter !== "all" || Boolean(sp.q);
 
@@ -60,7 +65,7 @@ export default async function MiembrosPage({
         </Link>
       </div>
 
-      <MiembrosToolbar />
+      <MiembrosToolbar availableTags={availableTags} />
 
       {miembros.length === 0 ? (
         isFiltered ? (

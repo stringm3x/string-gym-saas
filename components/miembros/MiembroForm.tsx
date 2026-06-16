@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import type { Miembro } from "@/lib/queries/miembros.queries";
+import type { MiembroConTags } from "@/lib/queries/miembros.queries";
+import type { Tag } from "@/lib/queries/tags.queries";
+import { TagSelector } from "@/components/ui/TagSelector";
 import {
   createMiembroAction,
   updateMiembroAction,
@@ -16,9 +18,10 @@ import {
 interface MiembroFormProps {
   mode: "create" | "edit";
   slug: string;
-  miembro?: Miembro;
+  miembro?: MiembroConTags;
   defaultValues?: { nombre?: string; telefono?: string; email?: string };
   prospectoId?: string;
+  availableTags?: Tag[];
 }
 
 const initialState: MiembroFormState = {
@@ -27,7 +30,7 @@ const initialState: MiembroFormState = {
   fieldErrors: {},
 };
 
-export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId }: MiembroFormProps) {
+export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, availableTags = [] }: MiembroFormProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
 
@@ -118,6 +121,14 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId }:
           className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
         />
       </div>
+
+      {availableTags.length > 0 && (
+        <TagSelector
+          tags={availableTags}
+          initialSelectedIds={miembro?.tags.map((t) => t.id) ?? []}
+          label="Tags"
+        />
+      )}
 
       {state.error && Object.keys(state.fieldErrors).length === 0 && (
         <p

@@ -15,6 +15,7 @@ export function ConfigTabs({ slug }: ConfigTabsProps) {
   const tabs = [
     { href: `${base}/planes`, label: "Planes" },
     { href: `${base}/promociones`, label: "Promociones" },
+    { href: `${base}/tags`, label: "Tags" },
   ];
 
   return (

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ProspectoEstado, ProspectoInput } from "@/lib/validations/prospecto.schema";
+import type { Tag } from "@/lib/queries/tags.queries";
 
 export interface Prospecto {
   id: string;
@@ -14,20 +15,30 @@ export interface Prospecto {
   created_at: string;
 }
 
+export interface ProspectoConTags extends Prospecto {
+  tags: Tag[];
+}
+
 export interface ListProspectosOptions {
   estado?: ProspectoEstado;
   search?: string;
 }
 
+type ProspectoRaw = Prospecto & {
+  prospectos_tags: { tags: Tag | null }[];
+};
+
 export async function listProspectos(
   tenantId: string,
   options?: ListProspectosOptions
-): Promise<Prospecto[]> {
+): Promise<ProspectoConTags[]> {
   const supabase = await createClient();
 
   let query = supabase
     .from("prospectos")
-    .select("*")
+    .select(
+      "*, prospectos_tags(tags(id, nombre, color, tenant_id, created_at))"
+    )
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false });
 
@@ -47,7 +58,14 @@ export async function listProspectos(
     return [];
   }
 
-  return data ?? [];
+  return ((data ?? []) as unknown as ProspectoRaw[]).map(
+    ({ prospectos_tags, ...rest }) => ({
+      ...rest,
+      tags: (prospectos_tags ?? [])
+        .map((pt) => pt.tags)
+        .filter((t): t is Tag => t !== null),
+    })
+  );
 }
 
 export async function getProspecto(

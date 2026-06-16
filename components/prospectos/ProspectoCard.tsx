@@ -5,9 +5,10 @@ import { CSS } from "@dnd-kit/utilities";
 import { LuPhone, LuCalendar, LuGripVertical } from "react-icons/lu";
 import { cn } from "@/lib/utils/cn";
 import { Badge } from "@/components/ui/Badge";
-import type { Prospecto } from "@/lib/queries/prospectos.queries";
+import { TagBadges } from "@/components/ui/TagSelector";
+import type { ProspectoConTags } from "@/lib/queries/prospectos.queries";
 
-const origenLabels: Record<Prospecto["origen"], string> = {
+const origenLabels: Record<ProspectoConTags["origen"], string> = {
   landing: "Landing",
   whatsapp: "WhatsApp",
   referido: "Referido",
@@ -32,8 +33,8 @@ function isPruebaProxima(fecha: string | null): boolean {
 }
 
 interface ProspectoCardProps {
-  prospecto: Prospecto;
-  onClick: (prospecto: Prospecto) => void;
+  prospecto: ProspectoConTags;
+  onClick: (prospecto: ProspectoConTags) => void;
 }
 
 export function ProspectoCard({ prospecto, onClick }: ProspectoCardProps) {
@@ -80,7 +81,7 @@ export function ProspectoCard({ prospecto, onClick }: ProspectoCardProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="neutral">{origenLabels[prospecto.origen]}</Badge>
+          <Badge variant="neutral">{origenLabels[prospecto.origen as ProspectoConTags["origen"]]}</Badge>
 
           {isPruebaProxima(prospecto.fecha_prueba_agendada) && (
             <Badge variant="warning">
@@ -89,6 +90,12 @@ export function ProspectoCard({ prospecto, onClick }: ProspectoCardProps) {
             </Badge>
           )}
         </div>
+
+        {prospecto.tags.length > 0 && (
+          <div className="mt-1.5">
+            <TagBadges tags={prospecto.tags} max={3} />
+          </div>
+        )}
 
         <p className="mt-2 text-xs text-text-muted">
           {formatRelativeDate(prospecto.created_at)}

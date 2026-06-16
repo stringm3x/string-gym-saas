@@ -5,6 +5,7 @@ import { getTenant } from "@/lib/tenant";
 import { getMiembro } from "@/lib/queries/miembros.queries";
 import { listCheckinsByMiembro } from "@/lib/queries/checkins.queries";
 import { listPagosByMiembro } from "@/lib/queries/pagos.queries";
+import { listTags, getTagsForMiembro } from "@/lib/queries/tags.queries";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
 import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
@@ -19,15 +20,20 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
   const tenant = await getTenant();
 
-  const [miembro, checkins, pagos] = await Promise.all([
-    getMiembro(tenant.id, id),
-    listCheckinsByMiembro(tenant.id, id, 20),
-    listPagosByMiembro(tenant.id, id, 30),
-  ]);
+  const [miembro, checkins, pagos, miembroTags, availableTags] =
+    await Promise.all([
+      getMiembro(tenant.id, id),
+      listCheckinsByMiembro(tenant.id, id, 20),
+      listPagosByMiembro(tenant.id, id, 30),
+      getTagsForMiembro(tenant.id, id),
+      listTags(tenant.id),
+    ]);
 
   if (!miembro) {
     notFound();
   }
+
+  const miembroConTags = { ...miembro, tags: miembroTags };
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -56,7 +62,12 @@ export default async function MiembroDetailPage({ params }: PageProps) {
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-6">
-        <MiembroForm mode="edit" slug={slug} miembro={miembro} />
+        <MiembroForm
+          mode="edit"
+          slug={slug}
+          miembro={miembroConTags}
+          availableTags={availableTags}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
