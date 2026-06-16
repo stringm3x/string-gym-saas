@@ -11,6 +11,7 @@ import { cambiarEstadoAction } from "@/app/(tenant)/[slug]/prospectos/actions";
 import type { ProspectoConTags } from "@/lib/queries/prospectos.queries";
 import type { ProspectoEstado } from "@/lib/validations/prospecto.schema";
 import type { Tag } from "@/lib/queries/tags.queries";
+import type { PlantillaMensaje } from "@/lib/queries/plantillas.queries";
 
 const COLUMNS: { estado: ProspectoEstado; label: string; colorClass: string }[] = [
   { estado: "nuevo", label: "Nuevo", colorClass: "text-text-secondary" },
@@ -40,9 +41,10 @@ interface ProspectosKanbanProps {
   prospectos: ProspectoConTags[];
   slug: string;
   availableTags?: Tag[];
+  plantillas?: PlantillaMensaje[];
 }
 
-export function ProspectosKanban({ prospectos, slug, availableTags = [] }: ProspectosKanbanProps) {
+export function ProspectosKanban({ prospectos, slug, availableTags = [], plantillas = [] }: ProspectosKanbanProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
 
@@ -167,6 +169,7 @@ export function ProspectosKanban({ prospectos, slug, availableTags = [] }: Prosp
         slug={slug}
         prospecto={isCreating ? undefined : selectedProspecto ?? undefined}
         availableTags={availableTags}
+        plantillas={plantillas}
         onSuccess={handleModalSuccess}
       />
     </>

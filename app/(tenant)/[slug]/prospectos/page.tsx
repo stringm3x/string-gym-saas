@@ -1,6 +1,7 @@
 import { getTenant } from "@/lib/tenant";
 import { listProspectos } from "@/lib/queries/prospectos.queries";
 import { listTags } from "@/lib/queries/tags.queries";
+import { listPlantillas } from "@/lib/queries/plantillas.queries";
 import { ProspectosKanban } from "@/components/prospectos/ProspectosKanban";
 
 interface PageProps {
@@ -11,9 +12,10 @@ export default async function ProspectosPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
 
-  const [prospectos, availableTags] = await Promise.all([
+  const [prospectos, availableTags, plantillas] = await Promise.all([
     listProspectos(tenant.id),
     listTags(tenant.id),
+    listPlantillas(tenant.id, { soloActivas: true }),
   ]);
 
   return (
@@ -29,7 +31,7 @@ export default async function ProspectosPage({ params }: PageProps) {
         </p>
       </div>
 
-      <ProspectosKanban prospectos={prospectos} slug={slug} availableTags={availableTags} />
+      <ProspectosKanban prospectos={prospectos} slug={slug} availableTags={availableTags} plantillas={plantillas} />
     </div>
   );
 }

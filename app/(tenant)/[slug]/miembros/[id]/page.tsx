@@ -7,8 +7,10 @@ import { listCheckinsByMiembro } from "@/lib/queries/checkins.queries";
 import { listPagosByMiembro } from "@/lib/queries/pagos.queries";
 import { listTags, getTagsForMiembro } from "@/lib/queries/tags.queries";
 import { listNotas } from "@/lib/queries/notas.queries";
+import { listPlantillas } from "@/lib/queries/plantillas.queries";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { NotasTimeline } from "@/components/miembros/NotasTimeline";
+import { AccionesRapidas } from "@/components/ui/AccionesRapidas";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
 import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
 import { CheckinsHistory } from "@/components/checkins/CheckinsHistory";
@@ -22,14 +24,15 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
   const tenant = await getTenant();
 
-  const [miembro, checkins, pagos, miembroTags, availableTags, notas] =
+  const [miembro, checkins, pagos, miembroTags, availableTags, notas, plantillas] =
     await Promise.all([
       getMiembro(tenant.id, id),
       listCheckinsByMiembro(tenant.id, id, 20),
       listPagosByMiembro(tenant.id, id, 30),
       getTagsForMiembro(tenant.id, id),
       listTags(tenant.id),
-      listNotas(tenant.id, id),
+      listNotas(tenant.id, "miembro", id),
+      listPlantillas(tenant.id, { soloActivas: true }),
     ]);
 
   if (!miembro) {
@@ -57,10 +60,21 @@ export default async function MiembroDetailPage({ params }: PageProps) {
             <MiembroStatusBadge fechaVencimiento={miembro.fecha_vencimiento} />
           </div>
 
-          <ManualCheckinButton
-            miembroId={miembro.id}
-            miembroNombre={miembro.nombre}
-          />
+          <div className="flex items-center gap-2">
+            <AccionesRapidas
+              nombre={miembro.nombre}
+              telefono={miembro.telefono}
+              email={miembro.email}
+              fechaVencimiento={miembro.fecha_vencimiento}
+              entidadTipo="miembro"
+              entidadId={miembro.id}
+              plantillas={plantillas}
+            />
+            <ManualCheckinButton
+              miembroId={miembro.id}
+              miembroNombre={miembro.nombre}
+            />
+          </div>
         </div>
       </div>
 
@@ -75,7 +89,8 @@ export default async function MiembroDetailPage({ params }: PageProps) {
 
       <div className="rounded-xl border border-border bg-surface p-6">
         <NotasTimeline
-          miembroId={id}
+          entidadTipo="miembro"
+          entidadId={id}
           notas={notas}
           legacyNotas={miembro.notas}
         />

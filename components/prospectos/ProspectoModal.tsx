@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { TagSelector } from "@/components/ui/TagSelector";
+import { AccionesRapidas } from "@/components/ui/AccionesRapidas";
 import {
   createProspectoAction,
   updateProspectoAction,
@@ -17,6 +18,7 @@ import {
 import { ORIGENES, ESTADOS } from "@/lib/validations/prospecto.schema";
 import type { ProspectoConTags } from "@/lib/queries/prospectos.queries";
 import type { Tag } from "@/lib/queries/tags.queries";
+import type { PlantillaMensaje } from "@/lib/queries/plantillas.queries";
 
 const origenLabels: Record<(typeof ORIGENES)[number], string> = {
   landing: "Landing",
@@ -39,6 +41,7 @@ interface ProspectoModalProps {
   slug: string;
   prospecto?: ProspectoConTags;
   availableTags?: Tag[];
+  plantillas?: PlantillaMensaje[];
   onSuccess?: () => void;
 }
 
@@ -54,6 +57,7 @@ export function ProspectoModal({
   slug,
   prospecto,
   availableTags = [],
+  plantillas = [],
   onSuccess,
 }: ProspectoModalProps) {
   const { success, error: toastError } = useToast();
@@ -85,6 +89,19 @@ export function ProspectoModal({
       title={isEdit ? "Editar prospecto" : "Nuevo prospecto"}
       size="lg"
     >
+      {isEdit && prospecto && (
+        <div className="mb-4 rounded-xl border border-border bg-surface-hover px-4 py-3">
+          <AccionesRapidas
+            nombre={prospecto.nombre}
+            telefono={prospecto.telefono}
+            email={prospecto.email ?? null}
+            entidadTipo="prospecto"
+            entidadId={prospecto.id}
+            plantillas={plantillas}
+          />
+        </div>
+      )}
+
       <form action={formAction} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">

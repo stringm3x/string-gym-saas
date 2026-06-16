@@ -2,16 +2,24 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { LuPencilLine, LuStickyNote } from "react-icons/lu";
+import { LuPencilLine, LuStickyNote, LuPhone, LuMessageCircle, LuMail } from "react-icons/lu";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import {
   createNotaAction,
   type NotaFormState,
-} from "@/app/(tenant)/[slug]/miembros/actions";
-import type { Nota } from "@/lib/queries/notas.queries";
+} from "@/app/(tenant)/[slug]/notas/actions";
+import type { Nota, TipoAccion } from "@/lib/queries/notas.queries";
 
 const initialState: NotaFormState = { ok: false, error: null };
+
+const tipoIcono: Record<TipoAccion, React.ReactNode> = {
+  llamada: <LuPhone className="h-3 w-3" />,
+  whatsapp: <LuMessageCircle className="h-3 w-3" />,
+  email: <LuMail className="h-3 w-3" />,
+  visita: <LuStickyNote className="h-3 w-3" />,
+  otro: <LuStickyNote className="h-3 w-3" />,
+};
 
 function formatDateTime(isoString: string): string {
   return new Date(isoString).toLocaleString("es-MX", {
@@ -24,13 +32,15 @@ function formatDateTime(isoString: string): string {
 }
 
 interface NotasTimelineProps {
-  miembroId: string;
+  entidadTipo: "miembro" | "prospecto";
+  entidadId: string;
   notas: Nota[];
-  legacyNotas: string | null;
+  legacyNotas?: string | null;
 }
 
 export function NotasTimeline({
-  miembroId,
+  entidadTipo,
+  entidadId,
   notas,
   legacyNotas,
 }: NotasTimelineProps) {
@@ -39,7 +49,7 @@ export function NotasTimeline({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [state, formAction, isPending] = useActionState(
-    createNotaAction.bind(null, miembroId),
+    createNotaAction.bind(null, entidadTipo, entidadId),
     initialState
   );
 
@@ -102,6 +112,12 @@ export function NotasTimeline({
               key={nota.id}
               className="rounded-lg border border-border bg-surface p-3"
             >
+              {nota.tipo_accion && (
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-text-muted capitalize">
+                  {tipoIcono[nota.tipo_accion]}
+                  {nota.tipo_accion}
+                </div>
+              )}
               <p className="whitespace-pre-wrap text-sm text-text-primary">
                 {nota.contenido}
               </p>
