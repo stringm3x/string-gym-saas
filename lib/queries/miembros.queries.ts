@@ -130,7 +130,6 @@ export async function createMiembro(
     email: input.email || null,
     fecha_inscripcion: input.fecha_inscripcion,
     fecha_vencimiento: input.fecha_vencimiento || null,
-    notas: input.notas || null,
   };
 
   const { data, error } = await supabase
@@ -162,7 +161,6 @@ export async function updateMiembro(
     email: input.email || null,
     fecha_inscripcion: input.fecha_inscripcion,
     fecha_vencimiento: input.fecha_vencimiento || null,
-    notas: input.notas || null,
   };
 
   const { error } = await supabase

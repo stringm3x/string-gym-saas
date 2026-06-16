@@ -6,7 +6,9 @@ import { getMiembro } from "@/lib/queries/miembros.queries";
 import { listCheckinsByMiembro } from "@/lib/queries/checkins.queries";
 import { listPagosByMiembro } from "@/lib/queries/pagos.queries";
 import { listTags, getTagsForMiembro } from "@/lib/queries/tags.queries";
+import { listNotas } from "@/lib/queries/notas.queries";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
+import { NotasTimeline } from "@/components/miembros/NotasTimeline";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
 import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
 import { CheckinsHistory } from "@/components/checkins/CheckinsHistory";
@@ -20,13 +22,14 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
   const tenant = await getTenant();
 
-  const [miembro, checkins, pagos, miembroTags, availableTags] =
+  const [miembro, checkins, pagos, miembroTags, availableTags, notas] =
     await Promise.all([
       getMiembro(tenant.id, id),
       listCheckinsByMiembro(tenant.id, id, 20),
       listPagosByMiembro(tenant.id, id, 30),
       getTagsForMiembro(tenant.id, id),
       listTags(tenant.id),
+      listNotas(tenant.id, id),
     ]);
 
   if (!miembro) {
@@ -67,6 +70,14 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           slug={slug}
           miembro={miembroConTags}
           availableTags={availableTags}
+        />
+      </div>
+
+      <div className="rounded-xl border border-border bg-surface p-6">
+        <NotasTimeline
+          miembroId={id}
+          notas={notas}
+          legacyNotas={miembro.notas}
         />
       </div>
 

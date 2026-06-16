@@ -3,7 +3,6 @@
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
-import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { MiembroConTags } from "@/lib/queries/miembros.queries";
@@ -107,18 +106,6 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
           defaultValue={miembro?.fecha_vencimiento ?? ""}
           error={state.fieldErrors.fecha_vencimiento}
           description="Opcional — se calcula al registrar un pago"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="notas">Notas</Label>
-        <textarea
-          id="notas"
-          name="notas"
-          rows={3}
-          defaultValue={miembro?.notas ?? ""}
-          placeholder="Observaciones internas, lesiones, preferencias…"
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
         />
       </div>
 

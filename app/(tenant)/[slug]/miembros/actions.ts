@@ -10,6 +10,7 @@ import {
 import { miembroSchema } from "@/lib/validations/miembro.schema";
 import { updateEstadoProspecto } from "@/lib/queries/prospectos.queries";
 import { syncTagsForMiembro } from "@/lib/queries/tags.queries";
+import { createNota } from "@/lib/queries/notas.queries";
 
 export interface MiembroFormState {
   ok: boolean;
@@ -33,10 +34,31 @@ function parseFormData(formData: FormData) {
     email: String(formData.get("email") ?? ""),
     fecha_inscripcion: String(formData.get("fecha_inscripcion") ?? ""),
     fecha_vencimiento: String(formData.get("fecha_vencimiento") ?? ""),
-    notas: String(formData.get("notas") ?? ""),
     prospecto_id: String(formData.get("prospecto_id") ?? ""),
     tag_ids: formData.getAll("tag_ids").map(String),
   };
+}
+
+export interface NotaFormState {
+  ok: boolean;
+  error: string | null;
+}
+
+export async function createNotaAction(
+  miembroId: string,
+  _prev: NotaFormState,
+  formData: FormData
+): Promise<NotaFormState> {
+  const tenant = await getTenant();
+  const contenido = String(formData.get("contenido") ?? "").trim();
+
+  if (!contenido) return { ok: false, error: "La nota no puede estar vacía" };
+
+  const result = await createNota(tenant.id, miembroId, contenido);
+  if (!result.ok) return { ok: false, error: result.error };
+
+  revalidatePath(`/${tenant.slug}/miembros/${miembroId}`);
+  return { ok: true, error: null };
 }
 
 export async function createMiembroAction(

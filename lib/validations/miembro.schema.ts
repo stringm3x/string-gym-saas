@@ -32,7 +32,6 @@ export const miembroSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
       .optional()
       .or(z.literal("")),
-    notas: z.string().trim().max(1000).optional().or(z.literal("")),
   })
   .refine((data) => Boolean(data.telefono) || Boolean(data.email), {
     message: "Debes capturar al menos teléfono o correo",
