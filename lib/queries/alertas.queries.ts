@@ -26,6 +26,7 @@ async function countVencimientoHoy(tenantId: string): Promise<number> {
     .from("miembros")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
+    .eq("archivado", false)
     .eq("fecha_vencimiento", hoy);
 
   if (error) return 0;
@@ -43,6 +44,7 @@ async function countVencimientoProximo(tenantId: string): Promise<number> {
     .from("miembros")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
+    .eq("archivado", false)
     .gte("fecha_vencimiento", manana.toISOString().slice(0, 10))
     .lte("fecha_vencimiento", en7.toISOString().slice(0, 10));
 
@@ -60,6 +62,7 @@ async function countMiembrosInactivos(tenantId: string): Promise<number> {
     .from("miembros")
     .select("id")
     .eq("tenant_id", tenantId)
+    .eq("archivado", false)
     .eq("estado", "activo");
 
   if (errActivos || !activos || activos.length === 0) return 0;

@@ -25,16 +25,19 @@ export async function getMiembrosStats(
       supabase
         .from("miembros")
         .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId),
+        .eq("tenant_id", tenantId)
+        .eq("archivado", false),
       supabase
         .from("miembros")
         .select("id", { count: "exact", head: true })
         .eq("tenant_id", tenantId)
+        .eq("archivado", false)
         .gte("fecha_vencimiento", hoyIso),
       supabase
         .from("miembros")
         .select("id", { count: "exact", head: true })
         .eq("tenant_id", tenantId)
+        .eq("archivado", false)
         .gte("fecha_vencimiento", hoyIso)
         .lte("fecha_vencimiento", en7Iso),
     ]);
@@ -186,6 +189,7 @@ export async function listMiembrosPorVencer(
     .from("miembros")
     .select("id, nombre, telefono, fecha_vencimiento")
     .eq("tenant_id", tenantId)
+    .eq("archivado", false)
     .gte("fecha_vencimiento", hoy.toISOString().slice(0, 10))
     .lte("fecha_vencimiento", en.toISOString().slice(0, 10))
     .order("fecha_vencimiento", { ascending: true })

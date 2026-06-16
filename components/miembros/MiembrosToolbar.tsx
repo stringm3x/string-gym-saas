@@ -31,6 +31,7 @@ export function MiembrosToolbar({ availableTags = [] }: MiembrosToolbarProps) {
   const currentFilter = (searchParams.get("filter") as Filter) ?? "all";
   const currentSearch = searchParams.get("q") ?? "";
   const currentTag = searchParams.get("tag") ?? "";
+  const currentArchivado = searchParams.get("archivado") === "true";
   const [searchInput, setSearchInput] = useState(currentSearch);
 
   useEffect(() => {
@@ -76,6 +77,18 @@ export function MiembrosToolbar({ availableTags = [] }: MiembrosToolbarProps) {
     });
   }
 
+  function setArchivado(archivado: boolean) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (archivado) {
+      params.set("archivado", "true");
+    } else {
+      params.delete("archivado");
+    }
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -112,32 +125,61 @@ export function MiembrosToolbar({ availableTags = [] }: MiembrosToolbarProps) {
         </div>
       </div>
 
-      {availableTags.length > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-text-muted">Tag:</span>
-          <select
-            value={currentTag}
-            onChange={(e) => setTagFilter(e.target.value)}
-            className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs text-text-primary focus:border-brand-green focus:outline-none"
-          >
-            <option value="">Todos los tags</option>
-            {availableTags.map((tag) => (
-              <option key={tag.id} value={tag.id}>
-                {tag.nombre}
-              </option>
-            ))}
-          </select>
-          {currentTag && (
-            <button
-              type="button"
-              onClick={() => setTagFilter("")}
-              className="text-xs text-text-muted underline hover:text-text-primary"
+      <div className="flex flex-wrap items-center gap-4">
+        {availableTags.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-muted">Tag:</span>
+            <select
+              value={currentTag}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs text-text-primary focus:border-brand-green focus:outline-none"
             >
-              Limpiar
-            </button>
-          )}
+              <option value="">Todos los tags</option>
+              {availableTags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.nombre}
+                </option>
+              ))}
+            </select>
+            {currentTag && (
+              <button
+                type="button"
+                onClick={() => setTagFilter("")}
+                className="text-xs text-text-muted underline hover:text-text-primary"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
+          <button
+            type="button"
+            onClick={() => setArchivado(false)}
+            className={cn(
+              "rounded-md px-3 py-1 text-xs font-medium transition-colors duration-150",
+              !currentArchivado
+                ? "bg-bg text-text-primary"
+                : "text-text-secondary hover:text-text-primary"
+            )}
+          >
+            Activos
+          </button>
+          <button
+            type="button"
+            onClick={() => setArchivado(true)}
+            className={cn(
+              "rounded-md px-3 py-1 text-xs font-medium transition-colors duration-150",
+              currentArchivado
+                ? "bg-bg text-text-primary"
+                : "text-text-secondary hover:text-text-primary"
+            )}
+          >
+            Archivados
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

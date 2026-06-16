@@ -12,6 +12,7 @@ interface MiembrosListClientProps {
   slug: string;
   availableTags: Tag[];
   plantillas: PlantillaMensaje[];
+  soloArchivados?: boolean;
 }
 
 export function MiembrosListClient({
@@ -19,6 +20,7 @@ export function MiembrosListClient({
   slug,
   availableTags,
   plantillas,
+  soloArchivados = false,
 }: MiembrosListClientProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -53,6 +55,7 @@ export function MiembrosListClient({
         onToggleSelect={toggleSelect}
         allSelected={allSelected}
         onToggleAll={toggleAll}
+        soloArchivados={soloArchivados}
       />
       <BulkActionsBar
         selectedIds={selectedIds}

@@ -9,11 +9,15 @@ import { registerCheckinAction } from "@/app/(tenant)/[slug]/checkins/actions";
 interface ManualCheckinButtonProps {
   miembroId: string;
   miembroNombre: string;
+  disabled?: boolean;
+  disabledTitle?: string;
 }
 
 export function ManualCheckinButton({
   miembroId,
   miembroNombre,
+  disabled = false,
+  disabledTitle,
 }: ManualCheckinButtonProps) {
   const { success, error } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -35,6 +39,8 @@ export function ManualCheckinButton({
       leftIcon={<LuScanLine className="h-4 w-4" />}
       onClick={handleClick}
       loading={isPending}
+      disabled={disabled}
+      title={disabled ? disabledTitle : undefined}
     >
       Registrar check-in
     </Button>

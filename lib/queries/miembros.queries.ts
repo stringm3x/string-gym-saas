@@ -12,6 +12,8 @@ export interface Miembro {
   fecha_vencimiento: string | null;
   estado: "activo" | "inactivo";
   notas: string | null;
+  archivado: boolean;
+  archivado_at: string | null;
   created_at: string;
 }
 
@@ -24,6 +26,10 @@ export interface MiembrosListParams {
   search?: string;
   filter?: "all" | "activos" | "inactivos" | "por_vencer";
   tagId?: string;
+  /** Incluye archivados junto con los activos. */
+  incluirArchivados?: boolean;
+  /** Muestra únicamente los archivados. */
+  soloArchivados?: boolean;
 }
 
 type MiembroRaw = Miembro & {
@@ -35,6 +41,8 @@ export async function listMiembros({
   search,
   filter = "all",
   tagId,
+  incluirArchivados = false,
+  soloArchivados = false,
 }: MiembrosListParams): Promise<MiembroConTags[]> {
   const supabase = await createClient();
 
@@ -56,6 +64,14 @@ export async function listMiembros({
     .select("*, miembros_tags(tags(id, nombre, color, tenant_id, created_at))")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false });
+
+  // Filtro de archivado: por default solo activos; soloArchivados invierte;
+  // incluirArchivados no aplica filtro.
+  if (soloArchivados) {
+    query = query.eq("archivado", true);
+  } else if (!incluirArchivados) {
+    query = query.eq("archivado", false);
+  }
 
   if (allowedIds !== null) {
     query = query.in("id", allowedIds);
@@ -176,6 +192,38 @@ export async function updateMiembro(
   return { ok: true };
 }
 
+export async function archivarMiembro(
+  tenantId: string,
+  id: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("miembros")
+    .update({ archivado: true, archivado_at: new Date().toISOString() })
+    .eq("tenant_id", tenantId)
+    .eq("id", id);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function restaurarMiembro(
+  tenantId: string,
+  id: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("miembros")
+    .update({ archivado: false, archivado_at: null })
+    .eq("tenant_id", tenantId)
+    .eq("id", id);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 /**
  * Cuenta miembros que vencen hoy — para el badge ambiental de la sidebar.
  */
@@ -189,6 +237,7 @@ export async function countMiembrosVencenHoy(
     .from("miembros")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
+    .eq("archivado", false)
     .eq("fecha_vencimiento", hoy);
 
   if (error) return 0;
@@ -214,6 +263,7 @@ export async function searchMiembrosForCheckin(
     .from("miembros")
     .select("id, nombre, telefono, fecha_vencimiento")
     .eq("tenant_id", tenantId)
+    .eq("archivado", false)
     .or(`nombre.ilike.%${q}%,telefono.ilike.%${q}%`)
     .order("nombre")
     .limit(6);

@@ -12,6 +12,8 @@ import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { NotasTimeline } from "@/components/miembros/NotasTimeline";
 import { AccionesRapidas } from "@/components/ui/AccionesRapidas";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
+import { MiembroArchivarButton } from "@/components/miembros/MiembroArchivarButton";
+import { MiembroArchivadoBanner } from "@/components/miembros/MiembroArchivadoBanner";
 import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
 import { CheckinsHistory } from "@/components/checkins/CheckinsHistory";
 import { PagosHistory } from "@/components/caja/PagosHistory";
@@ -73,10 +75,25 @@ export default async function MiembroDetailPage({ params }: PageProps) {
             <ManualCheckinButton
               miembroId={miembro.id}
               miembroNombre={miembro.nombre}
+              disabled={miembro.archivado}
+              disabledTitle="Restaura para realizar acciones"
             />
+            {!miembro.archivado && (
+              <MiembroArchivarButton
+                miembroId={miembro.id}
+                miembroNombre={miembro.nombre}
+              />
+            )}
           </div>
         </div>
       </div>
+
+      {miembro.archivado && (
+        <MiembroArchivadoBanner
+          miembroId={miembro.id}
+          archivadoAt={miembro.archivado_at}
+        />
+      )}
 
       <div className="rounded-xl border border-border bg-surface p-6">
         <MiembroForm
@@ -84,6 +101,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           slug={slug}
           miembro={miembroConTags}
           availableTags={availableTags}
+          disabled={miembro.archivado}
         />
       </div>
 

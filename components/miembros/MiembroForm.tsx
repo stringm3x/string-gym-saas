@@ -21,6 +21,7 @@ interface MiembroFormProps {
   defaultValues?: { nombre?: string; telefono?: string; email?: string };
   prospectoId?: string;
   availableTags?: Tag[];
+  disabled?: boolean;
 }
 
 const initialState: MiembroFormState = {
@@ -29,7 +30,7 @@ const initialState: MiembroFormState = {
   fieldErrors: {},
 };
 
-export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, availableTags = [] }: MiembroFormProps) {
+export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, availableTags = [], disabled = false }: MiembroFormProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
 
@@ -56,6 +57,13 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
         <input type="hidden" name="prospecto_id" value={prospectoId} />
       )}
 
+      {disabled && (
+        <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-text-secondary">
+          Restaura este miembro para editarlo.
+        </p>
+      )}
+
+      <fieldset disabled={disabled} className="space-y-6 disabled:opacity-60">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <Input
@@ -139,6 +147,7 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
           {mode === "create" ? "Registrar miembro" : "Guardar cambios"}
         </Button>
       </div>
+      </fieldset>
     </form>
   );
 }

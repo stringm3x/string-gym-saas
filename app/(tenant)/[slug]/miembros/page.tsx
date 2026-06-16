@@ -11,7 +11,12 @@ import { MiembrosListClient } from "@/components/miembros/MiembrosListClient";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ q?: string; filter?: string; tag?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    filter?: string;
+    tag?: string;
+    archivado?: string;
+  }>;
 }
 
 export default async function MiembrosPage({
@@ -31,12 +36,15 @@ export default async function MiembrosPage({
       ? sp.filter
       : "all";
 
+  const soloArchivados = sp.archivado === "true";
+
   const [miembros, availableTags, plantillas] = await Promise.all([
     listMiembros({
       tenantId: tenant.id,
       search: sp.q,
       filter,
       tagId: sp.tag,
+      soloArchivados,
     }),
     listTags(tenant.id),
     listPlantillas(tenant.id, { soloActivas: true }),
@@ -70,7 +78,13 @@ export default async function MiembrosPage({
       <MiembrosToolbar availableTags={availableTags} />
 
       {miembros.length === 0 ? (
-        isFiltered ? (
+        soloArchivados ? (
+          <EmptyState
+            icon={<LuUsers className="h-5 w-5" />}
+            title="Sin miembros archivados"
+            description="Los miembros que archives aparecerán aquí."
+          />
+        ) : isFiltered ? (
           <EmptyState
             icon={<LuUsers className="h-5 w-5" />}
             title="Sin resultados"
@@ -96,6 +110,7 @@ export default async function MiembrosPage({
           slug={slug}
           availableTags={availableTags}
           plantillas={plantillas}
+          soloArchivados={soloArchivados}
         />
       )}
     </div>

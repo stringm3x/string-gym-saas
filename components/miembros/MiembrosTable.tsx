@@ -5,6 +5,7 @@ import { LuPhone, LuMail } from "react-icons/lu";
 import { formatFecha } from "@/lib/utils/format";
 import { MiembroStatusBadge } from "./MiembroStatusBadge";
 import { TagBadges } from "@/components/ui/TagSelector";
+import { Badge } from "@/components/ui/Badge";
 import type { MiembroConTags } from "@/lib/queries/miembros.queries";
 
 interface MiembrosTableProps {
@@ -14,6 +15,7 @@ interface MiembrosTableProps {
   onToggleSelect: (id: string) => void;
   allSelected: boolean;
   onToggleAll: () => void;
+  soloArchivados?: boolean;
 }
 
 export function MiembrosTable({
@@ -23,6 +25,7 @@ export function MiembrosTable({
   onToggleSelect,
   allSelected,
   onToggleAll,
+  soloArchivados = false,
 }: MiembrosTableProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface">
@@ -55,7 +58,7 @@ export function MiembrosTable({
                 selectedIds.has(m.id)
                   ? "bg-brand-green/5"
                   : "hover:bg-surface-hover"
-              }`}
+              } ${soloArchivados ? "opacity-60" : ""}`}
             >
               <td className="w-10 px-4 py-3 align-middle">
                 <input
@@ -70,9 +73,10 @@ export function MiembrosTable({
               <Td>
                 <Link
                   href={`/${slug}/miembros/${m.id}`}
-                  className="block font-medium text-text-primary group-hover:text-brand-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green"
+                  className="inline-flex items-center gap-2 font-medium text-text-primary group-hover:text-brand-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green"
                 >
                   {m.nombre}
+                  {soloArchivados && <Badge variant="neutral">Archivado</Badge>}
                 </Link>
               </Td>
 
