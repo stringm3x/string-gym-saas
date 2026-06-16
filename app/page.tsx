@@ -22,5 +22,5 @@ export default async function RootPage() {
     redirect("/login");
   }
 
-  redirect(`/${gym.slug}/dashboard`);
+  redirect(`/${gym.slug}/hoy`);
 }

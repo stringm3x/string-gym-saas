@@ -1,0 +1,76 @@
+import { LuScanLine, LuWallet, LuCalendarX } from "react-icons/lu";
+import { getTenant } from "@/lib/tenant";
+import { getAlertas } from "@/lib/queries/alertas.queries";
+import { getCheckinsStats } from "@/lib/queries/dashboard.queries";
+import { getIngresosStats } from "@/lib/queries/dashboard.queries";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { AlertasList } from "@/components/alertas/AlertasList";
+
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+function formatFechaHoy(): string {
+  const s = new Intl.DateTimeFormat("es-MX", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export default async function HoyPage({ params }: PageProps) {
+  const { slug } = await params;
+  const tenant = await getTenant();
+
+  const [alertas, checkins, ingresos] = await Promise.all([
+    getAlertas(tenant.id, slug),
+    getCheckinsStats(tenant.id),
+    getIngresosStats(tenant.id),
+  ]);
+
+  const vencenHoy =
+    alertas.find((a) => a.tipo === "vencimiento_hoy")?.count ?? 0;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+          Hoy
+        </h2>
+        <p className="mt-1 text-sm text-text-secondary">{formatFechaHoy()}</p>
+      </div>
+
+      {/* Stats del día */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatCard
+          label="Check-ins hoy"
+          value={checkins.hoy}
+          variant="default"
+          icon={<LuScanLine className="h-4 w-4" />}
+        />
+        <StatCard
+          label="Ingresos hoy"
+          value={ingresos.hoy}
+          format="currency"
+          variant={ingresos.hoy > 0 ? "success" : "default"}
+          icon={<LuWallet className="h-4 w-4" />}
+        />
+        <StatCard
+          label="Vencimientos hoy"
+          value={vencenHoy}
+          variant={vencenHoy > 0 ? "warning" : "default"}
+          icon={<LuCalendarX className="h-4 w-4" />}
+        />
+      </div>
+
+      {/* Alertas */}
+      <div>
+        <h3 className="mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          Puntos de atención
+        </h3>
+        <AlertasList alertas={alertas} />
+      </div>
+    </div>
+  );
+}
