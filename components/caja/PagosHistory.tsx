@@ -1,4 +1,5 @@
-import { LuWallet } from "react-icons/lu";
+import Link from "next/link";
+import { LuWallet, LuReceipt } from "react-icons/lu";
 import { formatMoneda, formatFecha } from "@/lib/utils/format";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -6,6 +7,7 @@ import type { Pago } from "@/lib/queries/pagos.queries";
 
 interface PagosHistoryProps {
   pagos: Pago[];
+  slug: string;
 }
 
 const conceptoLabels: Record<string, string> = {
@@ -15,7 +17,7 @@ const conceptoLabels: Record<string, string> = {
   otro: "Otro",
 };
 
-export function PagosHistory({ pagos }: PagosHistoryProps) {
+export function PagosHistory({ pagos, slug }: PagosHistoryProps) {
   if (pagos.length === 0) {
     return (
       <EmptyState
@@ -33,7 +35,7 @@ export function PagosHistory({ pagos }: PagosHistoryProps) {
           key={p.id}
           className="flex items-center justify-between gap-4 px-4 py-3"
         >
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
             <Badge variant="neutral" className="shrink-0">
               {conceptoLabels[p.concepto] ?? p.concepto}
             </Badge>
@@ -50,9 +52,18 @@ export function PagosHistory({ pagos }: PagosHistoryProps) {
             </div>
           </div>
 
-          <span className="shrink-0 font-mono text-sm font-semibold text-text-primary tabular-nums">
-            {formatMoneda(p.monto)}
-          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="font-mono text-sm font-semibold tabular-nums text-text-primary">
+              {formatMoneda(p.monto)}
+            </span>
+            <Link
+              href={`/${slug}/recibos/${p.id}`}
+              title="Ver recibo"
+              className="rounded-md p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
+            >
+              <LuReceipt className="h-4 w-4" />
+            </Link>
+          </div>
         </li>
       ))}
     </ul>

@@ -9,6 +9,7 @@ export interface PagoResult {
   ok: boolean;
   error: string | null;
   fieldErrors: Partial<Record<string, string>>;
+  pagoId?: string;
 }
 
 export async function registerPagoAction(
@@ -66,5 +67,5 @@ export async function registerPagoAction(
     revalidatePath(`/${tenant.slug}/inventario/movimientos`);
   }
 
-  return { ok: true, error: null, fieldErrors: {} };
+  return { ok: true, error: null, fieldErrors: {}, pagoId: result.id };
 }

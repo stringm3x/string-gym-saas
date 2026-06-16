@@ -48,6 +48,7 @@ interface MiembroLite {
 }
 
 interface PagoFormProps {
+  slug: string;
   planes: PlanMembresia[];
   promocionesMembresia: Promocion[];
   promocionesProducto: Promocion[];
@@ -92,6 +93,7 @@ const customPresets: DuracionPreset[] = [
 ];
 
 export function PagoForm({
+  slug,
   planes,
   promocionesMembresia,
   promocionesProducto,
@@ -232,7 +234,13 @@ export function PagoForm({
   // Success
   useEffect(() => {
     if (state.ok) {
-      success("Pago registrado");
+      success(
+        "Pago registrado",
+        undefined,
+        state.pagoId
+          ? { label: "Ver recibo →", href: `/${slug}/recibos/${state.pagoId}` }
+          : undefined
+      );
       formRef.current?.reset();
       setMiembro(null);
       setConcepto("membresia");

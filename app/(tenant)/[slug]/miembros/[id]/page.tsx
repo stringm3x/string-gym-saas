@@ -101,7 +101,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           <h3 className="text-sm font-semibold text-text-primary">
             Historial de pagos
           </h3>
-          <PagosHistory pagos={pagos} />
+          <PagosHistory pagos={pagos} slug={slug} />
         </div>
 
         <div className="space-y-3">

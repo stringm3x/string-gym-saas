@@ -87,6 +87,7 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
       <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
         <div className="rounded-xl border border-border bg-surface p-6">
           <PagoForm
+            slug={slug}
             planes={planes}
             promocionesMembresia={promocionesMembresia}
             promocionesProducto={promocionesProducto}

@@ -9,21 +9,28 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import Link from "next/link";
 import { LuCircleCheck, LuCircleAlert, LuInfo, LuX } from "react-icons/lu";
 import { cn } from "@/lib/utils/cn";
 
 type ToastVariant = "success" | "error" | "info";
+
+export interface ToastCTA {
+  label: string;
+  href: string;
+}
 
 interface Toast {
   id: string;
   variant: ToastVariant;
   title: string;
   description?: string;
+  cta?: ToastCTA;
 }
 
 interface ToastContextValue {
   toast: (input: Omit<Toast, "id">) => void;
-  success: (title: string, description?: string) => void;
+  success: (title: string, description?: string, cta?: ToastCTA) => void;
   error: (title: string, description?: string) => void;
   info: (title: string, description?: string) => void;
 }
@@ -51,8 +58,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ToastContextValue>(
     () => ({
       toast,
-      success: (title, description) =>
-        toast({ variant: "success", title, description }),
+      success: (title, description, cta) =>
+        toast({ variant: "success", title, description, cta }),
       error: (title, description) =>
         toast({ variant: "error", title, description }),
       info: (title, description) =>
@@ -140,10 +147,19 @@ function ToastItem({
     >
       <div className="mt-0.5 shrink-0">{cfg.icon}</div>
 
-      <div className="flex-1 space-y-0.5">
+      <div className="flex-1 space-y-1">
         <p className="text-sm font-semibold text-text-primary">{toast.title}</p>
         {toast.description && (
           <p className="text-xs text-text-secondary">{toast.description}</p>
+        )}
+        {toast.cta && (
+          <Link
+            href={toast.cta.href}
+            onClick={onDismiss}
+            className="inline-block text-xs font-medium text-brand-green underline-offset-2 hover:underline"
+          >
+            {toast.cta.label}
+          </Link>
         )}
       </div>
 

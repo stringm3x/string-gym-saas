@@ -17,7 +17,17 @@ export interface Pago {
   plan_id: string | null;
   promocion_id: string | null;
   producto_id: string | null;
+  folio: number | null;
   created_at: string;
+}
+
+export interface PagoCompleto extends Pago {
+  miembro_nombre: string | null;
+  miembro_telefono: string | null;
+  gym_nombre: string;
+  gym_telefono: string | null;
+  gym_direccion: string | null;
+  gym_rfc: string | null;
 }
 
 export interface PagoConMiembro extends Pago {
@@ -163,6 +173,7 @@ export async function listPagosDelDia(
     plan_id: row.plan_id,
     promocion_id: row.promocion_id,
     producto_id: row.producto_id,
+    folio: row.folio ?? null,
     created_at: row.created_at,
     miembro_nombre: row.miembros?.nombre ?? null,
   }));
@@ -240,6 +251,43 @@ export async function getResumenCaja(
   }
 
   return resumen;
+}
+
+export async function getPagoCompleto(
+  tenantId: string,
+  pagoId: string
+): Promise<PagoCompleto | null> {
+  const supabase = await createClient();
+
+  const [pagoRes, gymRes] = await Promise.all([
+    supabase
+      .from("pagos")
+      .select("*, miembros(nombre, telefono)")
+      .eq("tenant_id", tenantId)
+      .eq("id", pagoId)
+      .single(),
+    supabase
+      .from("gyms")
+      .select("nombre, telefono, direccion, rfc")
+      .eq("id", tenantId)
+      .single(),
+  ]);
+
+  if (pagoRes.error || !pagoRes.data) return null;
+  const row = pagoRes.data as any;
+  const gym = gymRes.data as any;
+
+  return {
+    ...row,
+    monto: Number(row.monto),
+    folio: row.folio ?? null,
+    miembro_nombre: row.miembros?.nombre ?? null,
+    miembro_telefono: row.miembros?.telefono ?? null,
+    gym_nombre: gym?.nombre ?? "",
+    gym_telefono: gym?.telefono ?? null,
+    gym_direccion: gym?.direccion ?? null,
+    gym_rfc: gym?.rfc ?? null,
+  };
 }
 
 /**
