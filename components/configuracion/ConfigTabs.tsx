@@ -16,6 +16,7 @@ export function ConfigTabs({ slug }: ConfigTabsProps) {
     { href: `${base}/planes`, label: "Planes" },
     { href: `${base}/promociones`, label: "Promociones" },
     { href: `${base}/tags`, label: "Tags" },
+    { href: `${base}/plantillas`, label: "Plantillas" },
   ];
 
   return (
