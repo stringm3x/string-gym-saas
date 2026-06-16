@@ -3,10 +3,11 @@ import { LuPlus, LuUsers } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { listMiembros } from "@/lib/queries/miembros.queries";
 import { listTags } from "@/lib/queries/tags.queries";
+import { listPlantillas } from "@/lib/queries/plantillas.queries";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MiembrosToolbar } from "@/components/miembros/MiembrosToolbar";
-import { MiembrosTable } from "@/components/miembros/MiembrosTable";
+import { MiembrosListClient } from "@/components/miembros/MiembrosListClient";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -30,7 +31,7 @@ export default async function MiembrosPage({
       ? sp.filter
       : "all";
 
-  const [miembros, availableTags] = await Promise.all([
+  const [miembros, availableTags, plantillas] = await Promise.all([
     listMiembros({
       tenantId: tenant.id,
       search: sp.q,
@@ -38,6 +39,7 @@ export default async function MiembrosPage({
       tagId: sp.tag,
     }),
     listTags(tenant.id),
+    listPlantillas(tenant.id, { soloActivas: true }),
   ]);
 
   const isFiltered = filter !== "all" || Boolean(sp.q);
@@ -89,7 +91,12 @@ export default async function MiembrosPage({
           />
         )
       ) : (
-        <MiembrosTable miembros={miembros} slug={slug} />
+        <MiembrosListClient
+          miembros={miembros}
+          slug={slug}
+          availableTags={availableTags}
+          plantillas={plantillas}
+        />
       )}
     </div>
   );

@@ -9,7 +9,10 @@ import {
 } from "@/lib/queries/miembros.queries";
 import { miembroSchema } from "@/lib/validations/miembro.schema";
 import { updateEstadoProspecto } from "@/lib/queries/prospectos.queries";
-import { syncTagsForMiembro } from "@/lib/queries/tags.queries";
+import {
+  syncTagsForMiembro,
+  bulkAddTagToMiembros,
+} from "@/lib/queries/tags.queries";
 
 export interface MiembroFormState {
   ok: boolean;
@@ -101,4 +104,17 @@ export async function updateMiembroAction(
   revalidatePath(`/${tenant.slug}/miembros`);
   revalidatePath(`/${tenant.slug}/miembros/${id}`);
   return { ok: true, error: null, fieldErrors: {} };
+}
+
+export async function bulkAsignarTagAction(
+  miembroIds: string[],
+  tagId: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!miembroIds.length || !tagId)
+    return { ok: false, error: "Faltan datos." };
+  const tenant = await getTenant();
+  const result = await bulkAddTagToMiembros(tenant.id, miembroIds, tagId);
+  if (!result.ok) return { ok: false, error: result.error };
+  revalidatePath(`/${tenant.slug}/miembros`);
+  return { ok: true };
 }

@@ -193,6 +193,25 @@ export async function getTagsForMiembro(
     .filter((t): t is Tag => t !== null);
 }
 
+export async function bulkAddTagToMiembros(
+  tenantId: string,
+  miembroIds: string[],
+  tagId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (miembroIds.length === 0) return { ok: true };
+  const supabase = await createClient();
+  const rows = miembroIds.map((miembro_id) => ({
+    miembro_id,
+    tag_id: tagId,
+    tenant_id: tenantId,
+  }));
+  const { error } = await supabase
+    .from("miembros_tags")
+    .upsert(rows, { ignoreDuplicates: true });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export async function getTagsForProspecto(
   tenantId: string,
   prospectoId: string

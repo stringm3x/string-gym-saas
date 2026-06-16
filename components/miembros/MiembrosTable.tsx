@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { LuPhone, LuMail } from "react-icons/lu";
 import { formatFecha } from "@/lib/utils/format";
@@ -8,14 +10,34 @@ import type { MiembroConTags } from "@/lib/queries/miembros.queries";
 interface MiembrosTableProps {
   miembros: MiembroConTags[];
   slug: string;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  allSelected: boolean;
+  onToggleAll: () => void;
 }
 
-export function MiembrosTable({ miembros, slug }: MiembrosTableProps) {
+export function MiembrosTable({
+  miembros,
+  slug,
+  selectedIds,
+  onToggleSelect,
+  allSelected,
+  onToggleAll,
+}: MiembrosTableProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface">
       <table className="min-w-full divide-y divide-border">
         <thead>
           <tr>
+            <th scope="col" className="w-10 px-4 py-3">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={onToggleAll}
+                className="rounded border-border accent-brand-green"
+                aria-label="Seleccionar todos"
+              />
+            </th>
             <Th>Miembro</Th>
             <Th>Contacto</Th>
             <Th>Inscripción</Th>
@@ -29,8 +51,22 @@ export function MiembrosTable({ miembros, slug }: MiembrosTableProps) {
           {miembros.map((m) => (
             <tr
               key={m.id}
-              className="group transition-colors duration-150 hover:bg-surface-hover"
+              className={`group transition-colors duration-150 ${
+                selectedIds.has(m.id)
+                  ? "bg-brand-green/5"
+                  : "hover:bg-surface-hover"
+              }`}
             >
+              <td className="w-10 px-4 py-3 align-middle">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(m.id)}
+                  onChange={() => onToggleSelect(m.id)}
+                  className="rounded border-border accent-brand-green"
+                  aria-label={`Seleccionar ${m.nombre}`}
+                />
+              </td>
+
               <Td>
                 <Link
                   href={`/${slug}/miembros/${m.id}`}
