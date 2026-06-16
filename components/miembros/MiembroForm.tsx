@@ -1,13 +1,16 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { MiembroConTags } from "@/lib/queries/miembros.queries";
 import type { Tag } from "@/lib/queries/tags.queries";
+import type { PlanMembresia } from "@/lib/queries/planes.queries";
+import type { Promocion } from "@/lib/queries/promociones.queries";
 import { TagSelector } from "@/components/ui/TagSelector";
+import { CobroInscripcion } from "@/components/miembros/CobroInscripcion";
 import {
   createMiembroAction,
   updateMiembroAction,
@@ -22,6 +25,8 @@ interface MiembroFormProps {
   prospectoId?: string;
   availableTags?: Tag[];
   disabled?: boolean;
+  planes?: PlanMembresia[];
+  promocionesMembresia?: Promocion[];
 }
 
 const initialState: MiembroFormState = {
@@ -30,9 +35,10 @@ const initialState: MiembroFormState = {
   fieldErrors: {},
 };
 
-export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, availableTags = [], disabled = false }: MiembroFormProps) {
+export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, availableTags = [], disabled = false, planes = [], promocionesMembresia = [] }: MiembroFormProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
+  const [isNavigating, startNavigation] = useTransition();
 
   const action =
     mode === "create"
@@ -44,10 +50,18 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
   useEffect(() => {
     if (state.ok && mode === "edit") {
       success("Miembro actualizado");
+    } else if (state.ok && mode === "create" && state.miembroId) {
+      success(state.pagoId ? "Miembro registrado y cobrado" : "Miembro registrado");
+      const destino = state.pagoId
+        ? `/${slug}/recibos/${state.pagoId}`
+        : `/${slug}/miembros/${state.miembroId}`;
+      startNavigation(() => {
+        router.push(destino);
+      });
     } else if (state.error && !state.fieldErrors) {
       toastError("No se pudo guardar", state.error);
     }
-  }, [state, mode, success, toastError]);
+  }, [state, mode, slug, router, success, toastError]);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -125,6 +139,14 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
         />
       )}
 
+      {mode === "create" && (
+        <CobroInscripcion
+          planes={planes}
+          promocionesMembresia={promocionesMembresia}
+          fieldErrors={state.fieldErrors}
+        />
+      )}
+
       {state.error && Object.keys(state.fieldErrors).length === 0 && (
         <p
           role="alert"
@@ -143,7 +165,7 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
         >
           Cancelar
         </Button>
-        <Button type="submit" loading={isPending}>
+        <Button type="submit" loading={isPending || isNavigating}>
           {mode === "create" ? "Registrar miembro" : "Guardar cambios"}
         </Button>
       </div>

@@ -4,6 +4,8 @@ import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { getTenant } from "@/lib/tenant";
 import { getProspecto } from "@/lib/queries/prospectos.queries";
 import { listTags } from "@/lib/queries/tags.queries";
+import { listPlanes } from "@/lib/queries/planes.queries";
+import { listPromociones } from "@/lib/queries/promociones.queries";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -15,10 +17,18 @@ export default async function NuevoMiembroPage({ params, searchParams }: PagePro
   const { prospecto_id } = await searchParams;
 
   const tenant = await getTenant();
-  const [prospecto, availableTags] = await Promise.all([
-    prospecto_id ? getProspecto(tenant.id, prospecto_id) : Promise.resolve(null),
-    listTags(tenant.id),
-  ]);
+  const [prospecto, availableTags, planes, promocionesMembresia] =
+    await Promise.all([
+      prospecto_id
+        ? getProspecto(tenant.id, prospecto_id)
+        : Promise.resolve(null),
+      listTags(tenant.id),
+      listPlanes(tenant.id, { soloActivos: true }),
+      listPromociones(tenant.id, {
+        soloActivasVigentes: true,
+        tipo: "membresia",
+      }),
+    ]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -77,6 +87,8 @@ export default async function NuevoMiembroPage({ params, searchParams }: PagePro
           }
           prospectoId={prospecto?.id}
           availableTags={availableTags}
+          planes={planes}
+          promocionesMembresia={promocionesMembresia}
         />
       </div>
     </div>

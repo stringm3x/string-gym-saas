@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { getTenant } from "@/lib/tenant";
 import {
   createMiembro as dbCreateMiembro,
@@ -9,7 +8,11 @@ import {
   archivarMiembro as dbArchivarMiembro,
   restaurarMiembro as dbRestaurarMiembro,
 } from "@/lib/queries/miembros.queries";
-import { miembroSchema } from "@/lib/validations/miembro.schema";
+import { createPago } from "@/lib/queries/pagos.queries";
+import {
+  miembroSchema,
+  miembroConPagoSchema,
+} from "@/lib/validations/miembro.schema";
 import { updateEstadoProspecto } from "@/lib/queries/prospectos.queries";
 import {
   syncTagsForMiembro,
@@ -23,6 +26,10 @@ export interface MiembroFormState {
    * Errores por campo (Zod) — para mostrar inline en el form.
    */
   fieldErrors: Partial<Record<string, string>>;
+  /** Devuelto al crear — para navegación client-side. */
+  miembroId?: string;
+  /** Devuelto si se cobró la inscripción — para abrir el recibo. */
+  pagoId?: string;
 }
 
 const emptyState: MiembroFormState = {
@@ -51,7 +58,24 @@ export async function createMiembroAction(
   const raw = parseFormData(formData);
   const { prospecto_id, tag_ids, ...miembroRaw } = raw;
 
-  const parsed = miembroSchema.safeParse(miembroRaw);
+  const montoRaw = formData.get("monto_pago");
+  const cobroRaw = {
+    ...miembroRaw,
+    cobrar_inscripcion: formData.get("cobrar_inscripcion") === "true",
+    plan_id: String(formData.get("plan_id") ?? ""),
+    promocion_id: String(formData.get("promocion_id") ?? ""),
+    monto_pago:
+      montoRaw && String(montoRaw).trim() ? Number(montoRaw) : undefined,
+    metodo_pago: (formData.get("metodo_pago") || undefined) as
+      | "efectivo"
+      | "tarjeta"
+      | "transferencia"
+      | undefined,
+    periodo_inicio: String(formData.get("periodo_inicio") ?? ""),
+    periodo_fin: String(formData.get("periodo_fin") ?? ""),
+  };
+
+  const parsed = miembroConPagoSchema.safeParse(cobroRaw);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
     for (const issue of parsed.error.issues) {
@@ -61,20 +85,58 @@ export async function createMiembroAction(
     return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
   }
 
-  const result = await dbCreateMiembro(tenant.id, parsed.data);
+  const data = parsed.data;
+
+  // 1. Crear miembro (solo campos base).
+  const result = await dbCreateMiembro(tenant.id, {
+    nombre: data.nombre,
+    telefono: data.telefono,
+    email: data.email,
+    fecha_inscripcion: data.fecha_inscripcion,
+    fecha_vencimiento: data.fecha_vencimiento,
+  });
   if (!result.ok) {
     return { ...emptyState, error: result.error };
   }
 
   await syncTagsForMiembro(tenant.id, result.id, tag_ids);
 
+  // 2. Cobro de la primera membresía (opcional). createPago también
+  //    actualiza la fecha_vencimiento del miembro a periodo_fin.
+  let pagoId: string | undefined;
+  if (data.cobrar_inscripcion && data.monto_pago && data.metodo_pago) {
+    const pagoResult = await createPago(tenant.id, {
+      miembro_id: result.id,
+      concepto: "membresia",
+      monto: data.monto_pago,
+      metodo_pago: data.metodo_pago,
+      periodo_inicio: data.periodo_inicio || "",
+      periodo_fin: data.periodo_fin || "",
+      plan_id: data.plan_id || "",
+      promocion_id: data.promocion_id || "",
+      producto_id: "",
+      cantidad_producto: null,
+    });
+    if (pagoResult.ok) {
+      pagoId = pagoResult.id;
+      revalidatePath(`/${tenant.slug}/caja`);
+    }
+  }
+
+  // 3. Si venía de prospecto, marcar como convertido.
   if (prospecto_id) {
     await updateEstadoProspecto(tenant.id, prospecto_id, "convertido");
     revalidatePath(`/${tenant.slug}/prospectos`);
   }
 
   revalidatePath(`/${tenant.slug}/miembros`);
-  redirect(`/${tenant.slug}/miembros/${result.id}`);
+  return {
+    ok: true,
+    error: null,
+    fieldErrors: {},
+    miembroId: result.id,
+    pagoId,
+  };
 }
 
 export async function updateMiembroAction(
