@@ -46,12 +46,14 @@ export function Sidebar({
       </div>
 
       <nav className="flex flex-1 flex-col gap-1">
-        <SidebarLink
-          href={`${base}/hoy`}
-          label="Hoy"
-          icon={<LuSunrise size={18} />}
-          active={activeSection === "hoy"}
-        />
+        {hasFeature(plan, "pantalla_hoy") && (
+          <SidebarLink
+            href={`${base}/hoy`}
+            label="Hoy"
+            icon={<LuSunrise size={18} />}
+            active={activeSection === "hoy"}
+          />
+        )}
 
         <SidebarLink
           href={`${base}/dashboard`}

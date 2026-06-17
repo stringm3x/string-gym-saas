@@ -1,8 +1,11 @@
 import { getTenant } from "@/lib/tenant";
+import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { listProspectos } from "@/lib/queries/prospectos.queries";
 import { listTags } from "@/lib/queries/tags.queries";
 import { listPlantillas } from "@/lib/queries/plantillas.queries";
+import { hasFeature } from "@/lib/features";
 import { ProspectosKanban } from "@/components/prospectos/ProspectosKanban";
+import { UpgradePage } from "@/components/ui/UpgradePage";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -11,6 +14,24 @@ interface PageProps {
 export default async function ProspectosPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
+
+  if (!hasFeature(tenant.plan, "prospectos")) {
+    const gym = await getGymInfo(tenant.id);
+    return (
+      <UpgradePage
+        titulo="Prospectos"
+        descripcion="Lleva tu embudo de ventas con un tablero Kanban de prospectos."
+        beneficios={[
+          "Tablero por etapas (nuevo, contactado, convertido)",
+          "Seguimiento con notas y acciones rápidas",
+          "Conversión directa a miembro con cobro",
+        ]}
+        planRequerido="pro"
+        gymNombre={gym?.nombre ?? ""}
+        slug={slug}
+      />
+    );
+  }
 
   const [prospectos, availableTags, plantillas] = await Promise.all([
     listProspectos(tenant.id),

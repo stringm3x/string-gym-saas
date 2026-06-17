@@ -1,3 +1,4 @@
+import { getTenant } from "@/lib/tenant";
 import { ConfigTabs } from "@/components/configuracion/ConfigTabs";
 
 export default async function ConfiguracionLayout({
@@ -8,6 +9,7 @@ export default async function ConfiguracionLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const tenant = await getTenant();
 
   return (
     <div className="space-y-6">
@@ -20,7 +22,7 @@ export default async function ConfiguracionLayout({
         </p>
       </div>
 
-      <ConfigTabs slug={slug} />
+      <ConfigTabs slug={slug} plan={tenant.plan} />
 
       <div>{children}</div>
     </div>

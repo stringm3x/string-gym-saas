@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { hasFeature, type Plan } from "@/lib/features";
 
 export default async function RootPage() {
   const supabase = await createClient();
@@ -13,7 +14,7 @@ export default async function RootPage() {
 
   const { data: gym } = await supabase
     .from("gyms")
-    .select("slug")
+    .select("slug, plan")
     .eq("owner_id", session.user.id)
     .eq("estado", "activo")
     .single();
@@ -22,5 +23,8 @@ export default async function RootPage() {
     redirect("/login");
   }
 
-  redirect(`/${gym.slug}/hoy`);
+  const destino = hasFeature(gym.plan as Plan, "pantalla_hoy")
+    ? "hoy"
+    : "dashboard";
+  redirect(`/${gym.slug}/${destino}`);
 }

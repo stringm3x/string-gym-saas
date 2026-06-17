@@ -8,8 +8,10 @@ import { listPagosByMiembro } from "@/lib/queries/pagos.queries";
 import { listTags, getTagsForMiembro } from "@/lib/queries/tags.queries";
 import { listNotas } from "@/lib/queries/notas.queries";
 import { listPlantillas } from "@/lib/queries/plantillas.queries";
+import { hasFeature } from "@/lib/features";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { NotasTimeline } from "@/components/miembros/NotasTimeline";
+import { NotasLegacy } from "@/components/miembros/NotasLegacy";
 import { AccionesRapidas } from "@/components/ui/AccionesRapidas";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
 import { MiembroArchivarButton } from "@/components/miembros/MiembroArchivarButton";
@@ -41,6 +43,10 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const canTags = hasFeature(tenant.plan, "tags");
+  const canTimeline = hasFeature(tenant.plan, "timeline_notas");
+  const canPlantillas = hasFeature(tenant.plan, "plantillas_mensaje");
+
   const miembroConTags = { ...miembro, tags: miembroTags };
 
   return (
@@ -70,7 +76,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
               fechaVencimiento={miembro.fecha_vencimiento}
               entidadTipo="miembro"
               entidadId={miembro.id}
-              plantillas={plantillas}
+              plantillas={canPlantillas ? plantillas : []}
             />
             <ManualCheckinButton
               miembroId={miembro.id}
@@ -100,18 +106,22 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           mode="edit"
           slug={slug}
           miembro={miembroConTags}
-          availableTags={availableTags}
+          availableTags={canTags ? availableTags : []}
           disabled={miembro.archivado}
         />
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-6">
-        <NotasTimeline
-          entidadTipo="miembro"
-          entidadId={id}
-          notas={notas}
-          legacyNotas={miembro.notas}
-        />
+        {canTimeline ? (
+          <NotasTimeline
+            entidadTipo="miembro"
+            entidadId={id}
+            notas={notas}
+            legacyNotas={miembro.notas}
+          />
+        ) : (
+          <NotasLegacy miembroId={miembro.id} notas={miembro.notas} />
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

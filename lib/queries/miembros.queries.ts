@@ -192,6 +192,23 @@ export async function updateMiembro(
   return { ok: true };
 }
 
+export async function updateMiembroNotas(
+  tenantId: string,
+  id: string,
+  notas: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("miembros")
+    .update({ notas: notas || null })
+    .eq("tenant_id", tenantId)
+    .eq("id", id);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export async function archivarMiembro(
   tenantId: string,
   id: string

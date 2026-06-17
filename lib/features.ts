@@ -3,75 +3,89 @@
  * qué módulos/funciones ve cada gym según su plan.
  *
  * Se usa en:
- * - components/ui/FeatureGate.tsx (bloquea UI con CTA de upgrade)
- * - lib/queries/* (si algún query depende del plan)
+ * - components/ui/FeatureGate.tsx (bloquea UI inline con CTA)
+ * - components/ui/UpgradePage.tsx (pantalla completa de upgrade)
+ * - Sidebar, ConfigTabs, páginas y acciones gateadas
+ *
+ * Cada plan lista SOLO las features que desbloquea; la herencia
+ * (un plan incluye lo de los inferiores) se resuelve en hasFeature.
  */
 
 export type Plan = "basico" | "pro" | "escala";
 
-export type Feature =
-  | "miembros"
-  | "checkins"
-  | "caja"
-  | "dashboard_simple"
-  | "inventario"
-  | "dashboard_completo"
-  | "prospectos"
-  | "alertas_dueno"
-  | "alertas_whatsapp"
-  | "seguimiento_whatsapp"
-  | "reportes_avanzados";
+export const planFeatures = {
+  basico: [
+    "miembros",
+    "checkins",
+    "caja_basica",
+    "dashboard_simple",
+    "catalogo_planes",
+    "recibos",
+    "acciones_rapidas",
+    "archivar_miembros",
+    "pagar_al_inscribir",
+  ],
+  pro: [
+    "inventario",
+    "promociones",
+    "prospectos",
+    "tags",
+    "timeline_notas",
+    "plantillas_mensaje",
+    "bulk_actions",
+    "pantalla_hoy",
+    "dashboard_completo",
+  ],
+  escala: ["alertas_dueno", "whatsapp_automatico", "reportes_avanzados"],
+} as const;
+
+export type Feature = (typeof planFeatures)[Plan][number];
+
+/** Orden de planes, de menor a mayor. */
+const planHierarchy: Plan[] = ["basico", "pro", "escala"];
 
 /**
- * Orden de planes, de menor a mayor — usado para calcular
- * "incluye todo lo del plan anterior".
- */
-const PLAN_ORDER: Plan[] = ["basico", "pro", "escala"];
-
-/**
- * Features que se desbloquean a partir de cada plan
- * (no acumulado aquí — la acumulación se resuelve en getFeaturesForPlan).
- */
-const FEATURES_BY_PLAN: Record<Plan, Feature[]> = {
-  basico: ["miembros", "checkins", "caja", "dashboard_simple"],
-  pro: ["inventario", "dashboard_completo", "prospectos"],
-  escala: ["alertas_dueno", "alertas_whatsapp", "seguimiento_whatsapp", "reportes_avanzados"],
-};
-
-/**
- * Devuelve el set completo de features disponibles para un plan,
- * incluyendo las heredadas de planes inferiores.
+ * Devuelve el set completo de features de un plan, incluyendo
+ * las heredadas de los planes inferiores.
  */
 export function getFeaturesForPlan(plan: Plan): Set<Feature> {
-  const planIndex = PLAN_ORDER.indexOf(plan);
+  const index = planHierarchy.indexOf(plan);
   const features = new Set<Feature>();
+  if (index === -1) return features;
 
-  for (let i = 0; i <= planIndex; i++) {
-    const planFeatures = FEATURES_BY_PLAN[PLAN_ORDER[i]];
-    planFeatures.forEach((f) => features.add(f));
+  for (let i = 0; i <= index; i++) {
+    for (const f of planFeatures[planHierarchy[i]]) {
+      features.add(f);
+    }
   }
-
   return features;
 }
 
 /**
- * Verifica si un plan tiene acceso a una feature específica.
+ * Verifica si un plan tiene acceso a una feature (con herencia).
  */
 export function hasFeature(plan: Plan, feature: Feature): boolean {
-  return getFeaturesForPlan(plan).has(feature);
+  const index = planHierarchy.indexOf(plan);
+  if (index === -1) return false;
+  for (let i = 0; i <= index; i++) {
+    if (
+      (planFeatures[planHierarchy[i]] as readonly string[]).includes(feature)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
- * Devuelve el plan mínimo requerido para una feature.
- * Útil para el copy del CTA ("Mejorar a Pro").
+ * Plan mínimo requerido para una feature — útil para el CTA de upgrade.
  */
 export function getRequiredPlan(feature: Feature): Plan {
-  for (const plan of PLAN_ORDER) {
-    if (FEATURES_BY_PLAN[plan].includes(feature)) {
+  for (const plan of planHierarchy) {
+    if ((planFeatures[plan] as readonly string[]).includes(feature)) {
       return plan;
     }
   }
-  // No debería ocurrir si todas las features están mapeadas.
   return "escala";
 }
 

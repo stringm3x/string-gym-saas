@@ -75,7 +75,7 @@ export default async function MiembrosPage({
         </Link>
       </div>
 
-      <MiembrosToolbar availableTags={availableTags} />
+      <MiembrosToolbar availableTags={availableTags} plan={tenant.plan} />
 
       {miembros.length === 0 ? (
         soloArchivados ? (
@@ -110,6 +110,7 @@ export default async function MiembrosPage({
           slug={slug}
           availableTags={availableTags}
           plantillas={plantillas}
+          plan={tenant.plan}
           soloArchivados={soloArchivados}
         />
       )}

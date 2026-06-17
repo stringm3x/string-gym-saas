@@ -6,6 +6,7 @@ import { getProspecto } from "@/lib/queries/prospectos.queries";
 import { listTags } from "@/lib/queries/tags.queries";
 import { listPlanes } from "@/lib/queries/planes.queries";
 import { listPromociones } from "@/lib/queries/promociones.queries";
+import { hasFeature } from "@/lib/features";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -86,7 +87,7 @@ export default async function NuevoMiembroPage({ params, searchParams }: PagePro
               : undefined
           }
           prospectoId={prospecto?.id}
-          availableTags={availableTags}
+          availableTags={hasFeature(tenant.plan, "tags") ? availableTags : []}
           planes={planes}
           promocionesMembresia={promocionesMembresia}
         />

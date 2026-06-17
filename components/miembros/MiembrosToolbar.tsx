@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { LuSearch } from "react-icons/lu";
 import { cn } from "@/lib/utils/cn";
 import { Input } from "@/components/ui/Input";
+import { hasFeature, type Plan } from "@/lib/features";
 import type { Tag } from "@/lib/queries/tags.queries";
 
 type Filter = "all" | "activos" | "inactivos" | "por_vencer";
@@ -20,9 +21,11 @@ const DEBOUNCE_MS = 300;
 
 interface MiembrosToolbarProps {
   availableTags?: Tag[];
+  plan: Plan;
 }
 
-export function MiembrosToolbar({ availableTags = [] }: MiembrosToolbarProps) {
+export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarProps) {
+  const canTags = hasFeature(plan, "tags");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -126,7 +129,7 @@ export function MiembrosToolbar({ availableTags = [] }: MiembrosToolbarProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        {availableTags.length > 0 && (
+        {canTags && availableTags.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-muted">Tag:</span>
             <select

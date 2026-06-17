@@ -1,8 +1,10 @@
+import { redirect } from "next/navigation";
 import { LuScanLine, LuWallet, LuCalendarX } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { getAlertas } from "@/lib/queries/alertas.queries";
 import { getCheckinsStats } from "@/lib/queries/dashboard.queries";
 import { getIngresosStats } from "@/lib/queries/dashboard.queries";
+import { hasFeature } from "@/lib/features";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { AlertasList } from "@/components/alertas/AlertasList";
 
@@ -22,6 +24,10 @@ function formatFechaHoy(): string {
 export default async function HoyPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
+
+  if (!hasFeature(tenant.plan, "pantalla_hoy")) {
+    redirect(`/${slug}/dashboard`);
+  }
 
   const [alertas, checkins, ingresos] = await Promise.all([
     getAlertas(tenant.id, slug),

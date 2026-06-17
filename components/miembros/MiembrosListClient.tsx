@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { MiembrosTable } from "./MiembrosTable";
 import { BulkActionsBar } from "./BulkActionsBar";
+import { hasFeature, type Plan } from "@/lib/features";
 import type { MiembroConTags } from "@/lib/queries/miembros.queries";
 import type { Tag } from "@/lib/queries/tags.queries";
 import type { PlantillaMensaje } from "@/lib/queries/plantillas.queries";
@@ -12,6 +13,7 @@ interface MiembrosListClientProps {
   slug: string;
   availableTags: Tag[];
   plantillas: PlantillaMensaje[];
+  plan: Plan;
   soloArchivados?: boolean;
 }
 
@@ -20,8 +22,12 @@ export function MiembrosListClient({
   slug,
   availableTags,
   plantillas,
+  plan,
   soloArchivados = false,
 }: MiembrosListClientProps) {
+  const canBulk = hasFeature(plan, "bulk_actions");
+  const canTags = hasFeature(plan, "tags");
+  const selectable = canBulk || canTags;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const toggleSelect = useCallback((id: string) => {
@@ -56,14 +62,19 @@ export function MiembrosListClient({
         allSelected={allSelected}
         onToggleAll={toggleAll}
         soloArchivados={soloArchivados}
+        selectable={selectable}
       />
-      <BulkActionsBar
-        selectedIds={selectedIds}
-        miembros={miembros}
-        availableTags={availableTags}
-        plantillas={plantillas}
-        onDeselect={deselect}
-      />
+      {selectable && (
+        <BulkActionsBar
+          selectedIds={selectedIds}
+          miembros={miembros}
+          availableTags={availableTags}
+          plantillas={plantillas}
+          onDeselect={deselect}
+          canBulk={canBulk}
+          canTags={canTags}
+        />
+      )}
     </>
   );
 }

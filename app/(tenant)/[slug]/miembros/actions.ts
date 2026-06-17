@@ -5,6 +5,7 @@ import { getTenant } from "@/lib/tenant";
 import {
   createMiembro as dbCreateMiembro,
   updateMiembro as dbUpdateMiembro,
+  updateMiembroNotas as dbUpdateMiembroNotas,
   archivarMiembro as dbArchivarMiembro,
   restaurarMiembro as dbRestaurarMiembro,
 } from "@/lib/queries/miembros.queries";
@@ -168,6 +169,17 @@ export async function updateMiembroAction(
   revalidatePath(`/${tenant.slug}/miembros`);
   revalidatePath(`/${tenant.slug}/miembros/${id}`);
   return { ok: true, error: null, fieldErrors: {} };
+}
+
+export async function updateNotasLegacyAction(
+  id: string,
+  notas: string
+): Promise<{ ok: boolean; error?: string }> {
+  const tenant = await getTenant();
+  const result = await dbUpdateMiembroNotas(tenant.id, id, notas);
+  if (!result.ok) return { ok: false, error: result.error };
+  revalidatePath(`/${tenant.slug}/miembros/${id}`);
+  return { ok: true };
 }
 
 export async function archivarMiembroAction(

@@ -1,6 +1,9 @@
 import { getTenant } from "@/lib/tenant";
+import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { getAlertas } from "@/lib/queries/alertas.queries";
+import { hasFeature } from "@/lib/features";
 import { AlertasList } from "@/components/alertas/AlertasList";
+import { UpgradePage } from "@/components/ui/UpgradePage";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -9,6 +12,24 @@ interface PageProps {
 export default async function AlertasPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
+
+  if (!hasFeature(tenant.plan, "alertas_dueno")) {
+    const gym = await getGymInfo(tenant.id);
+    return (
+      <UpgradePage
+        titulo="Centro de alertas"
+        descripcion="Detecta automáticamente lo que requiere tu atención cada día."
+        beneficios={[
+          "Vencimientos de hoy y próximos",
+          "Prospectos sin contactar y stock bajo",
+          "Miembros sin actividad reciente",
+        ]}
+        planRequerido="escala"
+        gymNombre={gym?.nombre ?? ""}
+        slug={slug}
+      />
+    );
+  }
 
   const alertas = await getAlertas(tenant.id, slug);
   const total = alertas.reduce((sum, a) => sum + (a.count ?? 1), 0);

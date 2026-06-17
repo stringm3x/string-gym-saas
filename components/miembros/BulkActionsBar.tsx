@@ -25,6 +25,8 @@ interface BulkActionsBarProps {
   availableTags: Tag[];
   plantillas: PlantillaMensaje[];
   onDeselect: () => void;
+  canBulk?: boolean;
+  canTags?: boolean;
 }
 
 export function BulkActionsBar({
@@ -33,6 +35,8 @@ export function BulkActionsBar({
   availableTags,
   plantillas,
   onDeselect,
+  canBulk = true,
+  canTags = true,
 }: BulkActionsBarProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -111,16 +115,19 @@ export function BulkActionsBar({
           <div className="h-4 w-px bg-border" />
 
           {/* WhatsApp masivo */}
-          <Button
-            size="sm"
-            variant="ghost"
-            leftIcon={<LuMessageCircle className="h-4 w-4" />}
-            onClick={() => setWaModalOpen(true)}
-          >
-            WhatsApp
-          </Button>
+          {canBulk && (
+            <Button
+              size="sm"
+              variant="ghost"
+              leftIcon={<LuMessageCircle className="h-4 w-4" />}
+              onClick={() => setWaModalOpen(true)}
+            >
+              WhatsApp
+            </Button>
+          )}
 
           {/* Asignar tag */}
+          {canTags && (
           <div className="relative">
             <Button
               size="sm"
@@ -163,16 +170,19 @@ export function BulkActionsBar({
               </>
             )}
           </div>
+          )}
 
           {/* Exportar CSV */}
-          <Button
-            size="sm"
-            variant="ghost"
-            leftIcon={<LuDownload className="h-4 w-4" />}
-            onClick={exportCSV}
-          >
-            CSV
-          </Button>
+          {canBulk && (
+            <Button
+              size="sm"
+              variant="ghost"
+              leftIcon={<LuDownload className="h-4 w-4" />}
+              onClick={exportCSV}
+            >
+              CSV
+            </Button>
+          )}
 
           <div className="h-4 w-px bg-border" />
 
