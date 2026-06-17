@@ -5,10 +5,12 @@ import { countMiembrosVencenHoy } from "@/lib/queries/miembros.queries";
 import { countStockBajo } from "@/lib/queries/productos.queries";
 import { countProspectosNuevos } from "@/lib/queries/prospectos.queries";
 import { getAlertas } from "@/lib/queries/alertas.queries";
+import { listGymAddons } from "@/lib/queries/addons.queries";
 import { hasFeature } from "@/lib/features";
 import { SidebarWithActiveSection } from "@/components/layout/SidebarWithActiveSection";
 import { Header } from "@/components/layout/Header";
 import { ToastProvider } from "@/components/ui/Toast";
+import { AddonsProvider } from "@/lib/contexts/AddonsContext";
 
 export default async function TenantLayout({
   children,
@@ -26,13 +28,14 @@ export default async function TenantLayout({
 
   const tieneAlertas = hasFeature(tenant.plan, "alertas_dueno");
 
-  const [gym, miembrosVencenHoy, stockBajo, prospectosNuevos, alertas] =
+  const [gym, miembrosVencenHoy, stockBajo, prospectosNuevos, alertas, addons] =
     await Promise.all([
       getGymInfo(tenant.id),
       countMiembrosVencenHoy(tenant.id),
       countStockBajo(tenant.id),
       countProspectosNuevos(tenant.id),
       tieneAlertas ? getAlertas(tenant.id, slug) : Promise.resolve([]),
+      listGymAddons(tenant.id),
     ]);
 
   if (!gym) {
@@ -52,19 +55,21 @@ export default async function TenantLayout({
 
   return (
     <ToastProvider>
-      <div className="flex h-screen overflow-hidden bg-bg">
-        <SidebarWithActiveSection
-          slug={slug}
-          plan={tenant.plan}
-          badges={badges}
-        />
+      <AddonsProvider addons={addons}>
+        <div className="flex h-screen overflow-hidden bg-bg">
+          <SidebarWithActiveSection
+            slug={slug}
+            plan={tenant.plan}
+            badges={badges}
+          />
 
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Header gymNombre={gym.nombre} plan={tenant.plan} />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <Header gymNombre={gym.nombre} plan={tenant.plan} />
 
-          <main className="flex-1 overflow-y-auto px-8 py-6">{children}</main>
+            <main className="flex-1 overflow-y-auto px-8 py-6">{children}</main>
+          </div>
         </div>
-      </div>
+      </AddonsProvider>
     </ToastProvider>
   );
 }

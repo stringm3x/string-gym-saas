@@ -16,6 +16,7 @@ export function ConfigTabs({ slug, plan }: ConfigTabsProps) {
 
   const allTabs: { href: string; label: string; feature?: Feature }[] = [
     { href: `${base}/gym`, label: "Gym" },
+    { href: `${base}/addons`, label: "Add-ons" },
     { href: `${base}/planes`, label: "Planes" },
     { href: `${base}/promociones`, label: "Promociones", feature: "promociones" },
     { href: `${base}/tags`, label: "Tags", feature: "tags" },
