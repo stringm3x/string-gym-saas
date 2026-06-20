@@ -11,6 +11,60 @@ export interface AcceptInviteResult {
   fieldErrors?: Partial<Record<string, string>>;
 }
 
+export interface InviteStatus {
+  exists: boolean;
+  alreadyActive: boolean;
+  /** La sesión activa (si la hay) corresponde al user_id del registro. */
+  userIdMatches: boolean;
+  /** Hay una sesión activa en el navegador. */
+  hasSession: boolean;
+}
+
+/**
+ * Diagnóstico del estado de una invitación SIN RLS (admin client) para
+ * distinguir casos: cancelada, ya aceptada, o sesión de otra cuenta.
+ */
+export async function checkInviteStatusAction(
+  staffId: string
+): Promise<InviteStatus> {
+  const safe: InviteStatus = {
+    exists: false,
+    alreadyActive: false,
+    userIdMatches: false,
+    hasSession: false,
+  };
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    safe.hasSession = Boolean(user);
+
+    // staffId vacío/nulo → no consultar (evita uuid inválido en Postgres).
+    if (!staffId) return { ...safe };
+
+    const admin = createAdminClient();
+    const { data: staff, error } = await admin
+      .from("staff")
+      .select("user_id, estado")
+      .eq("id", staffId)
+      .maybeSingle();
+
+    // Error de query (ej. uuid inválido 22P02) o no encontrado → fallback seguro.
+    if (error || !staff) return { ...safe };
+
+    return {
+      exists: true,
+      alreadyActive: staff.estado === "activo",
+      userIdMatches: Boolean(user) && staff.user_id === user!.id,
+      hasSession: Boolean(user),
+    };
+  } catch {
+    return safe;
+  }
+}
+
 /**
  * Completa la aceptación de una invitación:
  *  1. Verifica que el usuario autenticado (sesión de la invitación) es el

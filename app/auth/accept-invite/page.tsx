@@ -6,9 +6,16 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { acceptInviteAction } from "./actions";
+import { acceptInviteAction, checkInviteStatusAction } from "./actions";
 
 type Estado = "verificando" | "listo" | "invalido" | "guardando";
+
+interface InvalidInfo {
+  title: string;
+  message: string;
+  showSignOut?: boolean;
+  showLogin?: boolean;
+}
 
 function AcceptInviteInner() {
   const searchParams = useSearchParams();
@@ -22,12 +29,15 @@ function AcceptInviteInner() {
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<string, string>>
   >({});
-  const [debugReason, setDebugReason] = useState<string | null>(null);
+  const [invalid, setInvalid] = useState<InvalidInfo | null>(null);
 
   useEffect(() => {
     if (!staffId) {
+      setInvalid({
+        title: "Invitación no válida",
+        message: "Falta información en el enlace.",
+      });
       setEstado("invalido");
-      setDebugReason("Falta staff_id en la URL.");
       return;
     }
 
@@ -47,47 +57,86 @@ function AcceptInviteInner() {
     const errDesc =
       hashParams.get("error_description") ?? search.get("error_description");
 
+    const hasInviteTokens = Boolean(access_token || tokenHash || code);
+
     const supabase = createClient();
+
+    function fail(info: InvalidInfo) {
+      setInvalid(info);
+      setEstado("invalido");
+    }
+
+    /** Resuelve el mensaje correcto cuando no se puede continuar. */
+    async function explainAndFail(fallbackDebug?: string) {
+      const status = await checkInviteStatusAction(staffId!);
+      if (!status.exists) {
+        fail({
+          title: "Invitación no disponible",
+          message: "Esta invitación fue cancelada o ya fue usada.",
+        });
+        return;
+      }
+      if (status.alreadyActive) {
+        fail({
+          title: "Invitación ya aceptada",
+          message:
+            "Esta invitación ya fue aceptada. Inicia sesión normalmente.",
+          showLogin: true,
+        });
+        return;
+      }
+      if (status.hasSession && !status.userIdMatches) {
+        fail({
+          title: "Sesión de otra cuenta",
+          message:
+            "Estás logueado con otra cuenta. Cierra sesión y vuelve a hacer click en el link del email.",
+          showSignOut: true,
+        });
+        return;
+      }
+      fail({
+        title: "No pudimos validar el enlace",
+        message:
+          fallbackDebug ??
+          "El enlace expiró o ya fue usado. Pide que te reenvíen la invitación.",
+      });
+    }
 
     (async () => {
       // Error explícito en el link (expirado/usado).
       if (errDesc) {
-        setEstado("invalido");
-        setDebugReason(errDesc.replace(/\+/g, " "));
+        fail({
+          title: "Enlace expirado",
+          message: errDesc.replace(/\+/g, " "),
+        });
         return;
       }
 
-      // 1) ¿ya hay sesión (auto-detect)?
-      let {
+      // Si el link trae tokens de invitación, limpiar cualquier sesión previa
+      // (ej. el owner logueado) ANTES de establecer la del invitado.
+      if (hasInviteTokens) {
+        const {
+          data: { session: prev },
+        } = await supabase.auth.getSession();
+        if (prev) {
+          await supabase.auth.signOut({ scope: "local" });
+        }
+
+        if (access_token && refresh_token) {
+          await supabase.auth.setSession({ access_token, refresh_token });
+        } else if (tokenHash && type) {
+          await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as EmailOtpType,
+          });
+        } else if (code) {
+          await supabase.auth.exchangeCodeForSession(code);
+        }
+      }
+
+      const {
         data: { session },
       } = await supabase.auth.getSession();
-
-      // 2) Flujo implícito: tokens en el hash → setSession explícito.
-      if (!session && access_token && refresh_token) {
-        await supabase.auth.setSession({ access_token, refresh_token });
-        ({
-          data: { session },
-        } = await supabase.auth.getSession());
-      }
-
-      // 3) token_hash → verifyOtp.
-      if (!session && tokenHash && type) {
-        await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: type as EmailOtpType,
-        });
-        ({
-          data: { session },
-        } = await supabase.auth.getSession());
-      }
-
-      // 4) PKCE code → exchange.
-      if (!session && code) {
-        await supabase.auth.exchangeCodeForSession(code);
-        ({
-          data: { session },
-        } = await supabase.auth.getSession());
-      }
 
       if (!session) {
         const presentes = [
@@ -97,9 +146,10 @@ function AcceptInviteInner() {
         ]
           .filter(Boolean)
           .join(", ");
-        setEstado("invalido");
-        setDebugReason(
-          `No se pudo establecer la sesión. Params recibidos: ${presentes || "ninguno"}.`
+        await explainAndFail(
+          hasInviteTokens
+            ? `No se pudo establecer la sesión. Params: ${presentes}.`
+            : undefined
         );
         return;
       }
@@ -112,13 +162,26 @@ function AcceptInviteInner() {
         .maybeSingle();
 
       if (!staffRow) {
-        setEstado("invalido");
-        setDebugReason("No se encontró el registro de staff (RLS o id).");
+        // No legible con la sesión actual → distinguir caso real con admin.
+        await explainAndFail();
         return;
       }
       if (staffRow.user_id !== session.user.id) {
-        setEstado("invalido");
-        setDebugReason("La sesión no corresponde a esta invitación.");
+        fail({
+          title: "Sesión de otra cuenta",
+          message:
+            "Estás logueado con otra cuenta. Cierra sesión y vuelve a hacer click en el link del email.",
+          showSignOut: true,
+        });
+        return;
+      }
+      if (staffRow.estado === "activo") {
+        fail({
+          title: "Invitación ya aceptada",
+          message:
+            "Esta invitación ya fue aceptada. Inicia sesión normalmente.",
+          showLogin: true,
+        });
         return;
       }
 
@@ -126,6 +189,14 @@ function AcceptInviteInner() {
       setEstado("listo");
     })();
   }, [staffId]);
+
+  async function handleSignOutRetry() {
+    setEstado("verificando");
+    const supabase = createClient();
+    await supabase.auth.signOut({ scope: "local" });
+    // Recarga con los mismos params; el flujo vuelve a correr con sesión limpia.
+    window.location.reload();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -152,24 +223,31 @@ function AcceptInviteInner() {
   }
 
   if (estado === "verificando") {
-    return (
-      <p className="text-sm text-text-secondary">Validando invitación…</p>
-    );
+    return <p className="text-sm text-text-secondary">Validando invitación…</p>;
   }
 
-  if (estado === "invalido") {
+  if (estado === "invalido" && invalid) {
     return (
-      <div className="max-w-sm space-y-3 text-center">
-        <p className="text-base font-medium text-text-primary">
-          Invitación no válida o expirada
-        </p>
-        <p className="text-sm text-text-secondary">
-          Pídele al dueño del gimnasio que te reenvíe la invitación.
-        </p>
-        {debugReason && (
-          <p className="rounded-lg border border-border bg-surface px-3 py-2 text-left font-mono text-[11px] text-text-muted">
-            {debugReason}
+      <div className="w-full max-w-sm space-y-4 text-center">
+        <div className="space-y-1.5">
+          <p className="text-base font-medium text-text-primary">
+            {invalid.title}
           </p>
+          <p className="text-sm text-text-secondary">{invalid.message}</p>
+        </div>
+        {invalid.showSignOut && (
+          <Button className="w-full" onClick={handleSignOutRetry}>
+            Cerrar sesión y reintentar
+          </Button>
+        )}
+        {invalid.showLogin && (
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => window.location.assign("/login")}
+          >
+            Ir a iniciar sesión
+          </Button>
         )}
       </div>
     );
@@ -219,11 +297,7 @@ function AcceptInviteInner() {
           </p>
         )}
 
-        <Button
-          type="submit"
-          className="w-full"
-          loading={estado === "guardando"}
-        >
+        <Button type="submit" className="w-full" loading={estado === "guardando"}>
           Crear contraseña y entrar
         </Button>
       </form>
@@ -235,9 +309,7 @@ export default function AcceptInvitePage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <Suspense
-        fallback={
-          <p className="text-sm text-text-secondary">Cargando…</p>
-        }
+        fallback={<p className="text-sm text-text-secondary">Cargando…</p>}
       >
         <AcceptInviteInner />
       </Suspense>
