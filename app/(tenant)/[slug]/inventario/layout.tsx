@@ -2,6 +2,7 @@ import { getTenant } from "@/lib/tenant";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { countStockBajo } from "@/lib/queries/productos.queries";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
 import { InventarioTabs } from "@/components/inventario/InventarioTabs";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 
@@ -46,7 +47,11 @@ export default async function InventarioLayout({
         </p>
       </div>
 
-      <InventarioTabs slug={slug} stockBajoCount={stockBajoCount} />
+      <InventarioTabs
+        slug={slug}
+        stockBajoCount={stockBajoCount}
+        canMovimientos={hasPermission(tenant.role, "ver_inventario_movimientos")}
+      />
 
       <div>{children}</div>
     </div>

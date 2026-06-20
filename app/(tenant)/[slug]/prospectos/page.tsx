@@ -4,6 +4,8 @@ import { listProspectos } from "@/lib/queries/prospectos.queries";
 import { listTags } from "@/lib/queries/tags.queries";
 import { listPlantillas } from "@/lib/queries/plantillas.queries";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
+import { redirect } from "next/navigation";
 import { ProspectosKanban } from "@/components/prospectos/ProspectosKanban";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 
@@ -14,6 +16,10 @@ interface PageProps {
 export default async function ProspectosPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
+
+  if (!hasPermission(tenant.role, "ver_prospectos")) {
+    redirect(`/${slug}/checkins`);
+  }
 
   if (!hasFeature(tenant.plan, "prospectos")) {
     const gym = await getGymInfo(tenant.id);

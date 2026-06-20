@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { getTenant } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
 import { ConfigTabs } from "@/components/configuracion/ConfigTabs";
 
 export default async function ConfiguracionLayout({
@@ -10,6 +12,11 @@ export default async function ConfiguracionLayout({
 }) {
   const { slug } = await params;
   const tenant = await getTenant();
+
+  // Toda la configuración es del dueño; el recepcionista va a check-ins.
+  if (!hasPermission(tenant.role, "configurar_general")) {
+    redirect(`/${slug}/checkins`);
+  }
 
   return (
     <div className="space-y-6">

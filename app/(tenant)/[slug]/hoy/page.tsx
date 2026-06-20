@@ -5,6 +5,7 @@ import { getAlertas } from "@/lib/queries/alertas.queries";
 import { getCheckinsStats } from "@/lib/queries/dashboard.queries";
 import { getIngresosStats } from "@/lib/queries/dashboard.queries";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { AlertasList } from "@/components/alertas/AlertasList";
 
@@ -24,6 +25,11 @@ function formatFechaHoy(): string {
 export default async function HoyPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
+
+  // Hoy es panel estratégico del dueño — el recepcionista va a check-ins.
+  if (!hasPermission(tenant.role, "ver_pantalla_hoy")) {
+    redirect(`/${slug}/checkins`);
+  }
 
   if (!hasFeature(tenant.plan, "pantalla_hoy")) {
     redirect(`/${slug}/dashboard`);

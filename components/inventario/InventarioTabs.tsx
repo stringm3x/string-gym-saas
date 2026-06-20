@@ -7,15 +7,22 @@ import { cn } from "@/lib/utils/cn";
 interface InventarioTabsProps {
   slug: string;
   stockBajoCount: number;
+  canMovimientos?: boolean;
 }
 
-export function InventarioTabs({ slug, stockBajoCount }: InventarioTabsProps) {
+export function InventarioTabs({
+  slug,
+  stockBajoCount,
+  canMovimientos = true,
+}: InventarioTabsProps) {
   const pathname = usePathname();
   const base = `/${slug}/inventario`;
 
   const tabs = [
     { href: `${base}/productos`, label: "Productos", badge: stockBajoCount },
-    { href: `${base}/movimientos`, label: "Movimientos", badge: 0 },
+    ...(canMovimientos
+      ? [{ href: `${base}/movimientos`, label: "Movimientos", badge: 0 }]
+      : []),
   ];
 
   return (

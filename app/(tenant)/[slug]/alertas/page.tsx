@@ -2,6 +2,8 @@ import { getTenant } from "@/lib/tenant";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { getAlertas } from "@/lib/queries/alertas.queries";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
+import { redirect } from "next/navigation";
 import { AlertasList } from "@/components/alertas/AlertasList";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 
@@ -12,6 +14,10 @@ interface PageProps {
 export default async function AlertasPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
+
+  if (!hasPermission(tenant.role, "ver_alertas")) {
+    redirect(`/${slug}/checkins`);
+  }
 
   if (!hasFeature(tenant.plan, "alertas_dueno")) {
     const gym = await getGymInfo(tenant.id);

@@ -7,7 +7,9 @@ import {
   LuCalendarDays,
   LuTrendingUp,
 } from "react-icons/lu";
+import { redirect } from "next/navigation";
 import { getTenant } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
 import {
   getMiembrosStats,
   getIngresosStats,
@@ -25,6 +27,10 @@ interface PageProps {
 export default async function DashboardPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
+
+  if (!hasPermission(tenant.role, "ver_dashboard_completo")) {
+    redirect(`/${slug}/checkins`);
+  }
 
   const [miembros, ingresos, checkins, porVencer] = await Promise.all([
     getMiembrosStats(tenant.id),
