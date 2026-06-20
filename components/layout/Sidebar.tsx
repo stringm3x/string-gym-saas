@@ -1,3 +1,4 @@
+import Image from "next/image";
 import {
   LuSunrise,
   LuLayoutDashboard,
@@ -16,6 +17,8 @@ interface SidebarProps {
   slug: string;
   plan: Plan;
   activeSection: string;
+  gymNombre: string;
+  logoUrl?: string | null;
   /**
    * Badges ambientales — se calculan en el layout vía queries
    * (lib/queries/*) y se pasan ya resueltos.
@@ -33,16 +36,32 @@ export function Sidebar({
   slug,
   plan,
   activeSection,
+  gymNombre,
+  logoUrl,
   badges = {},
 }: SidebarProps) {
   const base = `/${slug}`;
 
   return (
-    <aside className="flex h-full w-60 flex-col border-r border-border bg-bg px-3 py-6">
-      <div className="mb-8 px-3">
-        <span className="font-display text-xl uppercase tracking-wide text-text-primary">
-          STRING<span className="text-brand-green">GYM</span>
-        </span>
+    <aside className="flex h-full w-60 flex-col border-r border-border bg-sidebar px-3 py-6">
+      <div className="mb-8 flex h-10 items-center px-3">
+        {logoUrl ? (
+          <div className="relative h-10 w-full">
+            <Image
+              src={logoUrl}
+              alt={gymNombre}
+              fill
+              sizes="200px"
+              className="object-contain object-left"
+              unoptimized
+              priority
+            />
+          </div>
+        ) : (
+          <span className="truncate font-display text-xl uppercase tracking-wide text-text-primary">
+            {gymNombre || "Mi Gym"}
+          </span>
+        )}
       </div>
 
       <nav className="flex flex-1 flex-col gap-1">

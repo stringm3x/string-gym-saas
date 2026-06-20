@@ -7,6 +7,8 @@ import type { Plan } from "@/lib/features";
 interface SidebarWithActiveSectionProps {
   slug: string;
   plan: Plan;
+  gymNombre: string;
+  logoUrl?: string | null;
   badges?: {
     miembros?: number;
     inventario?: number;
@@ -22,6 +24,8 @@ interface SidebarWithActiveSectionProps {
 export function SidebarWithActiveSection({
   slug,
   plan,
+  gymNombre,
+  logoUrl,
   badges,
 }: SidebarWithActiveSectionProps) {
   const pathname = usePathname();
@@ -34,6 +38,8 @@ export function SidebarWithActiveSection({
       slug={slug}
       plan={plan}
       activeSection={activeSection}
+      gymNombre={gymNombre}
+      logoUrl={logoUrl}
       badges={badges}
     />
   );

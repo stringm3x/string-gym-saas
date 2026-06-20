@@ -9,6 +9,9 @@
   --color-surface-hover: #1c1c1c;
   --color-border: #262626;
 
+  /* Fondo del sidebar — personalizable por gyms Pro+ (default = bg) */
+  --color-sidebar: #0a0a0a;
+
   /* Marca */
   --color-brand-green: #50ff05;
   --color-brand-gray: #a1a1aa;

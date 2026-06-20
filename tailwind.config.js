@@ -8,6 +8,7 @@ module.exports = {
     extend: {
       colors: {
         bg: "var(--color-bg)",
+        sidebar: "var(--color-sidebar)",
         surface: {
           DEFAULT: "var(--color-surface)",
           hover: "var(--color-surface-hover)",

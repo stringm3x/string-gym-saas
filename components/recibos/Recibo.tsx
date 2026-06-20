@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { formatFecha, formatMoneda } from "@/lib/utils/format";
 import type { PagoCompleto } from "@/lib/queries/pagos.queries";
 
@@ -27,9 +28,20 @@ export function Recibo({ pago }: ReciboProps) {
     <div className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-gray-900 shadow-sm print:shadow-none print:border-0">
       {/* Gym header */}
       <div className="border-b border-gray-200 pb-5">
-        <p className="font-display text-2xl font-bold uppercase tracking-wide text-gray-900">
-          {pago.gym_nombre || "GYM"}
-        </p>
+        {pago.gym_logo_url ? (
+          <Image
+            src={pago.gym_logo_url}
+            alt={pago.gym_nombre}
+            width={200}
+            height={60}
+            unoptimized
+            className="mb-2 h-14 w-auto max-w-[200px] object-contain object-left"
+          />
+        ) : (
+          <p className="font-display text-2xl font-bold uppercase tracking-wide text-gray-900">
+            {pago.gym_nombre || "GYM"}
+          </p>
+        )}
         {pago.gym_telefono && (
           <p className="mt-1 text-sm text-gray-500">Tel: {pago.gym_telefono}</p>
         )}

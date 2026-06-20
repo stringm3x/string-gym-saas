@@ -6,6 +6,7 @@ import { countStockBajo } from "@/lib/queries/productos.queries";
 import { countProspectosNuevos } from "@/lib/queries/prospectos.queries";
 import { getAlertas } from "@/lib/queries/alertas.queries";
 import { listGymAddons } from "@/lib/queries/addons.queries";
+import { getGymMarca } from "@/lib/queries/marca.queries";
 import { hasFeature } from "@/lib/features";
 import { SidebarWithActiveSection } from "@/components/layout/SidebarWithActiveSection";
 import { Header } from "@/components/layout/Header";
@@ -28,19 +29,34 @@ export default async function TenantLayout({
 
   const tieneAlertas = hasFeature(tenant.plan, "alertas_dueno");
 
-  const [gym, miembrosVencenHoy, stockBajo, prospectosNuevos, alertas, addons] =
-    await Promise.all([
-      getGymInfo(tenant.id),
-      countMiembrosVencenHoy(tenant.id),
-      countStockBajo(tenant.id),
-      countProspectosNuevos(tenant.id),
-      tieneAlertas ? getAlertas(tenant.id, slug) : Promise.resolve([]),
-      listGymAddons(tenant.id),
-    ]);
+  const [
+    gym,
+    miembrosVencenHoy,
+    stockBajo,
+    prospectosNuevos,
+    alertas,
+    addons,
+    marca,
+  ] = await Promise.all([
+    getGymInfo(tenant.id),
+    countMiembrosVencenHoy(tenant.id),
+    countStockBajo(tenant.id),
+    countProspectosNuevos(tenant.id),
+    tieneAlertas ? getAlertas(tenant.id, slug) : Promise.resolve([]),
+    listGymAddons(tenant.id),
+    getGymMarca(tenant.id),
+  ]);
 
   if (!gym) {
     redirect("/login");
   }
+
+  // Colores personalizados solo para Pro+ (Básico usa defaults STRING).
+  const aplicaColores =
+    marca && hasFeature(tenant.plan, "personalizacion_colores");
+  const marcaCss = aplicaColores
+    ? `:root{--color-brand-green:${marca.color_acento};--color-sidebar:${marca.color_sidebar};}`
+    : null;
 
   const alertasBadge = tieneAlertas
     ? alertas.reduce((sum, a) => sum + (a.count ?? 1), 0)
@@ -55,11 +71,16 @@ export default async function TenantLayout({
 
   return (
     <ToastProvider>
+      {marcaCss && (
+        <style dangerouslySetInnerHTML={{ __html: marcaCss }} />
+      )}
       <AddonsProvider addons={addons}>
         <div className="flex h-screen overflow-hidden bg-bg">
           <SidebarWithActiveSection
             slug={slug}
             plan={tenant.plan}
+            gymNombre={gym.nombre}
+            logoUrl={gym.logo_url}
             badges={badges}
           />
 

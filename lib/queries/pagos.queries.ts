@@ -28,6 +28,7 @@ export interface PagoCompleto extends Pago {
   gym_telefono: string | null;
   gym_direccion: string | null;
   gym_rfc: string | null;
+  gym_logo_url: string | null;
 }
 
 export interface PagoConMiembro extends Pago {
@@ -268,7 +269,7 @@ export async function getPagoCompleto(
       .single(),
     supabase
       .from("gyms")
-      .select("nombre, telefono, direccion, rfc")
+      .select("nombre, telefono, direccion, rfc, logo_url")
       .eq("id", tenantId)
       .single(),
   ]);
@@ -287,6 +288,7 @@ export async function getPagoCompleto(
     gym_telefono: gym?.telefono ?? null,
     gym_direccion: gym?.direccion ?? null,
     gym_rfc: gym?.rfc ?? null,
+    gym_logo_url: gym?.logo_url ?? null,
   };
 }
 

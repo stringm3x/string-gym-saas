@@ -1,4 +1,6 @@
+import Image from "next/image";
 import { getTenant } from "@/lib/tenant";
+import { getGymInfo } from "@/lib/queries/gyms.queries";
 import {
   listCheckinsDeHoy,
   countCheckinsDeHoy,
@@ -14,20 +16,34 @@ export default async function CheckinsPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
 
-  const [checkins, total] = await Promise.all([
+  const [gym, checkins, total] = await Promise.all([
+    getGymInfo(tenant.id),
     listCheckinsDeHoy(tenant.id, 30),
     countCheckinsDeHoy(tenant.id),
   ]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-          Check-in
-        </h2>
-        <p className="mt-1 text-sm text-text-secondary">
-          Busca al miembro y registra su entrada con un click.
-        </p>
+      <div className="flex flex-col items-center gap-3 text-center">
+        {gym?.logo_url ? (
+          <Image
+            src={gym.logo_url}
+            alt={gym.nombre}
+            width={240}
+            height={80}
+            unoptimized
+            priority
+            className="h-16 w-auto max-w-[240px] object-contain"
+          />
+        ) : null}
+        <div>
+          <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+            Check-in
+          </h2>
+          <p className="mt-1 text-sm text-text-secondary">
+            Busca al miembro y registra su entrada con un click.
+          </p>
+        </div>
       </div>
 
       <CheckinKiosk />
