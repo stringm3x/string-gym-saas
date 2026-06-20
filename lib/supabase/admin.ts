@@ -2,13 +2,12 @@ import { createClient } from "@supabase/supabase-js";
 
 /**
  * Client de Supabase con service-role — BYPASSEA RLS.
- * Usar SOLO en server (middleware, server actions, queries server-side)
- * y siempre con queries acotadas por gym_id + user_id. Nunca exponer al
- * cliente. Necesario para:
- *  - Resolver el rol de un recepcionista (la RLS de `staff` solo deja
- *    leer al owner; el staff no puede leer su propia fila con el client
- *    de sesión).
- *  - Invitar/crear usuarios vía Admin API.
+ * Usar SOLO en server, exclusivamente para la Auth Admin API
+ * (invitar/crear usuarios de staff). Nunca exponer al cliente.
+ *
+ * Las lecturas de `staff` NO usan este client: la policy de auto-lectura
+ * (migración 012, user_id = auth.uid()) permite resolver el rol propio
+ * con el client de sesión normal.
  */
 export function createAdminClient() {
   return createClient(

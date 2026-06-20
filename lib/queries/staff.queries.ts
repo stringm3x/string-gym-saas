@@ -1,19 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import type { Staff } from "@/lib/types/staff";
 
 /**
- * Resuelve el staff activo de un usuario en un gym. Usa el client admin
- * porque la RLS de `staff` solo deja leer al owner — un recepcionista no
- * puede leer su propia fila con el client de sesión.
+ * Resuelve el staff activo de un usuario en un gym. Usa el client de
+ * sesión: la policy "users_can_read_own_staff_record" (migración 012)
+ * permite a cada usuario leer su propia fila (user_id = auth.uid()).
  */
 export async function getActiveStaff(
   gymId: string,
   userId: string
 ): Promise<Staff | null> {
-  const admin = createAdminClient();
+  const supabase = await createClient();
 
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from("staff")
     .select("*")
     .eq("gym_id", gymId)

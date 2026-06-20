@@ -1,5 +1,4 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import type { StaffRol } from "@/lib/types/staff";
 
@@ -68,19 +67,14 @@ export async function middleware(request: NextRequest) {
   }
 
   // Resolver el rol del usuario en este gym. El owner se valida por
-  // owner_id (sin tocar `staff`, robusto ante RLS). Un staff (recepcionista)
-  // se resuelve con el client admin porque la RLS de `staff` solo deja
-  // leer al owner.
+  // owner_id (robusto, sin tocar `staff`). Un staff (recepcionista) se
+  // resuelve con el MISMO client de sesión: la policy de auto-lectura
+  // (migración 012, user_id = auth.uid()) le permite leer su propia fila.
   let role: StaffRol | null = null;
   if (gym.owner_id === session.user.id) {
     role = "owner";
   } else {
-    const admin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-    const { data: staffRow } = await admin
+    const { data: staffRow } = await supabase
       .from("staff")
       .select("rol")
       .eq("gym_id", gym.id)
