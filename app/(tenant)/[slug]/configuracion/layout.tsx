@@ -22,7 +22,7 @@ export default async function ConfiguracionLayout({
         </p>
       </div>
 
-      <ConfigTabs slug={slug} plan={tenant.plan} />
+      <ConfigTabs slug={slug} plan={tenant.plan} role={tenant.role} />
 
       <div>{children}</div>
     </div>
