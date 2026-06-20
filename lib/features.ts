@@ -24,6 +24,7 @@ export const planFeatures = {
     "acciones_rapidas",
     "archivar_miembros",
     "pagar_al_inscribir",
+    "personalizacion_logo",
   ],
   pro: [
     "inventario",
@@ -35,8 +36,14 @@ export const planFeatures = {
     "bulk_actions",
     "pantalla_hoy",
     "dashboard_completo",
+    "personalizacion_colores",
   ],
-  escala: ["alertas_dueno", "whatsapp_automatico", "reportes_avanzados"],
+  escala: [
+    "alertas_dueno",
+    "whatsapp_automatico",
+    "reportes_avanzados",
+    "personalizacion_avanzada",
+  ],
 } as const;
 
 export type Feature = (typeof planFeatures)[Plan][number];
