@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
 import {
   createTag,
   updateTag,
@@ -41,6 +42,9 @@ export async function createTagAction(
   formData: FormData
 ): Promise<TagFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ...empty, error: "No tienes permiso para esta acción." };
+  }
   const raw = parseFormData(formData);
 
   const parsed = tagSchema.safeParse(raw);
@@ -65,6 +69,9 @@ export async function updateTagAction(
   formData: FormData
 ): Promise<TagFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ...empty, error: "No tienes permiso para esta acción." };
+  }
   const raw = parseFormData(formData);
 
   const parsed = tagSchema.safeParse(raw);
@@ -87,6 +94,9 @@ export async function deleteTagAction(
   id: string
 ): Promise<{ ok: boolean; error?: string }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
   const result = await deleteTag(tenant.id, id);
   if (!result.ok) return { ok: false, error: result.error };
   revalidatePath(`/${tenant.slug}/configuracion/tags`);

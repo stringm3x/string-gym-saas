@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
 import {
   createProspecto,
   updateProspecto,
@@ -51,6 +52,9 @@ export async function createProspectoAction(
   formData: FormData
 ): Promise<ProspectoFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "ver_prospectos")) {
+    return { ...emptyState, error: "No tienes permiso para esta acción." };
+  }
   const { tag_ids, ...rest } = parseFormData(formData);
   const raw = { ...rest, estado: "nuevo" as const };
 
@@ -80,6 +84,9 @@ export async function updateProspectoAction(
   formData: FormData
 ): Promise<ProspectoFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "ver_prospectos")) {
+    return { ...emptyState, error: "No tienes permiso para esta acción." };
+  }
   const { tag_ids, ...raw } = parseFormData(formData);
 
   const parsed = prospectoSchema.safeParse(raw);
@@ -107,6 +114,9 @@ export async function cambiarEstadoAction(
   nuevoEstado: ProspectoEstado
 ): Promise<{ ok: boolean; error?: string }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "ver_prospectos")) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
 
   const result = await updateEstadoProspecto(tenant.id, id, nuevoEstado);
   if (!result.ok) {

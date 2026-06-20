@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
 import {
   createPlan,
   updatePlan,
@@ -30,6 +31,9 @@ export async function createPlanAction(
   formData: FormData
 ): Promise<PlanFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ...empty, error: "No tienes permiso para esta acción." };
+  }
   const raw = parse(formData);
   const parsed = planMembresiaSchema.safeParse(raw);
 
@@ -55,6 +59,9 @@ export async function updatePlanAction(
   formData: FormData
 ): Promise<PlanFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ...empty, error: "No tienes permiso para esta acción." };
+  }
   const raw = parse(formData);
   const parsed = planMembresiaSchema.safeParse(raw);
 
@@ -76,6 +83,9 @@ export async function updatePlanAction(
 
 export async function togglePlanAction(id: string, activo: boolean) {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ok: false as const, error: "No tienes permiso para esta acción." };
+  }
   const result = await togglePlanActivo(tenant.id, id, activo);
   if (result.ok) {
     revalidatePath(`/${tenant.slug}/configuracion/planes`);

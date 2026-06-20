@@ -10,6 +10,7 @@ import {
   seedPlantillas,
 } from "@/lib/queries/plantillas.queries";
 import { plantillaSchema } from "@/lib/validations/plantilla.schema";
+import { hasPermission } from "@/lib/permissions";
 
 export interface PlantillaFormState {
   ok: boolean;
@@ -45,6 +46,9 @@ export async function createPlantillaAction(
   formData: FormData
 ): Promise<PlantillaFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ...empty, error: "No tienes permiso para esta acción." };
+  }
   const raw = parseFormData(formData);
 
   const parsed = plantillaSchema.safeParse(raw);
@@ -69,6 +73,9 @@ export async function updatePlantillaAction(
   formData: FormData
 ): Promise<PlantillaFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ...empty, error: "No tienes permiso para esta acción." };
+  }
   const raw = parseFormData(formData);
 
   const parsed = plantillaSchema.safeParse(raw);
@@ -91,6 +98,9 @@ export async function deletePlantillaAction(
   id: string
 ): Promise<{ ok: boolean; error?: string }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
   const result = await deletePlantilla(tenant.id, id);
   if (!result.ok) return { ok: false, error: result.error };
   revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
@@ -102,6 +112,9 @@ export async function toggleActivoAction(
   activo: boolean
 ): Promise<{ ok: boolean; error?: string }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
   const result = await toggleActivoPlantilla(tenant.id, id, activo);
   if (!result.ok) return { ok: false, error: result.error };
   revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
@@ -114,6 +127,9 @@ export async function seedPlantillasAction(): Promise<{
   error?: string;
 }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
   const result = await seedPlantillas(tenant.id);
   if (!result.ok) return { ok: false, error: result.error };
   revalidatePath(`/${tenant.slug}/configuracion/plantillas`);

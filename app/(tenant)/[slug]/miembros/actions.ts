@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
 import {
   createMiembro as dbCreateMiembro,
   updateMiembro as dbUpdateMiembro,
@@ -186,6 +187,9 @@ export async function archivarMiembroAction(
   id: string
 ): Promise<{ ok: boolean; error?: string }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "eliminar_archivar_miembros")) {
+    return { ok: false, error: "No tienes permiso para archivar miembros." };
+  }
   const result = await dbArchivarMiembro(tenant.id, id);
   if (!result.ok) return { ok: false, error: result.error };
 
@@ -198,6 +202,9 @@ export async function restaurarMiembroAction(
   id: string
 ): Promise<{ ok: boolean; error?: string }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "eliminar_archivar_miembros")) {
+    return { ok: false, error: "No tienes permiso para restaurar miembros." };
+  }
   const result = await dbRestaurarMiembro(tenant.id, id);
   if (!result.ok) return { ok: false, error: result.error };
 

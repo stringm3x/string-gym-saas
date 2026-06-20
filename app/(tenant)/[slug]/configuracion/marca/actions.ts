@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
 import { updateGymMarca, updateGymLogo } from "@/lib/queries/marca.queries";
 import {
   marcaColoresSchema,
@@ -25,6 +26,10 @@ export async function updateMarcaAction(
   formData: FormData
 ): Promise<MarcaFormState> {
   const tenant = await getTenant();
+
+  if (!hasPermission(tenant.role, "configurar_general")) {
+    return { ok: false, error: "No tienes permiso para esta acción.", fieldErrors: {} };
+  }
 
   // Gate de servidor: solo Pro+ puede cambiar colores.
   if (!hasFeature(tenant.plan, "personalizacion_colores")) {
@@ -63,6 +68,9 @@ export async function uploadLogoAction(
   formData: FormData
 ): Promise<{ ok: boolean; url?: string; error?: string }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_general")) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
 
   const file = formData.get("logo");
   if (!(file instanceof File) || file.size === 0) {
@@ -106,6 +114,9 @@ export async function deleteLogoAction(): Promise<{
   error?: string;
 }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_general")) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
   const supabase = await createClient();
 
   // Borrar cualquier archivo logo.* dentro de la carpeta del gym.

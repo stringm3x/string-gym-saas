@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
 import {
   createProducto,
   updateProducto,
@@ -50,6 +51,9 @@ export async function createProductoAction(
   formData: FormData
 ): Promise<ProductoFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "ver_inventario_movimientos")) {
+    return { ...empty, error: "No tienes permiso para esta acción." };
+  }
   const raw = parseProducto(formData);
   const parsed = productoSchema.safeParse(raw);
 
@@ -76,6 +80,9 @@ export async function updateProductoAction(
   formData: FormData
 ): Promise<ProductoFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "ver_inventario_movimientos")) {
+    return { ...empty, error: "No tienes permiso para esta acción." };
+  }
   const raw = parseProducto(formData);
   const parsed = productoSchema.safeParse(raw);
 
@@ -110,6 +117,9 @@ export async function registerMovimientoAction(
   formData: FormData
 ): Promise<MovimientoFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "ver_inventario_movimientos")) {
+    return { ok: false, error: "No tienes permiso para esta acción.", fieldErrors: {} };
+  }
   const raw = {
     producto_id: String(formData.get("producto_id") ?? ""),
     tipo: String(formData.get("tipo") ?? "entrada") as

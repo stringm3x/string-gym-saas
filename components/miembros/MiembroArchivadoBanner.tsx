@@ -11,11 +11,13 @@ import { restaurarMiembroAction } from "@/app/(tenant)/[slug]/miembros/actions";
 interface MiembroArchivadoBannerProps {
   miembroId: string;
   archivadoAt: string | null;
+  canRestore?: boolean;
 }
 
 export function MiembroArchivadoBanner({
   miembroId,
   archivadoAt,
+  canRestore = true,
 }: MiembroArchivadoBannerProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -42,15 +44,17 @@ export function MiembroArchivadoBanner({
           {archivadoAt ? ` desde el ${formatFecha(archivadoAt)}` : ""}.
         </p>
       </div>
-      <Button
-        variant="secondary"
-        size="sm"
-        leftIcon={<LuRotateCcw className="h-3.5 w-3.5" />}
-        onClick={handleRestaurar}
-        loading={isPending}
-      >
-        Restaurar miembro
-      </Button>
+      {canRestore && (
+        <Button
+          variant="secondary"
+          size="sm"
+          leftIcon={<LuRotateCcw className="h-3.5 w-3.5" />}
+          onClick={handleRestaurar}
+          loading={isPending}
+        >
+          Restaurar miembro
+        </Button>
+      )}
     </div>
   );
 }

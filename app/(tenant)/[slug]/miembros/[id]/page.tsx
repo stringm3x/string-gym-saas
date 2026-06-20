@@ -9,6 +9,7 @@ import { listTags, getTagsForMiembro } from "@/lib/queries/tags.queries";
 import { listNotas } from "@/lib/queries/notas.queries";
 import { listPlantillas } from "@/lib/queries/plantillas.queries";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { NotasTimeline } from "@/components/miembros/NotasTimeline";
 import { NotasLegacy } from "@/components/miembros/NotasLegacy";
@@ -46,6 +47,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const canTags = hasFeature(tenant.plan, "tags");
   const canTimeline = hasFeature(tenant.plan, "timeline_notas");
   const canPlantillas = hasFeature(tenant.plan, "plantillas_mensaje");
+  const canArchivar = hasPermission(tenant.role, "eliminar_archivar_miembros");
 
   const miembroConTags = { ...miembro, tags: miembroTags };
 
@@ -84,7 +86,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
               disabled={miembro.archivado}
               disabledTitle="Restaura para realizar acciones"
             />
-            {!miembro.archivado && (
+            {!miembro.archivado && canArchivar && (
               <MiembroArchivarButton
                 miembroId={miembro.id}
                 miembroNombre={miembro.nombre}
@@ -98,6 +100,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
         <MiembroArchivadoBanner
           miembroId={miembro.id}
           archivadoAt={miembro.archivado_at}
+          canRestore={canArchivar}
         />
       )}
 

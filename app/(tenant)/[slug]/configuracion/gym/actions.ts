@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
 import { updateGymConfig } from "@/lib/queries/gyms.queries";
 import { gymConfigSchema } from "@/lib/validations/gym.schema";
+import { hasPermission } from "@/lib/permissions";
 
 export interface GymConfigFormState {
   ok: boolean;
@@ -18,6 +19,9 @@ export async function updateGymConfigAction(
   formData: FormData
 ): Promise<GymConfigFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_general")) {
+    return { ...empty, error: "No tienes permiso para esta acción." };
+  }
 
   const raw = {
     nombre: String(formData.get("nombre") ?? ""),
