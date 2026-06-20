@@ -22,42 +22,85 @@ function AcceptInviteInner() {
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<string, string>>
   >({});
+  const [debugReason, setDebugReason] = useState<string | null>(null);
 
   useEffect(() => {
     if (!staffId) {
       setEstado("invalido");
+      setDebugReason("Falta staff_id en la URL.");
       return;
     }
+
+    // Capturar los params del link ANTES de crear el client (detectSessionInUrl
+    // puede consumir/limpiar el hash al inicializar).
+    const rawHash = window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : window.location.hash;
+    const hashParams = new URLSearchParams(rawHash);
+    const search = new URL(window.location.href).searchParams;
+
+    const access_token = hashParams.get("access_token");
+    const refresh_token = hashParams.get("refresh_token");
+    const tokenHash = search.get("token_hash");
+    const type = search.get("type");
+    const code = search.get("code");
+    const errDesc =
+      hashParams.get("error_description") ?? search.get("error_description");
 
     const supabase = createClient();
 
     (async () => {
-      // El client de browser auto-detecta la sesión del hash del link.
+      // Error explícito en el link (expirado/usado).
+      if (errDesc) {
+        setEstado("invalido");
+        setDebugReason(errDesc.replace(/\+/g, " "));
+        return;
+      }
+
+      // 1) ¿ya hay sesión (auto-detect)?
       let {
         data: { session },
       } = await supabase.auth.getSession();
 
-      // Fallbacks: token_hash (verifyOtp) o code (PKCE).
-      if (!session) {
-        const url = new URL(window.location.href);
-        const tokenHash = url.searchParams.get("token_hash");
-        const type = url.searchParams.get("type");
-        const code = url.searchParams.get("code");
-        if (tokenHash && type) {
-          await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: type as EmailOtpType,
-          });
-        } else if (code) {
-          await supabase.auth.exchangeCodeForSession(code);
-        }
+      // 2) Flujo implícito: tokens en el hash → setSession explícito.
+      if (!session && access_token && refresh_token) {
+        await supabase.auth.setSession({ access_token, refresh_token });
+        ({
+          data: { session },
+        } = await supabase.auth.getSession());
+      }
+
+      // 3) token_hash → verifyOtp.
+      if (!session && tokenHash && type) {
+        await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: type as EmailOtpType,
+        });
+        ({
+          data: { session },
+        } = await supabase.auth.getSession());
+      }
+
+      // 4) PKCE code → exchange.
+      if (!session && code) {
+        await supabase.auth.exchangeCodeForSession(code);
         ({
           data: { session },
         } = await supabase.auth.getSession());
       }
 
       if (!session) {
+        const presentes = [
+          access_token && "hash:access_token",
+          tokenHash && "query:token_hash",
+          code && "query:code",
+        ]
+          .filter(Boolean)
+          .join(", ");
         setEstado("invalido");
+        setDebugReason(
+          `No se pudo establecer la sesión. Params recibidos: ${presentes || "ninguno"}.`
+        );
         return;
       }
 
@@ -68,8 +111,14 @@ function AcceptInviteInner() {
         .eq("id", staffId)
         .maybeSingle();
 
-      if (!staffRow || staffRow.user_id !== session.user.id) {
+      if (!staffRow) {
         setEstado("invalido");
+        setDebugReason("No se encontró el registro de staff (RLS o id).");
+        return;
+      }
+      if (staffRow.user_id !== session.user.id) {
+        setEstado("invalido");
+        setDebugReason("La sesión no corresponde a esta invitación.");
         return;
       }
 
@@ -110,13 +159,18 @@ function AcceptInviteInner() {
 
   if (estado === "invalido") {
     return (
-      <div className="space-y-3 text-center">
+      <div className="max-w-sm space-y-3 text-center">
         <p className="text-base font-medium text-text-primary">
           Invitación no válida o expirada
         </p>
         <p className="text-sm text-text-secondary">
           Pídele al dueño del gimnasio que te reenvíe la invitación.
         </p>
+        {debugReason && (
+          <p className="rounded-lg border border-border bg-surface px-3 py-2 text-left font-mono text-[11px] text-text-muted">
+            {debugReason}
+          </p>
+        )}
       </div>
     );
   }
