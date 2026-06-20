@@ -1,5 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import type { StaffRol } from "@/lib/types/staff";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -32,9 +34,9 @@ export async function middleware(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Rutas públicas: login, registro, landing raíz, assets, api.
+  // Rutas públicas: login, registro, aceptar invitación, landing raíz.
   const segments = pathname.split("/").filter(Boolean);
-  const publicRoutes = ["login", "registro"];
+  const publicRoutes = ["login", "registro", "auth"];
   const isPublicRoute =
     segments.length === 0 || publicRoutes.includes(segments[0]);
 
@@ -61,18 +63,43 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (gym.owner_id !== session.user.id) {
+  if (gym.estado !== "activo") {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (gym.estado !== "activo") {
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Resolver el rol del usuario en este gym. El owner se valida por
+  // owner_id (sin tocar `staff`, robusto ante RLS). Un staff (recepcionista)
+  // se resuelve con el client admin porque la RLS de `staff` solo deja
+  // leer al owner.
+  let role: StaffRol | null = null;
+  if (gym.owner_id === session.user.id) {
+    role = "owner";
+  } else {
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+    const { data: staffRow } = await admin
+      .from("staff")
+      .select("rol")
+      .eq("gym_id", gym.id)
+      .eq("user_id", session.user.id)
+      .eq("estado", "activo")
+      .maybeSingle();
+    if (staffRow) role = staffRow.rol as StaffRol;
+  }
+
+  // Sin rol activo en este gym → sin acceso.
+  if (!role) {
+    return NextResponse.redirect(new URL("/login?error=no-access", request.url));
   }
 
   // Pasar info del tenant a Server Components vía headers.
   response.headers.set("x-tenant-id", gym.id);
   response.headers.set("x-tenant-slug", gym.slug);
   response.headers.set("x-tenant-plan", gym.plan);
+  response.headers.set("x-staff-role", role);
 
   return response;
 }

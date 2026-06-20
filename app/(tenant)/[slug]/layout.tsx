@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getTenant } from "@/lib/tenant";
+import { createClient } from "@/lib/supabase/server";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { countMiembrosVencenHoy } from "@/lib/queries/miembros.queries";
 import { countStockBajo } from "@/lib/queries/productos.queries";
@@ -7,11 +8,13 @@ import { countProspectosNuevos } from "@/lib/queries/prospectos.queries";
 import { getAlertas } from "@/lib/queries/alertas.queries";
 import { listGymAddons } from "@/lib/queries/addons.queries";
 import { getGymMarca } from "@/lib/queries/marca.queries";
+import { getActiveStaff } from "@/lib/queries/staff.queries";
 import { hasFeature } from "@/lib/features";
 import { SidebarWithActiveSection } from "@/components/layout/SidebarWithActiveSection";
 import { Header } from "@/components/layout/Header";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AddonsProvider } from "@/lib/contexts/AddonsContext";
+import { StaffProvider } from "@/lib/contexts/StaffContext";
 
 export default async function TenantLayout({
   children,
@@ -27,6 +30,14 @@ export default async function TenantLayout({
     redirect("/login");
   }
 
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
   const tieneAlertas = hasFeature(tenant.plan, "alertas_dueno");
 
   const [
@@ -37,6 +48,7 @@ export default async function TenantLayout({
     alertas,
     addons,
     marca,
+    currentStaff,
   ] = await Promise.all([
     getGymInfo(tenant.id),
     countMiembrosVencenHoy(tenant.id),
@@ -45,10 +57,17 @@ export default async function TenantLayout({
     tieneAlertas ? getAlertas(tenant.id, slug) : Promise.resolve([]),
     listGymAddons(tenant.id),
     getGymMarca(tenant.id),
+    getActiveStaff(tenant.id, user.id),
   ]);
 
   if (!gym) {
     redirect("/login");
+  }
+
+  // El usuario debe tener staff activo en este gym (el middleware ya lo
+  // garantiza; esto es defensa en profundidad).
+  if (!currentStaff) {
+    redirect("/login?error=no-access");
   }
 
   // Colores personalizados solo para Pro+ (Básico usa defaults STRING).
@@ -74,8 +93,9 @@ export default async function TenantLayout({
       {marcaCss && (
         <style dangerouslySetInnerHTML={{ __html: marcaCss }} />
       )}
-      <AddonsProvider addons={addons}>
-        <div className="flex h-screen overflow-hidden bg-bg">
+      <StaffProvider staff={currentStaff}>
+        <AddonsProvider addons={addons}>
+          <div className="flex h-screen overflow-hidden bg-bg">
           <SidebarWithActiveSection
             slug={slug}
             plan={tenant.plan}
@@ -89,8 +109,9 @@ export default async function TenantLayout({
 
             <main className="flex-1 overflow-y-auto px-8 py-6">{children}</main>
           </div>
-        </div>
-      </AddonsProvider>
+          </div>
+        </AddonsProvider>
+      </StaffProvider>
     </ToastProvider>
   );
 }
