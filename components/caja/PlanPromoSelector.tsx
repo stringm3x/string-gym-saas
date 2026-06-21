@@ -1,6 +1,6 @@
 "use client";
 
-import { LuTag, LuPackage } from "react-icons/lu";
+import { LuTag, LuPackage, LuChevronDown } from "react-icons/lu";
 import { cn } from "@/lib/utils/cn";
 import { formatMoneda } from "@/lib/utils/format";
 import type { PlanMembresia } from "@/lib/queries/planes.queries";
@@ -84,13 +84,19 @@ export function PlanPromoSelector({
           type="button"
           onClick={() => onChange({ kind: "custom" })}
           className={cn(
-            "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
             value.kind === "custom"
               ? "border-brand-green bg-brand-green/10 text-brand-green"
               : "border-border bg-surface text-text-secondary hover:text-text-primary"
           )}
         >
           Personalizar precio y duración
+          <LuChevronDown
+            className={cn(
+              "h-3.5 w-3.5 transition-transform",
+              value.kind === "custom" && "rotate-180"
+            )}
+          />
         </button>
       </div>
     </div>

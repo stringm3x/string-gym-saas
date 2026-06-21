@@ -110,7 +110,12 @@ export function PagoForm({
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
   const [miembro, setMiembro] = useState<MiembroLite | null>(null);
 
-  const [selMem, setSelMem] = useState<SeleccionMembresia>({ kind: "custom" });
+  // Por defecto se selecciona el primer plan (panel de personalización
+  // colapsado). "Personalizar precio y duración" lo expande on-demand.
+  const defaultSelMem: SeleccionMembresia =
+    planes.length > 0 ? { kind: "plan", plan: planes[0] } : { kind: "custom" };
+
+  const [selMem, setSelMem] = useState<SeleccionMembresia>(defaultSelMem);
   const [selProd, setSelProd] = useState<SeleccionProducto>({ kind: "custom" });
 
   const [customPreset, setCustomPreset] = useState<DuracionPreset | "manual">(
@@ -219,11 +224,14 @@ export function PagoForm({
 
   // Reset al cambiar concepto
   useEffect(() => {
-    setSelMem({ kind: "custom" });
+    setSelMem(
+      planes.length > 0 ? { kind: "plan", plan: planes[0] } : { kind: "custom" }
+    );
     setSelProd({ kind: "custom" });
     setMontoCustom("");
     setCustomPreset("1_mes");
     setCantidadProducto(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concepto]);
 
   // Reset cantidad cuando cambia producto
