@@ -14,6 +14,7 @@ import { getGymFull } from "@/lib/queries/gyms.queries";
 import { getGymMarca } from "@/lib/queries/marca.queries";
 import { hasFeature } from "@/lib/features";
 import { sendRecibo } from "@/lib/email/send-recibo";
+import { dispararWhatsAppAutomatico } from "@/lib/integrations/whatsapp-automatico";
 import { pagoSchema } from "@/lib/validations/pago.schema";
 import { visitaRapidaSchema } from "@/lib/validations/visita-rapida.schema";
 
@@ -79,31 +80,44 @@ export async function registerPagoAction(
     revalidatePath(`/${tenant.slug}/inventario/movimientos`);
   }
 
-  // Recibo automático por email (no bloquea el pago; sendRecibo no lanza).
+  // Recibo automático (no bloquea el pago).
   if (parsed.data.miembro_id) {
     const miembro = await getMiembro(tenant.id, parsed.data.miembro_id);
-    if (miembro?.email) {
-      const [gym, marca] = await Promise.all([
-        getGymFull(tenant.id),
-        getGymMarca(tenant.id),
-      ]);
+    if (miembro) {
       const h = await headers();
       const origin =
-        h.get("origin") ??
-        `https://${h.get("host") ?? "app.stringwebs.com"}`;
-      const esPro = hasFeature(tenant.plan, "personalizacion_colores");
+        h.get("origin") ?? `https://${h.get("host") ?? "app.stringwebs.com"}`;
+      const reciboUrl = `${origin}/recibos/${result.token}`;
 
-      await sendRecibo({
-        miembroEmail: miembro.email,
+      // Capa 1: email con link (solo si tiene email; sendRecibo no lanza).
+      if (miembro.email) {
+        const [gym, marca] = await Promise.all([
+          getGymFull(tenant.id),
+          getGymMarca(tenant.id),
+        ]);
+        const esPro = hasFeature(tenant.plan, "personalizacion_colores");
+        await sendRecibo({
+          miembroEmail: miembro.email,
+          miembroNombre: miembro.nombre,
+          gymNombre: gym?.nombre ?? "",
+          gymTelefono: gym?.telefono ?? null,
+          gymDireccion: gym?.direccion ?? null,
+          logoUrl: gym?.logo_url ?? null,
+          colorAcento: esPro ? marca?.color_acento : undefined,
+          monto: parsed.data.monto,
+          fechaVencimiento: parsed.data.periodo_fin || null,
+          reciboUrl,
+        });
+      }
+
+      // Capa 3: WhatsApp automático (dormido hasta Fase 7.5; hoy no-op).
+      await dispararWhatsAppAutomatico({
+        gymId: tenant.id,
         miembroNombre: miembro.nombre,
-        gymNombre: gym?.nombre ?? "",
-        gymTelefono: gym?.telefono ?? null,
-        gymDireccion: gym?.direccion ?? null,
-        logoUrl: gym?.logo_url ?? null,
-        colorAcento: esPro ? marca?.color_acento : undefined,
+        telefono: miembro.telefono,
         monto: parsed.data.monto,
         fechaVencimiento: parsed.data.periodo_fin || null,
-        reciboUrl: `${origin}/recibos/${result.token}`,
+        reciboUrl,
       });
     }
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   LuSearch,
   LuX,
@@ -8,13 +9,19 @@ import {
   LuWallet,
   LuCreditCard,
   LuArrowLeftRight,
+  LuMessageCircle,
+  LuReceipt,
 } from "react-icons/lu";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils/cn";
-import { formatFecha } from "@/lib/utils/format";
+import { formatFecha, formatMoneda } from "@/lib/utils/format";
+import {
+  buildWhatsAppUrl,
+  mensajePagoRegistrado,
+} from "@/lib/utils/whatsapp";
 import {
   calcularRangoMembresia,
   calcularRangoPorDias,
@@ -126,6 +133,15 @@ export function PagoForm({
   const [cantidadProducto, setCantidadProducto] = useState<number>(1);
   const [periodoInicio, setPeriodoInicio] = useState<string>("");
   const [periodoFin, setPeriodoFin] = useState<string>("");
+
+  // Panel de confirmación tras un pago exitoso (botón WhatsApp + recibo).
+  const [lastPago, setLastPago] = useState<{
+    nombre: string;
+    telefono: string | null;
+    montoStr: string;
+    fechaStr: string | null;
+    pagoId?: string;
+  } | null>(null);
 
   const requiereMiembro = concepto === "membresia" || concepto === "visita";
   const requierePeriodo = concepto === "membresia";
@@ -243,18 +259,25 @@ export function PagoForm({
   // Success
   useEffect(() => {
     if (state.ok) {
-      success(
-        "Pago registrado",
-        undefined,
-        state.pagoId
-          ? { label: "Ver recibo →", href: `/${slug}/recibos/${state.pagoId}` }
-          : undefined
-      );
+      success("Pago registrado");
+      // Captura datos del pago para el panel de confirmación (WhatsApp/recibo)
+      // ANTES de resetear el form.
+      if (miembro) {
+        setLastPago({
+          nombre: miembro.nombre,
+          telefono: miembro.telefono,
+          montoStr: formatMoneda(montoFinal),
+          fechaStr: periodoFin ? formatFecha(periodoFin) : null,
+          pagoId: state.pagoId,
+        });
+      } else {
+        setLastPago(null);
+      }
       formRef.current?.reset();
       setMiembro(null);
       setConcepto("membresia");
       setMetodo("efectivo");
-      setSelMem({ kind: "custom" });
+      setSelMem(defaultSelMem);
       setSelProd({ kind: "custom" });
       setCustomPreset("1_mes");
       setMontoCustom("");
@@ -262,13 +285,61 @@ export function PagoForm({
     } else if (state.error && Object.keys(state.fieldErrors).length === 0) {
       toastError("No se pudo registrar", state.error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, success, toastError]);
 
   const maxCantidad =
     selProd.kind === "producto" ? selProd.producto.stock_actual : null;
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-6">
+    <div className="space-y-4">
+      {lastPago && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-green/30 bg-brand-green/5 px-4 py-3">
+          <p className="text-sm text-text-primary">
+            Pago registrado ·{" "}
+            <span className="font-medium">{lastPago.nombre}</span>
+          </p>
+          <div className="flex items-center gap-2">
+            {lastPago.telefono && (
+              <a
+                href={buildWhatsAppUrl(
+                  lastPago.telefono,
+                  mensajePagoRegistrado(
+                    lastPago.nombre,
+                    lastPago.montoStr,
+                    lastPago.fechaStr
+                  )
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+              >
+                <LuMessageCircle className="h-3.5 w-3.5" />
+                Enviar por WhatsApp
+              </a>
+            )}
+            {lastPago.pagoId && (
+              <Link
+                href={`/${slug}/recibos/${lastPago.pagoId}`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary"
+              >
+                <LuReceipt className="h-3.5 w-3.5" />
+                Ver recibo
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => setLastPago(null)}
+              aria-label="Cerrar"
+              className="rounded-md p-1 text-text-muted hover:bg-surface-hover hover:text-text-primary"
+            >
+              <LuX className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <form ref={formRef} action={formAction} className="space-y-6">
       {/* Concepto */}
       <div className="space-y-2">
         <Label>Concepto</Label>
@@ -473,7 +544,8 @@ export function PagoForm({
           Registrar pago
         </Button>
       </div>
-    </form>
+      </form>
+    </div>
   );
 }
 
