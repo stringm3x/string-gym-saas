@@ -1,0 +1,4 @@
+nombre,telefono,email,fecha_inscripcion,fecha_vencimiento,plan,notas
+Juan Pérez,5512345678,juan@example.com,2024-01-15,2024-02-15,Mensualidad General,Cliente referido
+Ana López,5587654321,,2024-02-01,2024-03-01,Mensualidad General,
+Roberto Sánchez,,roberto@example.com,,,,
