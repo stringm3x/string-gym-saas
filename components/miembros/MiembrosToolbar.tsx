@@ -8,13 +8,15 @@ import { Input } from "@/components/ui/Input";
 import { hasFeature, type Plan } from "@/lib/features";
 import type { Tag } from "@/lib/queries/tags.queries";
 
-type Filter = "all" | "activos" | "inactivos" | "por_vencer";
+/** Estado unificado: combina el filtro de membresía con el de archivado. */
+type Estado = "all" | "activos" | "por_vencer" | "inactivos" | "archivados";
 
-const filterOptions: { value: Filter; label: string }[] = [
+const estadoOptions: { value: Estado; label: string }[] = [
   { value: "all", label: "Todos" },
   { value: "activos", label: "Activos" },
   { value: "por_vencer", label: "Por vencer" },
   { value: "inactivos", label: "Inactivos" },
+  { value: "archivados", label: "Archivados" },
 ];
 
 const DEBOUNCE_MS = 300;
@@ -31,11 +33,13 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
 
-  const currentFilter = (searchParams.get("filter") as Filter) ?? "all";
   const currentSearch = searchParams.get("q") ?? "";
   const currentTag = searchParams.get("tag") ?? "";
-  const currentArchivado = searchParams.get("archivado") === "true";
   const currentOrigen = searchParams.get("origen") ?? "todos";
+  // Estado derivado: archivado tiene prioridad; si no, el filtro de membresía.
+  const currentEstado: Estado = searchParams.get("archivado") === "true"
+    ? "archivados"
+    : ((searchParams.get("filter") as Estado) ?? "all");
   const [searchInput, setSearchInput] = useState(currentSearch);
 
   useEffect(() => {
@@ -57,12 +61,15 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
-  function setFilter(filter: Filter) {
+  function setEstado(estado: Estado) {
     const params = new URLSearchParams(searchParams.toString());
-    if (filter === "all") {
+    if (estado === "archivados") {
+      params.set("archivado", "true");
       params.delete("filter");
     } else {
-      params.set("filter", filter);
+      params.delete("archivado");
+      if (estado === "all") params.delete("filter");
+      else params.set("filter", estado);
     }
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -93,29 +100,17 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
     });
   }
 
-  function setArchivado(archivado: boolean) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (archivado) {
-      params.set("archivado", "true");
-    } else {
-      params.delete("archivado");
-    }
-    startTransition(() => {
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    });
-  }
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface p-1">
-          {filterOptions.map((opt) => {
-            const active = currentFilter === opt.value;
+          {estadoOptions.map((opt) => {
+            const active = currentEstado === opt.value;
             return (
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setFilter(opt.value)}
+                onClick={() => setEstado(opt.value)}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
                   active
@@ -181,33 +176,6 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
             )}
           </div>
         )}
-
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
-          <button
-            type="button"
-            onClick={() => setArchivado(false)}
-            className={cn(
-              "rounded-md px-3 py-1 text-xs font-medium transition-colors duration-150",
-              !currentArchivado
-                ? "bg-bg text-text-primary"
-                : "text-text-secondary hover:text-text-primary"
-            )}
-          >
-            Activos
-          </button>
-          <button
-            type="button"
-            onClick={() => setArchivado(true)}
-            className={cn(
-              "rounded-md px-3 py-1 text-xs font-medium transition-colors duration-150",
-              currentArchivado
-                ? "bg-bg text-text-primary"
-                : "text-text-secondary hover:text-text-primary"
-            )}
-          >
-            Archivados
-          </button>
-        </div>
       </div>
     </div>
   );
