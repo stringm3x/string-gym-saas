@@ -1,8 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { getTenant } from "@/lib/tenant";
-import { createPago, createVisitaRapida } from "@/lib/queries/pagos.queries";
+import {
+  createPago,
+  createVisitaRapida,
+  anularPago,
+} from "@/lib/queries/pagos.queries";
+import { hasPermission } from "@/lib/permissions";
+import { getMiembro } from "@/lib/queries/miembros.queries";
+import { getGymFull } from "@/lib/queries/gyms.queries";
+import { getGymMarca } from "@/lib/queries/marca.queries";
+import { hasFeature } from "@/lib/features";
+import { sendRecibo } from "@/lib/email/send-recibo";
 import { pagoSchema } from "@/lib/validations/pago.schema";
 import { visitaRapidaSchema } from "@/lib/validations/visita-rapida.schema";
 
@@ -68,6 +79,35 @@ export async function registerPagoAction(
     revalidatePath(`/${tenant.slug}/inventario/movimientos`);
   }
 
+  // Recibo automático por email (no bloquea el pago; sendRecibo no lanza).
+  if (parsed.data.miembro_id) {
+    const miembro = await getMiembro(tenant.id, parsed.data.miembro_id);
+    if (miembro?.email) {
+      const [gym, marca] = await Promise.all([
+        getGymFull(tenant.id),
+        getGymMarca(tenant.id),
+      ]);
+      const h = await headers();
+      const origin =
+        h.get("origin") ??
+        `https://${h.get("host") ?? "app.stringwebs.com"}`;
+      const esPro = hasFeature(tenant.plan, "personalizacion_colores");
+
+      await sendRecibo({
+        miembroEmail: miembro.email,
+        miembroNombre: miembro.nombre,
+        gymNombre: gym?.nombre ?? "",
+        gymTelefono: gym?.telefono ?? null,
+        gymDireccion: gym?.direccion ?? null,
+        logoUrl: gym?.logo_url ?? null,
+        colorAcento: esPro ? marca?.color_acento : undefined,
+        monto: parsed.data.monto,
+        fechaVencimiento: parsed.data.periodo_fin || null,
+        reciboUrl: `${origin}/recibos/${result.token}`,
+      });
+    }
+  }
+
   return { ok: true, error: null, fieldErrors: {}, pagoId: result.id };
 }
 
@@ -104,4 +144,20 @@ export async function registrarVisitaRapidaAction(
 
   revalidatePath(`/${tenant.slug}/caja`);
   return { ok: true, error: null, fieldErrors: {}, pagoId: result.id };
+}
+
+export async function anularPagoAction(
+  pagoId: string,
+  motivo?: string
+): Promise<{ ok: boolean; error?: string }> {
+  const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "cancelar_pagos")) {
+    return { ok: false, error: "No tienes permiso para anular pagos." };
+  }
+
+  const result = await anularPago(tenant.id, pagoId, motivo);
+  if (!result.ok) return { ok: false, error: result.error };
+
+  revalidatePath(`/${tenant.slug}/caja`);
+  return { ok: true };
 }

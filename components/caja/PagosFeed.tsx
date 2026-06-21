@@ -68,7 +68,14 @@ export function PagosFeed({ pagos, slug }: PagosFeedProps) {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <span className="font-mono text-sm font-semibold tabular-nums text-text-primary">
+            {p.anulado_at && <Badge variant="danger">Anulado</Badge>}
+            <span
+              className={`font-mono text-sm font-semibold tabular-nums ${
+                p.anulado_at
+                  ? "text-text-muted line-through"
+                  : "text-text-primary"
+              }`}
+            >
               {formatMoneda(p.monto)}
             </span>
             <Link

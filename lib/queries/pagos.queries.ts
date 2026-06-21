@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { PagoInput } from "@/lib/validations/pago.schema";
 import type { VisitaRapidaInput } from "@/lib/validations/visita-rapida.schema";
+import { generarTokenRecibo } from "@/lib/utils/tokens";
 import { aplicarMovimiento } from "@/lib/queries/productos.queries";
 
 export type CategoriaCaja =
@@ -27,6 +29,8 @@ export interface Pago {
   es_visita_rapida: boolean;
   nombre_visitante: string | null;
   telefono_visitante: string | null;
+  token_publico: string | null;
+  anulado_at: string | null;
   created_at: string;
 }
 
@@ -52,8 +56,11 @@ export interface PagoConMiembro extends Pago {
 export async function createPago(
   tenantId: string,
   input: PagoInput
-): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; id: string; token: string } | { ok: false; error: string }
+> {
   const supabase = await createClient();
+  const token = generarTokenRecibo();
 
   const payload = {
     tenant_id: tenantId,
@@ -66,6 +73,7 @@ export async function createPago(
     plan_id: input.plan_id || null,
     promocion_id: input.promocion_id || null,
     producto_id: input.producto_id || null,
+    token_publico: token,
   };
 
   const { data, error } = await supabase
@@ -125,7 +133,7 @@ export async function createPago(
     }
   }
 
-  return { ok: true, id: data.id };
+  return { ok: true, id: data.id, token };
 }
 
 /**
@@ -135,8 +143,11 @@ export async function createPago(
 export async function createVisitaRapida(
   tenantId: string,
   input: VisitaRapidaInput
-): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; id: string; token: string } | { ok: false; error: string }
+> {
   const supabase = await createClient();
+  const token = generarTokenRecibo();
 
   const { data, error } = await supabase
     .from("pagos")
@@ -149,6 +160,7 @@ export async function createVisitaRapida(
       es_visita_rapida: true,
       nombre_visitante: input.nombre_visitante,
       telefono_visitante: input.telefono_visitante || null,
+      token_publico: token,
     })
     .select("id")
     .single();
@@ -156,7 +168,24 @@ export async function createVisitaRapida(
   if (error || !data) {
     return { ok: false, error: error?.message ?? "No se pudo registrar la visita" };
   }
-  return { ok: true, id: data.id };
+  return { ok: true, id: data.id, token };
+}
+
+/** Marca un pago como anulado (no cuenta en totales; recibo público → 410). */
+export async function anularPago(
+  tenantId: string,
+  pagoId: string,
+  motivo?: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("pagos")
+    .update({ anulado_at: new Date().toISOString(), anulado_motivo: motivo ?? null })
+    .eq("tenant_id", tenantId)
+    .eq("id", pagoId);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
 
 export async function countVisitasRapidasHoy(tenantId: string): Promise<number> {
@@ -202,7 +231,7 @@ export async function listPagosDelDia(
   let q = supabase
     .from("pagos")
     .select(
-      "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, plan_id, promocion_id, producto_id, folio, es_visita_rapida, nombre_visitante, telefono_visitante, created_at, miembros(nombre)"
+      "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, plan_id, promocion_id, producto_id, folio, es_visita_rapida, nombre_visitante, telefono_visitante, token_publico, anulado_at, created_at, miembros(nombre)"
     )
     .eq("tenant_id", tenantId)
     .gte("fecha_pago", inicioHoy.toISOString())
@@ -236,6 +265,8 @@ export async function listPagosDelDia(
     es_visita_rapida: Boolean(row.es_visita_rapida),
     nombre_visitante: row.nombre_visitante ?? null,
     telefono_visitante: row.telefono_visitante ?? null,
+    token_publico: row.token_publico ?? null,
+    anulado_at: row.anulado_at ?? null,
     created_at: row.created_at,
     miembro_nombre: row.miembros?.nombre ?? null,
   }));
@@ -277,6 +308,7 @@ export async function getResumenCaja(
     .from("pagos")
     .select("monto, fecha_pago, concepto")
     .eq("tenant_id", tenantId)
+    .is("anulado_at", null) // los pagos anulados no cuentan en totales
     .gte("fecha_pago", inicioMes.toISOString());
 
   if (categoria === "visitas") {
@@ -347,6 +379,50 @@ export async function getPagoCompleto(
     folio: row.folio ?? null,
     miembro_nombre: row.miembros?.nombre ?? null,
     miembro_telefono: row.miembros?.telefono ?? null,
+    gym_nombre: gym?.nombre ?? "",
+    gym_telefono: gym?.telefono ?? null,
+    gym_direccion: gym?.direccion ?? null,
+    gym_rfc: gym?.rfc ?? null,
+    gym_logo_url: gym?.logo_url ?? null,
+  };
+}
+
+/**
+ * Lookup de recibo por token público (ruta pública sin login). Usa el client
+ * admin porque no hay sesión ni tenant en contexto.
+ */
+export async function getPagoCompletoByToken(
+  token: string
+): Promise<PagoCompleto | null> {
+  const admin = createAdminClient();
+
+  const { data: pago } = await admin
+    .from("pagos")
+    .select("*, miembros(nombre, telefono)")
+    .eq("token_publico", token)
+    .maybeSingle();
+
+  if (!pago) return null;
+  const row = pago as any;
+
+  const { data: gym } = await admin
+    .from("gyms")
+    .select("nombre, telefono, direccion, rfc, logo_url")
+    .eq("id", row.tenant_id)
+    .single();
+
+  return {
+    ...row,
+    monto: Number(row.monto),
+    folio: row.folio ?? null,
+    es_visita_rapida: Boolean(row.es_visita_rapida),
+    nombre_visitante: row.nombre_visitante ?? null,
+    telefono_visitante: row.telefono_visitante ?? null,
+    token_publico: row.token_publico ?? null,
+    anulado_at: row.anulado_at ?? null,
+    // Para visitas el "cliente" es el visitante.
+    miembro_nombre: row.miembros?.nombre ?? row.nombre_visitante ?? null,
+    miembro_telefono: row.miembros?.telefono ?? row.telefono_visitante ?? null,
     gym_nombre: gym?.nombre ?? "",
     gym_telefono: gym?.telefono ?? null,
     gym_direccion: gym?.direccion ?? null,
