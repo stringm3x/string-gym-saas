@@ -29,7 +29,6 @@ export function CheckinsChart({ data }: CheckinsChartProps) {
   }
 
   const hoy = data[data.length - 1];
-  const hoyDate = new Date(hoy.fecha + "T00:00:00");
 
   return (
     <div className="rounded-xl border border-border bg-surface p-5">
@@ -61,7 +60,7 @@ export function CheckinsChart({ data }: CheckinsChartProps) {
           return (
             <div
               key={d.fecha}
-              className="flex flex-1 flex-col items-center gap-1"
+              className="flex h-full flex-1 flex-col items-center gap-1"
             >
               <div
                 className="flex w-full flex-1 items-end"
