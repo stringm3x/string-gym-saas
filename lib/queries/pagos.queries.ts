@@ -1,8 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import type { PagoInput } from "@/lib/validations/pago.schema";
+import type { VisitaRapidaInput } from "@/lib/validations/visita-rapida.schema";
 import { aplicarMovimiento } from "@/lib/queries/productos.queries";
 
-export type CategoriaCaja = "all" | "membresia" | "producto" | "otros";
+export type CategoriaCaja =
+  | "all"
+  | "membresia"
+  | "producto"
+  | "otros"
+  | "visitas";
 
 export interface Pago {
   id: string;
@@ -18,6 +24,9 @@ export interface Pago {
   promocion_id: string | null;
   producto_id: string | null;
   folio: number | null;
+  es_visita_rapida: boolean;
+  nombre_visitante: string | null;
+  telefono_visitante: string | null;
   created_at: string;
 }
 
@@ -120,6 +129,53 @@ export async function createPago(
 }
 
 /**
+ * Registra una visita rápida: un pago de concepto 'visita' sin miembro,
+ * con los datos del visitante. No crea miembro ni prospecto.
+ */
+export async function createVisitaRapida(
+  tenantId: string,
+  input: VisitaRapidaInput
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("pagos")
+    .insert({
+      tenant_id: tenantId,
+      miembro_id: null,
+      concepto: "visita",
+      monto: input.monto,
+      metodo_pago: input.metodo_pago,
+      es_visita_rapida: true,
+      nombre_visitante: input.nombre_visitante,
+      telefono_visitante: input.telefono_visitante || null,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "No se pudo registrar la visita" };
+  }
+  return { ok: true, id: data.id };
+}
+
+export async function countVisitasRapidasHoy(tenantId: string): Promise<number> {
+  const supabase = await createClient();
+  const inicioHoy = new Date();
+  inicioHoy.setHours(0, 0, 0, 0);
+
+  const { count, error } = await supabase
+    .from("pagos")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("es_visita_rapida", true)
+    .gte("fecha_pago", inicioHoy.toISOString());
+
+  if (error) return 0;
+  return count ?? 0;
+}
+
+/**
  * Convierte categoría de UI a array de conceptos de DB.
  */
 function categoriaAConceptos(cat: CategoriaCaja): string[] | null {
@@ -127,7 +183,7 @@ function categoriaAConceptos(cat: CategoriaCaja): string[] | null {
   if (cat === "membresia") return ["membresia", "visita"];
   if (cat === "producto") return ["producto"];
   if (cat === "otros") return ["otro"];
-  return null;
+  return null; // "visitas" se filtra por es_visita_rapida, no por concepto
 }
 
 /**
@@ -146,16 +202,18 @@ export async function listPagosDelDia(
   let q = supabase
     .from("pagos")
     .select(
-      "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, plan_id, promocion_id, producto_id, created_at, miembros(nombre)"
+      "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, plan_id, promocion_id, producto_id, folio, es_visita_rapida, nombre_visitante, telefono_visitante, created_at, miembros(nombre)"
     )
     .eq("tenant_id", tenantId)
     .gte("fecha_pago", inicioHoy.toISOString())
     .order("fecha_pago", { ascending: false })
     .limit(limit);
 
-  const conceptos = categoriaAConceptos(categoria);
-  if (conceptos) {
-    q = q.in("concepto", conceptos);
+  if (categoria === "visitas") {
+    q = q.eq("es_visita_rapida", true);
+  } else {
+    const conceptos = categoriaAConceptos(categoria);
+    if (conceptos) q = q.in("concepto", conceptos);
   }
 
   const { data, error } = await q;
@@ -175,6 +233,9 @@ export async function listPagosDelDia(
     promocion_id: row.promocion_id,
     producto_id: row.producto_id,
     folio: row.folio ?? null,
+    es_visita_rapida: Boolean(row.es_visita_rapida),
+    nombre_visitante: row.nombre_visitante ?? null,
+    telefono_visitante: row.telefono_visitante ?? null,
     created_at: row.created_at,
     miembro_nombre: row.miembros?.nombre ?? null,
   }));
@@ -218,9 +279,11 @@ export async function getResumenCaja(
     .eq("tenant_id", tenantId)
     .gte("fecha_pago", inicioMes.toISOString());
 
-  const conceptos = categoriaAConceptos(categoria);
-  if (conceptos) {
-    q = q.in("concepto", conceptos);
+  if (categoria === "visitas") {
+    q = q.eq("es_visita_rapida", true);
+  } else {
+    const conceptos = categoriaAConceptos(categoria);
+    if (conceptos) q = q.in("concepto", conceptos);
   }
 
   const { data, error } = await q;

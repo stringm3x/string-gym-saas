@@ -8,6 +8,7 @@ const options = [
   { value: "all", label: "Todo" },
   { value: "membresia", label: "Membresías" },
   { value: "producto", label: "Productos" },
+  { value: "visitas", label: "Visitas" },
   { value: "otros", label: "Otros" },
 ] as const;
 

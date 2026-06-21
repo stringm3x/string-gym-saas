@@ -36,11 +36,20 @@ export function PagosFeed({ pagos, slug }: PagosFeedProps) {
           className="flex items-center justify-between gap-4 px-4 py-3"
         >
           <div className="flex min-w-0 items-center gap-3">
-            <Badge variant="neutral" className="shrink-0">
-              {conceptoLabels[p.concepto] ?? p.concepto}
+            <Badge
+              variant={p.es_visita_rapida ? "info" : "neutral"}
+              className="shrink-0"
+            >
+              {p.es_visita_rapida
+                ? "Visita"
+                : (conceptoLabels[p.concepto] ?? p.concepto)}
             </Badge>
             <div className="min-w-0">
-              {p.miembro_id && p.miembro_nombre ? (
+              {p.es_visita_rapida ? (
+                <p className="truncate text-sm font-medium text-text-primary">
+                  {p.nombre_visitante ?? "Visitante"}
+                </p>
+              ) : p.miembro_id && p.miembro_nombre ? (
                 <Link
                   href={`/${slug}/miembros/${p.miembro_id}`}
                   className="truncate text-sm font-medium text-text-primary transition-colors hover:text-brand-green"

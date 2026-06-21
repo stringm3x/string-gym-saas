@@ -6,6 +6,7 @@ import {
   LuScanLine,
   LuCalendarDays,
   LuTrendingUp,
+  LuUserPlus,
 } from "react-icons/lu";
 import { redirect } from "next/navigation";
 import { getTenant } from "@/lib/tenant";
@@ -16,6 +17,7 @@ import {
   getCheckinsStats,
   listMiembrosPorVencer,
 } from "@/lib/queries/dashboard.queries";
+import { countVisitasRapidasHoy } from "@/lib/queries/pagos.queries";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { CheckinsChart } from "@/components/dashboard/CheckinsChart";
 import { PorVencerList } from "@/components/dashboard/PorVencerList";
@@ -32,11 +34,13 @@ export default async function DashboardPage({ params }: PageProps) {
     redirect(`/${slug}/checkins`);
   }
 
-  const [miembros, ingresos, checkins, porVencer] = await Promise.all([
+  const [miembros, ingresos, checkins, porVencer, visitasHoy] =
+    await Promise.all([
     getMiembrosStats(tenant.id),
     getIngresosStats(tenant.id),
     getCheckinsStats(tenant.id),
     listMiembrosPorVencer(tenant.id, 7),
+    countVisitasRapidasHoy(tenant.id),
   ]);
 
   // Calcular delta del mes vs mes anterior
@@ -67,7 +71,7 @@ export default async function DashboardPage({ params }: PageProps) {
       </div>
 
       {/* Métricas de miembros */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
           label="Miembros activos"
           value={miembros.activos}
@@ -92,6 +96,12 @@ export default async function DashboardPage({ params }: PageProps) {
           value={checkins.hoy}
           variant="default"
           icon={<LuScanLine className="h-4 w-4" />}
+        />
+        <StatCard
+          label="Visitas hoy"
+          value={visitasHoy}
+          variant="default"
+          icon={<LuUserPlus className="h-4 w-4" />}
         />
       </div>
 

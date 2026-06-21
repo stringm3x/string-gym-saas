@@ -12,6 +12,7 @@ import { formatMoneda } from "@/lib/utils/format";
 import { PagoForm } from "@/components/caja/PagoForm";
 import { PagosFeed } from "@/components/caja/PagosFeed";
 import { CajaFilters } from "@/components/caja/CajaFilters";
+import { VisitaRapidaButton } from "@/components/caja/VisitaRapidaButton";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -19,7 +20,12 @@ interface PageProps {
 }
 
 function parseCategoria(value?: string): CategoriaCaja {
-  if (value === "membresia" || value === "producto" || value === "otros")
+  if (
+    value === "membresia" ||
+    value === "producto" ||
+    value === "otros" ||
+    value === "visitas"
+  )
     return value;
   return "all";
 }
@@ -54,13 +60,16 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-          Caja
-        </h2>
-        <p className="mt-1 text-sm text-text-secondary">
-          Registra cobros y revisa lo cobrado del día.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+            Caja
+          </h2>
+          <p className="mt-1 text-sm text-text-secondary">
+            Registra cobros y revisa lo cobrado del día.
+          </p>
+        </div>
+        <VisitaRapidaButton />
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">

@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
-import { createPago } from "@/lib/queries/pagos.queries";
+import { createPago, createVisitaRapida } from "@/lib/queries/pagos.queries";
 import { pagoSchema } from "@/lib/validations/pago.schema";
+import { visitaRapidaSchema } from "@/lib/validations/visita-rapida.schema";
 
 export interface PagoResult {
   ok: boolean;
@@ -67,5 +68,40 @@ export async function registerPagoAction(
     revalidatePath(`/${tenant.slug}/inventario/movimientos`);
   }
 
+  return { ok: true, error: null, fieldErrors: {}, pagoId: result.id };
+}
+
+export async function registrarVisitaRapidaAction(
+  _prev: PagoResult,
+  formData: FormData
+): Promise<PagoResult> {
+  const tenant = await getTenant();
+
+  const raw = {
+    nombre_visitante: String(formData.get("nombre_visitante") ?? ""),
+    telefono_visitante: String(formData.get("telefono_visitante") ?? ""),
+    monto: Number(formData.get("monto") ?? 0),
+    metodo_pago: String(formData.get("metodo_pago") ?? "efectivo") as
+      | "efectivo"
+      | "tarjeta"
+      | "transferencia",
+  };
+
+  const parsed = visitaRapidaSchema.safeParse(raw);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const path = issue.path[0]?.toString();
+      if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+    }
+    return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
+  }
+
+  const result = await createVisitaRapida(tenant.id, parsed.data);
+  if (!result.ok) {
+    return { ok: false, error: result.error, fieldErrors: {} };
+  }
+
+  revalidatePath(`/${tenant.slug}/caja`);
   return { ok: true, error: null, fieldErrors: {}, pagoId: result.id };
 }
