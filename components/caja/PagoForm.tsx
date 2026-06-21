@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils/cn";
 import { formatFecha } from "@/lib/utils/format";
 import {
   calcularRangoMembresia,
+  calcularRangoPorDias,
   duracionPresets,
   type DuracionPreset,
 } from "@/lib/utils/membresia-rango";
@@ -198,14 +199,14 @@ export function PagoForm({
     }
 
     if (selMem.kind === "plan") {
-      const rango = calcularRangoMembresiaPorDias(
+      const rango = calcularRangoPorDias(
         selMem.plan.dias_duracion,
         miembro?.fecha_vencimiento
       );
       setPeriodoInicio(rango.periodo_inicio);
       setPeriodoFin(rango.periodo_fin);
     } else if (selMem.kind === "promo" && selMem.promo.dias_duracion) {
-      const rango = calcularRangoMembresiaPorDias(
+      const rango = calcularRangoPorDias(
         selMem.promo.dias_duracion,
         miembro?.fecha_vencimiento
       );
@@ -692,37 +693,4 @@ function MiembroAutocomplete({
       )}
     </div>
   );
-}
-
-function calcularRangoMembresiaPorDias(
-  dias: number,
-  fechaVencimientoActual: string | null | undefined,
-  hoy: Date = new Date()
-): { periodo_inicio: string; periodo_fin: string } {
-  const inicioHoy = new Date(hoy);
-  inicioHoy.setHours(0, 0, 0, 0);
-
-  let inicio = inicioHoy;
-  if (fechaVencimientoActual) {
-    const vencActual = new Date(fechaVencimientoActual + "T00:00:00");
-    if (vencActual > inicioHoy) {
-      inicio = new Date(vencActual);
-      inicio.setDate(inicio.getDate() + 1);
-    }
-  }
-
-  const fin = new Date(inicio);
-  fin.setDate(fin.getDate() + dias - 1);
-
-  const toISODate = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  };
-
-  return {
-    periodo_inicio: toISODate(inicio),
-    periodo_fin: toISODate(fin),
-  };
 }
