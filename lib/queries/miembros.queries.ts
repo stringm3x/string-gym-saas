@@ -14,6 +14,8 @@ export interface Miembro {
   notas: string | null;
   archivado: boolean;
   archivado_at: string | null;
+  plan_id: string | null;
+  origen_importacion: string | null;
   created_at: string;
 }
 
@@ -30,6 +32,8 @@ export interface MiembrosListParams {
   incluirArchivados?: boolean;
   /** Muestra únicamente los archivados. */
   soloArchivados?: boolean;
+  /** Filtra por origen: manual (sin importar) o csv (importados). */
+  origen?: "todos" | "manual" | "csv";
 }
 
 type MiembroRaw = Miembro & {
@@ -43,6 +47,7 @@ export async function listMiembros({
   tagId,
   incluirArchivados = false,
   soloArchivados = false,
+  origen = "todos",
 }: MiembrosListParams): Promise<MiembroConTags[]> {
   const supabase = await createClient();
 
@@ -64,6 +69,12 @@ export async function listMiembros({
     .select("*, miembros_tags(tags(id, nombre, color, tenant_id, created_at))")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false });
+
+  if (origen === "manual") {
+    query = query.is("origen_importacion", null);
+  } else if (origen === "csv") {
+    query = query.like("origen_importacion", "csv:%");
+  }
 
   // Filtro de archivado: por default solo activos; soloArchivados invierte;
   // incluirArchivados no aplica filtro.
@@ -135,7 +146,8 @@ export async function getMiembro(
 
 export async function createMiembro(
   tenantId: string,
-  input: MiembroInput
+  input: MiembroInput,
+  planId?: string | null
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const supabase = await createClient();
 
@@ -146,6 +158,7 @@ export async function createMiembro(
     email: input.email || null,
     fecha_inscripcion: input.fecha_inscripcion,
     fecha_vencimiento: input.fecha_vencimiento || null,
+    plan_id: planId ?? null,
   };
 
   const { data, error } = await supabase
@@ -164,20 +177,111 @@ export async function createMiembro(
   return { ok: true, id: data.id };
 }
 
+/** Sets normalizados de teléfonos/emails existentes — para detectar duplicados. */
+export async function getExistingContactos(
+  tenantId: string
+): Promise<{ telefonos: Set<string>; emails: Set<string> }> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("miembros")
+    .select("telefono, email")
+    .eq("tenant_id", tenantId);
+
+  const telefonos = new Set<string>();
+  const emails = new Set<string>();
+  for (const r of data ?? []) {
+    if (r.telefono) telefonos.add(String(r.telefono).replace(/\D/g, ""));
+    if (r.email) emails.add(String(r.email).trim().toLowerCase());
+  }
+  return { telefonos, emails };
+}
+
+export interface BulkMiembroRow {
+  nombre: string;
+  telefono: string | null;
+  email: string | null;
+  fecha_inscripcion: string;
+  fecha_vencimiento: string | null;
+  notas: string | null;
+  plan_id: string | null;
+}
+
+export interface BulkCreateResult {
+  successCount: number;
+  failures: { index: number; error: string }[];
+}
+
+/**
+ * Inserta miembros en bloque por chunks de 50. Si un chunk falla, reintenta
+ * fila por fila para aislar y reportar las que fallan sin abortar todo.
+ * `index` en `failures` es la posición en `rows` (0-indexed).
+ */
+export async function bulkCreateMiembros(
+  tenantId: string,
+  rows: BulkMiembroRow[],
+  originId: string
+): Promise<BulkCreateResult> {
+  const supabase = await createClient();
+  const CHUNK = 50;
+  let successCount = 0;
+  const failures: { index: number; error: string }[] = [];
+
+  const toPayload = (r: BulkMiembroRow) => ({
+    tenant_id: tenantId,
+    nombre: r.nombre,
+    telefono: r.telefono,
+    email: r.email,
+    fecha_inscripcion: r.fecha_inscripcion,
+    fecha_vencimiento: r.fecha_vencimiento,
+    notas: r.notas,
+    plan_id: r.plan_id,
+    origen_importacion: originId,
+  });
+
+  for (let start = 0; start < rows.length; start += CHUNK) {
+    const chunk = rows.slice(start, start + CHUNK);
+
+    const { error } = await supabase.from("miembros").insert(chunk.map(toPayload));
+    if (!error) {
+      successCount += chunk.length;
+      continue;
+    }
+
+    // El batch falló — aislar fila por fila.
+    for (let i = 0; i < chunk.length; i++) {
+      const { error: rowError } = await supabase
+        .from("miembros")
+        .insert(toPayload(chunk[i]));
+      if (rowError) {
+        failures.push({ index: start + i, error: rowError.message });
+      } else {
+        successCount += 1;
+      }
+    }
+  }
+
+  return { successCount, failures };
+}
+
 export async function updateMiembro(
   tenantId: string,
   id: string,
-  input: MiembroInput
+  input: MiembroInput,
+  planId?: string | null
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     nombre: input.nombre,
     telefono: input.telefono || null,
     email: input.email || null,
     fecha_inscripcion: input.fecha_inscripcion,
     fecha_vencimiento: input.fecha_vencimiento || null,
   };
+  // Solo tocar plan_id si se pasó explícitamente (no pisar en edición normal).
+  if (planId !== undefined) {
+    payload.plan_id = planId;
+  }
 
   const { error } = await supabase
     .from("miembros")
