@@ -71,8 +71,9 @@ export default async function DashboardPage({ params }: PageProps) {
       </div>
 
       {/* Métricas de miembros */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
+          index={0}
           label="Miembros activos"
           value={miembros.activos}
           variant="success"
@@ -80,24 +81,28 @@ export default async function DashboardPage({ params }: PageProps) {
           hint={`de ${miembros.total} totales`}
         />
         <StatCard
+          index={1}
           label="Por vencer (7 días)"
           value={miembros.por_vencer}
           variant="warning"
           icon={<LuTriangleAlert className="h-4 w-4" />}
         />
         <StatCard
+          index={2}
           label="Inactivos"
           value={miembros.inactivos}
           variant="default"
           icon={<LuUsers className="h-4 w-4" />}
         />
         <StatCard
+          index={3}
           label="Check-ins hoy"
           value={checkins.hoy}
           variant="default"
           icon={<LuScanLine className="h-4 w-4" />}
         />
         <StatCard
+          index={4}
           label="Visitas hoy"
           value={visitasHoy}
           variant="default"
@@ -106,8 +111,9 @@ export default async function DashboardPage({ params }: PageProps) {
       </div>
 
       {/* Métricas de ingresos */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
+          index={5}
           label="Ingresos hoy"
           value={ingresos.hoy}
           format="currency"
@@ -115,6 +121,7 @@ export default async function DashboardPage({ params }: PageProps) {
           icon={<LuWallet className="h-4 w-4" />}
         />
         <StatCard
+          index={6}
           label="Esta semana"
           value={ingresos.semana}
           format="currency"
@@ -122,6 +129,7 @@ export default async function DashboardPage({ params }: PageProps) {
           icon={<LuCalendarDays className="h-4 w-4" />}
         />
         <StatCard
+          index={7}
           label="Este mes"
           value={ingresos.mes}
           format="currency"
@@ -133,7 +141,10 @@ export default async function DashboardPage({ params }: PageProps) {
       </div>
 
       {/* Gráfica de check-ins y lista de por vencer */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div
+        className="animate-stat-in grid gap-6 lg:grid-cols-2"
+        style={{ animationDelay: "560ms" }}
+      >
         <CheckinsChart data={checkins.ultimos7Dias} />
         <PorVencerList miembros={porVencer} slug={slug} />
       </div>

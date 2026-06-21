@@ -62,6 +62,22 @@ body {
   outline-offset: 2px;
 }
 
+/* Entrada de cards (dashboard) — stagger vía animation-delay inline */
+@keyframes statCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-stat-in {
+  animation: statCardIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* Reduced motion — respeta preferencia del sistema */
 @media (prefers-reduced-motion: reduce) {
   *,
