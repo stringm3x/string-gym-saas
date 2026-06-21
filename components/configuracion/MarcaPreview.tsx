@@ -7,6 +7,7 @@ interface MarcaPreviewProps {
   logoUrl: string | null;
   colorAcento: string;
   colorSidebar: string;
+  colorFondo: string;
   gymNombre: string;
 }
 
@@ -14,6 +15,7 @@ export function MarcaPreview({
   logoUrl,
   colorAcento,
   colorSidebar,
+  colorFondo,
   gymNombre,
 }: MarcaPreviewProps) {
   return (
@@ -73,7 +75,10 @@ export function MarcaPreview({
           </div>
 
           {/* Contenido simulado */}
-          <div className="flex flex-1 flex-col gap-4 bg-bg p-4">
+          <div
+            className="flex flex-1 flex-col gap-4 p-4"
+            style={{ backgroundColor: colorFondo }}
+          >
             <div className="flex items-center gap-2">
               <span
                 className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"

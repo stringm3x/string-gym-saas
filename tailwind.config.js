@@ -9,6 +9,7 @@ module.exports = {
       colors: {
         bg: "var(--color-bg)",
         sidebar: "var(--color-sidebar)",
+        canvas: "var(--color-bg-content)",
         surface: {
           DEFAULT: "var(--color-surface)",
           hover: "var(--color-surface-hover)",

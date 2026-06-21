@@ -43,6 +43,7 @@ export async function updateMarcaAction(
   const parsed = marcaColoresSchema.safeParse({
     color_acento: String(formData.get("color_acento") ?? ""),
     color_sidebar: String(formData.get("color_sidebar") ?? ""),
+    color_fondo: String(formData.get("color_fondo") ?? ""),
   });
 
   if (!parsed.success) {

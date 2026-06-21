@@ -12,6 +12,9 @@
   /* Fondo del sidebar — personalizable por gyms Pro+ (default = bg) */
   --color-sidebar: #0a0a0a;
 
+  /* Fondo del área de contenido — personalizable por gyms Pro+ (default = bg) */
+  --color-bg-content: #0a0a0a;
+
   /* Marca */
   --color-brand-green: #50ff05;
   --color-brand-gray: #a1a1aa;

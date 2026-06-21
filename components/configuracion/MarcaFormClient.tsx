@@ -17,6 +17,7 @@ import {
 import {
   DEFAULT_COLOR_ACENTO,
   DEFAULT_COLOR_SIDEBAR,
+  DEFAULT_COLOR_FONDO,
 } from "@/lib/validations/marca.schema";
 import { PLAN_LABELS } from "@/lib/features";
 import { STRING_SOPORTE_WHATSAPP } from "@/lib/constants";
@@ -33,6 +34,7 @@ const PRESETS = [
 ];
 
 const SIDEBAR_PRESETS = ["#141414", "#0a0a0a", "#1e293b", "#1c1917", "#0c1220"];
+const FONDO_PRESETS = ["#0a0a0a", "#111827", "#0f172a", "#1a1a1a", "#0c0a09"];
 
 const initialState: MarcaFormState = { ok: false, error: null, fieldErrors: {} };
 
@@ -41,6 +43,7 @@ interface MarcaFormClientProps {
   logoInicial: string | null;
   colorAcentoInicial: string;
   colorSidebarInicial: string;
+  colorFondoInicial: string;
   canColors: boolean;
 }
 
@@ -49,6 +52,7 @@ export function MarcaFormClient({
   logoInicial,
   colorAcentoInicial,
   colorSidebarInicial,
+  colorFondoInicial,
   canColors,
 }: MarcaFormClientProps) {
   const router = useRouter();
@@ -57,6 +61,7 @@ export function MarcaFormClient({
   const [logoUrl, setLogoUrl] = useState<string | null>(logoInicial);
   const [colorAcento, setColorAcento] = useState(colorAcentoInicial);
   const [colorSidebar, setColorSidebar] = useState(colorSidebarInicial);
+  const [colorFondo, setColorFondo] = useState(colorFondoInicial);
 
   const [state, formAction, isPending] = useActionState(
     updateMarcaAction,
@@ -99,6 +104,7 @@ export function MarcaFormClient({
   function restaurarDefaults() {
     setColorAcento(DEFAULT_COLOR_ACENTO);
     setColorSidebar(DEFAULT_COLOR_SIDEBAR);
+    setColorFondo(DEFAULT_COLOR_FONDO);
   }
 
   const upgradeUrl = `https://wa.me/${STRING_SOPORTE_WHATSAPP}?text=${encodeURIComponent(
@@ -151,9 +157,16 @@ export function MarcaFormClient({
                 onChange={setColorSidebar}
                 presetColors={SIDEBAR_PRESETS}
               />
+              <ColorPicker
+                label="Color de fondo del contenido"
+                value={colorFondo}
+                onChange={setColorFondo}
+                presetColors={FONDO_PRESETS}
+              />
 
               <input type="hidden" name="color_acento" value={colorAcento} />
               <input type="hidden" name="color_sidebar" value={colorSidebar} />
+              <input type="hidden" name="color_fondo" value={colorFondo} />
 
               <div className="flex items-center justify-between border-t border-border pt-4">
                 <Button
@@ -201,6 +214,7 @@ export function MarcaFormClient({
           logoUrl={logoUrl}
           colorAcento={canColors ? colorAcento : DEFAULT_COLOR_ACENTO}
           colorSidebar={canColors ? colorSidebar : DEFAULT_COLOR_SIDEBAR}
+          colorFondo={canColors ? colorFondo : DEFAULT_COLOR_FONDO}
           gymNombre={gymNombre}
         />
       </div>

@@ -74,7 +74,7 @@ export default async function TenantLayout({
   const aplicaColores =
     marca && hasFeature(tenant.plan, "personalizacion_colores");
   const marcaCss = aplicaColores
-    ? `:root{--color-brand-green:${marca.color_acento};--color-sidebar:${marca.color_sidebar};}`
+    ? `:root{--color-brand-green:${marca.color_acento};--color-sidebar:${marca.color_sidebar};--color-bg-content:${marca.color_fondo};}`
     : null;
 
   const alertasBadge = tieneAlertas
@@ -104,7 +104,7 @@ export default async function TenantLayout({
             badges={badges}
           />
 
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex flex-1 flex-col overflow-hidden bg-canvas">
             <Header gymNombre={gym.nombre} plan={tenant.plan} />
 
             <main className="flex-1 overflow-y-auto px-8 py-6">{children}</main>
