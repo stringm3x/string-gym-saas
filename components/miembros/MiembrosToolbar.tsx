@@ -35,6 +35,7 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
   const currentSearch = searchParams.get("q") ?? "";
   const currentTag = searchParams.get("tag") ?? "";
   const currentArchivado = searchParams.get("archivado") === "true";
+  const currentOrigen = searchParams.get("origen") ?? "todos";
   const [searchInput, setSearchInput] = useState(currentSearch);
 
   useEffect(() => {
@@ -74,6 +75,18 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
       params.delete("tag");
     } else {
       params.set("tag", tagId);
+    }
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  }
+
+  function setOrigen(origen: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (origen === "todos") {
+      params.delete("origen");
+    } else {
+      params.set("origen", origen);
     }
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -129,6 +142,19 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-text-muted">Origen:</span>
+          <select
+            value={currentOrigen}
+            onChange={(e) => setOrigen(e.target.value)}
+            className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs text-text-primary focus:border-brand-green focus:outline-none"
+          >
+            <option value="todos">Todos</option>
+            <option value="manual">Creados manualmente</option>
+            <option value="csv">Importados (CSV)</option>
+          </select>
+        </div>
+
         {canTags && availableTags.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-muted">Tag:</span>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LuPlus, LuUsers } from "react-icons/lu";
+import { LuPlus, LuUsers, LuUpload } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { listMiembros } from "@/lib/queries/miembros.queries";
 import { listTags } from "@/lib/queries/tags.queries";
@@ -16,6 +16,7 @@ interface PageProps {
     filter?: string;
     tag?: string;
     archivado?: string;
+    origen?: string;
   }>;
 }
 
@@ -37,6 +38,8 @@ export default async function MiembrosPage({
       : "all";
 
   const soloArchivados = sp.archivado === "true";
+  const origen =
+    sp.origen === "manual" || sp.origen === "csv" ? sp.origen : "todos";
 
   const [miembros, availableTags, plantillas] = await Promise.all([
     listMiembros({
@@ -45,10 +48,13 @@ export default async function MiembrosPage({
       filter,
       tagId: sp.tag,
       soloArchivados,
+      origen,
     }),
     listTags(tenant.id),
     listPlantillas(tenant.id, { soloActivas: true }),
   ]);
+
+  const isOwner = tenant.role === "owner";
 
   const isFiltered = filter !== "all" || Boolean(sp.q);
 
@@ -68,11 +74,23 @@ export default async function MiembrosPage({
           </p>
         </div>
 
-        <Link href={`/${slug}/miembros/nuevo`}>
-          <Button leftIcon={<LuPlus className="h-4 w-4" />}>
-            Nuevo miembro
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {isOwner && (
+            <Link href={`/${slug}/miembros/importar`}>
+              <Button
+                variant="secondary"
+                leftIcon={<LuUpload className="h-4 w-4" />}
+              >
+                Importar CSV
+              </Button>
+            </Link>
+          )}
+          <Link href={`/${slug}/miembros/nuevo`}>
+            <Button leftIcon={<LuPlus className="h-4 w-4" />}>
+              Nuevo miembro
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <MiembrosToolbar availableTags={availableTags} plan={tenant.plan} />
