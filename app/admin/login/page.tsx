@@ -15,11 +15,11 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-danger/30 bg-danger/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-danger">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-green">
             ⚙️ Panel interno
           </div>
           <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-            STRING<span className="text-danger">ADMIN</span>
+            STRING<span className="text-brand-green">ADMIN</span>
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
             Acceso restringido a administradores de STRING
@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
               type="email"
               autoComplete="email"
               required
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-danger focus:outline-none"
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
               placeholder="tu@correo.com"
             />
           </div>
@@ -58,7 +58,7 @@ export default function AdminLoginPage() {
               type="password"
               autoComplete="current-password"
               required
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-danger focus:outline-none"
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
               placeholder="••••••••"
             />
           </div>
@@ -75,7 +75,7 @@ export default function AdminLoginPage() {
           <button
             type="submit"
             disabled={isPending}
-            className="w-full rounded-lg bg-danger px-4 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-danger/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-bg transition-colors duration-150 hover:bg-brand-green/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isPending ? "Entrando…" : "Entrar"}
           </button>
