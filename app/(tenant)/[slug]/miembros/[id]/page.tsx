@@ -23,6 +23,9 @@ import { PagosHistory } from "@/components/caja/PagosHistory";
 import { getReservasByMiembro } from "@/lib/queries/clases.queries";
 import { MiembroClasesHistorial } from "@/components/clases/MiembroClasesHistorial";
 import type { ReservaMiembro } from "@/lib/types/clases";
+import { getMiembroQrData, type MiembroQrData } from "@/lib/queries/qr.queries";
+import { generarQRDataUrl } from "@/lib/utils/qr-generator";
+import { MiembroQrPanel } from "@/components/miembros/MiembroQrPanel";
 
 interface PageProps {
   params: Promise<{ slug: string; id: string }>;
@@ -32,6 +35,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
   const tenant = await getTenant();
   const canClases = hasFeature(tenant.plan, "clases");
+  const canQr = hasFeature(tenant.plan, "qr_access");
 
   const [
     miembro,
@@ -42,6 +46,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     notas,
     plantillas,
     reservasClases,
+    qrData,
   ] = await Promise.all([
     getMiembro(tenant.id, id),
     listCheckinsByMiembro(tenant.id, id, 20),
@@ -53,11 +58,17 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     canClases
       ? getReservasByMiembro(tenant.id, id)
       : Promise.resolve([] as ReservaMiembro[]),
+    canQr
+      ? getMiembroQrData(tenant.id, id)
+      : Promise.resolve(null as MiembroQrData | null),
   ]);
 
   if (!miembro) {
     notFound();
   }
+
+  const qrDataUrl =
+    canQr && qrData ? await generarQRDataUrl(qrData.qr_token) : null;
 
   const canTags = hasFeature(tenant.plan, "tags");
   const canTimeline = hasFeature(tenant.plan, "timeline_notas");
@@ -159,6 +170,17 @@ export default async function MiembroDetailPage({ params }: PageProps) {
       </div>
 
       {canClases && <MiembroClasesHistorial reservas={reservasClases} />}
+
+      {canQr && qrData && qrDataUrl && (
+        <MiembroQrPanel
+          qrDataUrl={qrDataUrl}
+          token={qrData.qr_token}
+          telefono={miembro.telefono}
+          nombre={miembro.nombre}
+          miembroId={miembro.id}
+          canRegenerar={tenant.role === "owner"}
+        />
+      )}
     </div>
   );
 }

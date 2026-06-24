@@ -132,6 +132,7 @@ export async function middleware(request: NextRequest) {
     "api-docs",
     "sdk",
     "sdk-docs",
+    "qr",
   ];
   const isPublicRoute =
     segments.length === 0 || publicRoutes.includes(segments[0]);

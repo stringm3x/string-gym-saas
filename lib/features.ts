@@ -39,6 +39,7 @@ export const planFeatures = {
     "personalizacion_colores",
     "clases",
     "api",
+    "qr_access",
   ],
   escala: [
     "alertas_dueno",
