@@ -309,7 +309,8 @@
                 '<div class="sg-ses-n">' + esc(s.clase_nombre) + "</div>" +
                 '<div class="sg-muted">' + hora12(s.hora_inicio) +
                 (s.instructor ? " · " + esc(s.instructor) : "") + "</div>" +
-                '<div class="sg-muted">' + (s.cupo_maximo - s.cupo_disponible) + "/" + s.cupo_maximo + " · </div>" +
+                '<div class="sg-muted" style="margin:.25rem 0">' +
+                (s.cupo_maximo - s.cupo_disponible) + "/" + s.cupo_maximo + " lugares</div>" +
                 btn +
                 "</div>"
               );
