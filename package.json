@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:sdk": "node scripts/build-sdk.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

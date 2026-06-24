@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "API Pública — STRING GYM",
@@ -54,6 +55,22 @@ export default function ApiDocsPage() {
             planes, clases, reservas y prospectos en vivo.
           </p>
         </header>
+
+        {/* SDK */}
+        <section className="rounded-xl border border-brand-green/30 bg-brand-green/5 p-4">
+          <h2 className="text-sm font-semibold text-brand-green">
+            ¿Prefieres no escribir fetch?
+          </h2>
+          <p className="mt-1 text-sm text-text-secondary">
+            Usa el{" "}
+            <Link href="/sdk-docs" className="text-brand-green hover:underline">
+              SDK de integración
+            </Link>
+            : componentes HTML (<code>&lt;string-gym-planes&gt;</code>,{" "}
+            <code>&lt;string-gym-form&gt;</code>…) que se conectan solos a esta
+            API. Ideal para landing pages.
+          </p>
+        </section>
 
         {/* Autenticación */}
         <section className="space-y-2">

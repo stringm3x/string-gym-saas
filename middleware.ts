@@ -123,7 +123,16 @@ export async function middleware(request: NextRequest) {
 
   // Rutas públicas: login, registro, aceptar invitación, recibos, API pública.
   const segments = pathname.split("/").filter(Boolean);
-  const publicRoutes = ["login", "registro", "auth", "recibos", "api", "api-docs"];
+  const publicRoutes = [
+    "login",
+    "registro",
+    "auth",
+    "recibos",
+    "api",
+    "api-docs",
+    "sdk",
+    "sdk-docs",
+  ];
   const isPublicRoute =
     segments.length === 0 || publicRoutes.includes(segments[0]);
 
