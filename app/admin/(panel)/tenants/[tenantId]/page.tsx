@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LuArrowLeft, LuStar } from "react-icons/lu";
 import {
   getTenantDetailAdmin,
   getTenantMetrics,
@@ -70,9 +71,9 @@ export default async function TenantDetailPage({
     <div className="space-y-6">
       <Link
         href="/admin/tenants"
-        className="text-xs text-text-secondary hover:text-text-primary"
+        className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary"
       >
-        ← Tenants
+        <LuArrowLeft className="h-3.5 w-3.5" /> Tenants
       </Link>
 
       {/* Info general */}
@@ -89,8 +90,8 @@ export default async function TenantDetailPage({
             {tenant.estado}
           </span>
           {tenant.es_fundador && (
-            <span className="inline-flex rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning">
-              ★ Fundador
+            <span className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning">
+              <LuStar className="h-3 w-3" /> Fundador
             </span>
           )}
         </div>

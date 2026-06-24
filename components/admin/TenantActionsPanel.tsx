@@ -57,7 +57,7 @@ export function TenantActionsPanel({
   const [cancelMotivo, setCancelMotivo] = useState("");
   const [dias, setDias] = useState(14);
 
-  function run(fn: () => Promise<ActionResult>, okText = "Hecho ✓") {
+  function run(fn: () => Promise<ActionResult>, okText = "Hecho") {
     setMsg(null);
     start(async () => {
       const r = await fn();
@@ -286,7 +286,7 @@ export function TenantActionsPanel({
                 return;
               run(
                 () => resetPasswordOwnerAction(tenant.id),
-                "Email de recuperación enviado ✓"
+                "Email de recuperación enviado"
               );
             }}
             className={BTN_GHOST}

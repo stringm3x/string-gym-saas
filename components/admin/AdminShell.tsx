@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LuShield, LuArrowLeft } from "react-icons/lu";
 import { logoutAdmin } from "@/app/admin/(panel)/actions";
 import type { StringAdmin } from "@/lib/types/admin";
 
@@ -11,9 +12,9 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", ready: true },
   { href: "/admin/tenants", label: "Tenants", ready: true },
-  { href: "/admin/solicitudes", label: "Solicitudes", ready: false },
-  { href: "/admin/eventos", label: "Audit log", ready: false },
-  { href: "/admin/cuenta", label: "Mi cuenta", ready: false },
+  { href: "/admin/solicitudes", label: "Solicitudes", ready: true },
+  { href: "/admin/eventos", label: "Audit log", ready: true },
+  { href: "/admin/cuenta", label: "Mi cuenta", ready: true },
 ];
 
 /**
@@ -35,7 +36,7 @@ export function AdminShell({
       {/* Sidebar */}
       <aside className="flex w-60 flex-col border-r border-border bg-surface">
         <div className="flex items-center gap-2 border-b border-border px-5 py-4">
-          <span className="text-lg">⚙️</span>
+          <LuShield className="h-5 w-5 text-brand-green" />
           <span className="font-display text-lg uppercase tracking-wide text-text-primary">
             STRING<span className="text-brand-green">ADMIN</span>
           </span>
@@ -68,9 +69,9 @@ export function AdminShell({
         {appDomain && (
           <a
             href={`https://${appDomain}`}
-            className="border-t border-border px-5 py-3 text-xs text-text-secondary transition-colors hover:text-text-primary"
+            className="flex items-center gap-1.5 border-t border-border px-5 py-3 text-xs text-text-secondary transition-colors hover:text-text-primary"
           >
-            ← Volver a la app
+            <LuArrowLeft className="h-3.5 w-3.5" /> Volver a la app
           </a>
         )}
       </aside>

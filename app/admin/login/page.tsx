@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { LuShield } from "react-icons/lu";
 import { loginAdmin, type AdminLoginState } from "./actions";
 
 const initialState: AdminLoginState = { error: null };
@@ -15,8 +16,8 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-brand-green/30 bg-brand-green/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-green">
-            ⚙️ Panel interno
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-brand-green/30 bg-brand-green/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-green">
+            <LuShield className="h-3 w-3" /> Panel interno
           </div>
           <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary">
             STRING<span className="text-brand-green">ADMIN</span>

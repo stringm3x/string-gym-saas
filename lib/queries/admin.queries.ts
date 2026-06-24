@@ -363,3 +363,242 @@ export async function getTenantAdminEvents(
 
   return (data ?? []) as TenantAdminEvent[];
 }
+
+// ═══════════════════════ Bloque 5 — Dashboard / Eventos ═══════════════════════
+
+export interface AdminDashboardMetrics {
+  activos: number;
+  prueba: number;
+  pruebaDiasPromedio: number | null;
+  suspendidos: number;
+  mrrTotal: number;
+  nuevosEsteMes: number;
+  churnEsteMes: number;
+}
+
+function inicioDeMes(): Date {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), 1);
+}
+
+function diasHasta(iso: string | null): number | null {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime() - Date.now();
+  return Math.ceil(ms / 86_400_000);
+}
+
+/** Métricas globales para el dashboard del admin. */
+export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetrics> {
+  const current = await getCurrentAdmin();
+  if (!current) throw new Error("Acceso denegado");
+
+  const admin = createAdminClient();
+  const { data: gyms } = await admin
+    .from("gyms")
+    .select("plan, estado, created_at, prueba_hasta");
+
+  const rows = gyms ?? [];
+  const first = inicioDeMes().toISOString();
+
+  let activos = 0,
+    prueba = 0,
+    suspendidos = 0,
+    mrrTotal = 0,
+    nuevosEsteMes = 0;
+  const diasPrueba: number[] = [];
+
+  for (const g of rows) {
+    if (g.estado === "activo") activos++;
+    else if (g.estado === "prueba") {
+      prueba++;
+      const d = diasHasta(g.prueba_hasta);
+      if (d !== null) diasPrueba.push(Math.max(0, d));
+    } else if (g.estado === "suspendido") suspendidos++;
+
+    mrrTotal += tenantMrr(g.plan, g.estado);
+    if (g.created_at >= first) nuevosEsteMes++;
+  }
+
+  // Churn del mes: cancelaciones registradas en el audit log.
+  const { count: churnEsteMes } = await admin
+    .from("admin_events")
+    .select("id", { count: "exact", head: true })
+    .eq("accion", "tenant.cancelar")
+    .gte("created_at", first);
+
+  const pruebaDiasPromedio = diasPrueba.length
+    ? Math.round(diasPrueba.reduce((a, b) => a + b, 0) / diasPrueba.length)
+    : null;
+
+  return {
+    activos,
+    prueba,
+    pruebaDiasPromedio,
+    suspendidos,
+    mrrTotal,
+    nuevosEsteMes,
+    churnEsteMes: churnEsteMes ?? 0,
+  };
+}
+
+export interface AtencionTenant {
+  id: string;
+  nombre: string;
+  slug: string;
+  plan: string;
+  estado: string;
+  detalle: string;
+}
+
+export interface TenantsAtencion {
+  pruebaPorVencer: AtencionTenant[];
+  suspendidosViejos: AtencionTenant[];
+  exportPendiente: AtencionTenant[];
+}
+
+/** Los 3 casos de tenants que requieren atención. */
+export async function getTenantsRequierenAtencion(): Promise<TenantsAtencion> {
+  const current = await getCurrentAdmin();
+  if (!current) throw new Error("Acceso denegado");
+
+  const admin = createAdminClient();
+  const { data: gyms } = await admin
+    .from("gyms")
+    .select("id, nombre, slug, plan, estado, prueba_hasta, suspendido_at");
+
+  const rows = gyms ?? [];
+  const ahora = Date.now();
+  const en7d = ahora + 7 * 86_400_000;
+  const hace30d = ahora - 30 * 86_400_000;
+
+  const pruebaPorVencer: AtencionTenant[] = [];
+  const suspendidosViejos: AtencionTenant[] = [];
+
+  for (const g of rows) {
+    if (g.estado === "prueba" && g.prueba_hasta) {
+      const t = new Date(g.prueba_hasta).getTime();
+      if (t >= ahora && t <= en7d) {
+        const d = Math.ceil((t - ahora) / 86_400_000);
+        pruebaPorVencer.push({
+          id: g.id,
+          nombre: g.nombre,
+          slug: g.slug,
+          plan: g.plan,
+          estado: g.estado,
+          detalle: `Vence en ${d} día${d === 1 ? "" : "s"}`,
+        });
+      }
+    }
+    if (g.estado === "suspendido" && g.suspendido_at) {
+      if (new Date(g.suspendido_at).getTime() < hace30d) {
+        suspendidosViejos.push({
+          id: g.id,
+          nombre: g.nombre,
+          slug: g.slug,
+          plan: g.plan,
+          estado: g.estado,
+          detalle: `Suspendido desde ${new Date(g.suspendido_at).toLocaleDateString("es-MX")}`,
+        });
+      }
+    }
+  }
+
+  // Export pendiente: cancelaciones con exportar_datos_pendiente = true.
+  const byId = new Map(rows.map((g) => [g.id, g]));
+  const { data: cancelEvents } = await admin
+    .from("admin_events")
+    .select("target_tenant_id, metadata")
+    .eq("accion", "tenant.cancelar");
+
+  const exportPendiente: AtencionTenant[] = [];
+  const vistos = new Set<string>();
+  for (const e of cancelEvents ?? []) {
+    const meta = (e.metadata ?? {}) as Record<string, unknown>;
+    if (meta.exportar_datos_pendiente !== true) continue;
+    const id = e.target_tenant_id as string | null;
+    if (!id || vistos.has(id)) continue;
+    vistos.add(id);
+    const g = byId.get(id);
+    if (!g) continue;
+    exportPendiente.push({
+      id: g.id,
+      nombre: g.nombre,
+      slug: g.slug,
+      plan: g.plan,
+      estado: g.estado,
+      detalle: "Exportación de datos pendiente",
+    });
+  }
+
+  return { pruebaPorVencer, suspendidosViejos, exportPendiente };
+}
+
+export interface EventoLogRow {
+  id: string;
+  accion: string;
+  admin_email: string;
+  target_tenant_id: string | null;
+  tenant_nombre: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface EventosLogFilters {
+  accion?: string;
+  tenantId?: string;
+  desde?: string;
+  hasta?: string;
+}
+
+export interface EventosLogResult {
+  rows: EventoLogRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** Audit log completo con filtros y paginación. */
+export async function getAdminEventosLog(
+  filters: EventosLogFilters = {},
+  page = 1,
+  pageSize = 20
+): Promise<EventosLogResult> {
+  const current = await getCurrentAdmin();
+  if (!current) throw new Error("Acceso denegado");
+
+  const admin = createAdminClient();
+  let query = admin
+    .from("admin_events")
+    .select("id, accion, admin_email, target_tenant_id, metadata, created_at", {
+      count: "exact",
+    });
+
+  if (filters.accion) query = query.eq("accion", filters.accion);
+  if (filters.tenantId) query = query.eq("target_tenant_id", filters.tenantId);
+  if (filters.desde) query = query.gte("created_at", filters.desde);
+  if (filters.hasta) query = query.lte("created_at", filters.hasta);
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count } = await query
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  // Resolver nombres de tenants.
+  const { data: gyms } = await admin.from("gyms").select("id, nombre");
+  const nombres = new Map((gyms ?? []).map((g) => [g.id, g.nombre]));
+
+  const rows: EventoLogRow[] = (data ?? []).map((e) => ({
+    id: e.id,
+    accion: e.accion,
+    admin_email: e.admin_email,
+    target_tenant_id: e.target_tenant_id,
+    tenant_nombre: e.target_tenant_id
+      ? nombres.get(e.target_tenant_id) ?? null
+      : null,
+    metadata: (e.metadata ?? {}) as Record<string, unknown>,
+    created_at: e.created_at,
+  }));
+
+  return { rows, total: count ?? 0, page, pageSize };
+}

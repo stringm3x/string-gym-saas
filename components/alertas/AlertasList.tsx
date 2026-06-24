@@ -1,3 +1,4 @@
+import { LuCircleCheck } from "react-icons/lu";
 import { AlertaCard } from "./AlertaCard";
 import type { Alerta } from "@/lib/queries/alertas.queries";
 
@@ -11,7 +12,7 @@ export function AlertasList({ alertas }: AlertasListProps) {
   if (alertas.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <p className="text-4xl">🎯</p>
+        <LuCircleCheck className="h-10 w-10 text-text-muted" />
         <p className="mt-4 text-base font-medium text-text-primary">
           Todo en orden
         </p>
