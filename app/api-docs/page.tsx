@@ -59,8 +59,11 @@ export default function ApiDocsPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">Autenticación</h2>
           <p className="text-sm text-text-secondary">
-            Cada gym tiene una API key (formato <code>sgk_…</code>) que
-            obtienes en <em>Configuración → API</em>. Inclúyela en cada request
+            Los endpoints de <strong>lectura</strong> (<code>GET /planes</code>,{" "}
+            <code>/clases</code>, <code>/info</code>) son <strong>públicos</strong>:
+            solo necesitan el slug del gym. Los de <strong>escritura</strong>{" "}
+            (<code>POST /reservas</code>, <code>/prospectos</code>) requieren la
+            API key (formato <code>sgk_…</code>, en <em>Configuración → API</em>)
             en el header <code>Authorization</code>:
           </p>
           <Code>{`Authorization: Bearer sgk_tu_api_key`}</Code>

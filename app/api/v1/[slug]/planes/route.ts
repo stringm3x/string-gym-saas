@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { apiGuard } from "@/lib/api/guard";
+import { apiPublicGuard } from "@/lib/api/guard";
 import { apiSuccess, corsPreflight } from "@/lib/api/response";
 import { listPlanes } from "@/lib/queries/planes.queries";
 
@@ -10,16 +10,17 @@ export async function OPTIONS() {
   return corsPreflight();
 }
 
+/** Público: catálogo de planes, no requiere API key. */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const g = await apiGuard(request, slug, "/planes", "GET");
+  const g = await apiPublicGuard(request, slug, "/planes", "GET");
   if (!g.ok) return g.response;
 
   const admin = createAdminClient();
-  const planes = await listPlanes(g.ctx.tenantId, { soloActivos: true }, admin);
+  const planes = await listPlanes(g.gym.id, { soloActivos: true }, admin);
   const data = planes.map((p) => ({
     id: p.id,
     nombre: p.nombre,

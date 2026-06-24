@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { apiGuard } from "@/lib/api/guard";
+import { apiPublicGuard } from "@/lib/api/guard";
 import { apiSuccess, corsPreflight } from "@/lib/api/response";
 import { getSesionesByRango } from "@/lib/queries/clases.queries";
 import { hoyYMD, sumarDiasYMD } from "@/lib/utils/clases-format";
@@ -23,7 +23,7 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const g = await apiGuard(request, slug, "/clases", "GET");
+  const g = await apiPublicGuard(request, slug, "/clases", "GET");
   if (!g.ok) return g.response;
 
   const sp = request.nextUrl.searchParams;
@@ -33,7 +33,7 @@ export async function GET(
   const tipo = sp.get("tipo");
 
   const admin = createAdminClient();
-  let sesiones = await getSesionesByRango(g.ctx.tenantId, desde, hasta, admin);
+  let sesiones = await getSesionesByRango(g.gym.id, desde, hasta, admin);
 
   // Solo sesiones programadas a futuro, opcionalmente filtradas por tipo.
   sesiones = sesiones.filter(
