@@ -26,6 +26,12 @@ export function ConfigTabs({ slug, plan, role }: ConfigTabsProps) {
     { href: `${base}/marca`, label: "Marca" },
     { href: `${base}/addons`, label: "Add-ons" },
     { href: `${base}/staff`, label: "Staff", ownerOnly: true },
+    {
+      href: `${base}/clases`,
+      label: "Clases",
+      ownerOnly: true,
+      feature: "clases",
+    },
     { href: `${base}/planes`, label: "Planes" },
     { href: `${base}/promociones`, label: "Promociones", feature: "promociones" },
     { href: `${base}/tags`, label: "Tags", feature: "tags" },
