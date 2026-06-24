@@ -14,6 +14,7 @@ const origenLabels: Record<ProspectoConTags["origen"], string> = {
   referido: "Referido",
   manual: "Manual",
   clase_gratis: "Clase gratis",
+  api: "API",
 };
 
 function formatRelativeDate(isoString: string): string {

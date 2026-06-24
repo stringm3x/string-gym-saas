@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createReserva,
   getReservasBySesion,
@@ -30,13 +31,14 @@ export function primeraEnEspera(reservas: ClaseReserva[]): ClaseReserva | null {
 export async function reservarConCupo(
   tenantId: string,
   sesionId: string,
-  reservaData: ReservaInput
+  reservaData: ReservaInput,
+  client?: SupabaseClient
 ): Promise<{
   reserva: ClaseReserva | null;
   enListaEspera: boolean;
   error?: string;
 }> {
-  return createReserva(tenantId, sesionId, reservaData);
+  return createReserva(tenantId, sesionId, reservaData, client);
 }
 
 /**
@@ -47,12 +49,13 @@ export async function reservarConCupo(
  */
 export async function promoverListaEspera(
   tenantId: string,
-  sesionId: string
+  sesionId: string,
+  client?: SupabaseClient
 ): Promise<ClaseReserva | null> {
-  const reservas = await getReservasBySesion(tenantId, sesionId);
+  const reservas = await getReservasBySesion(tenantId, sesionId, client);
   const primera = primeraEnEspera(reservas);
   if (!primera) return null;
 
-  const { reserva } = await confirmarReserva(tenantId, primera.id);
+  const { reserva } = await confirmarReserva(tenantId, primera.id, client);
   return reserva ?? { ...primera, estado: "confirmada" };
 }

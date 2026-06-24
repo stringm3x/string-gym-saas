@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   findMiembroByTelefono,
   createProspectoClaseGratis,
@@ -23,7 +24,8 @@ export async function crearProspectoDesdeClaseGratis(
   clase: Pick<Clase, "tipo" | "nombre">,
   reserva: Pick<ClaseReserva, "id">,
   data: ReservanteData,
-  fecha: string
+  fecha: string,
+  client?: SupabaseClient
 ): Promise<string | null> {
   if (clase.tipo !== "gratis") return null;
 
@@ -32,17 +34,17 @@ export async function crearProspectoDesdeClaseGratis(
   if (!nombre || !telefono) return null;
 
   // No duplicar: si el teléfono ya es de un miembro, no se crea prospecto.
-  const miembro = await findMiembroByTelefono(tenantId, telefono);
+  const miembro = await findMiembroByTelefono(tenantId, telefono, client);
   if (miembro) return null;
 
   const nota = `Reservó clase gratis: ${clase.nombre} el ${fecha}`;
-  const { id } = await createProspectoClaseGratis(tenantId, {
-    nombre,
-    telefono,
-    nota,
-  });
+  const { id } = await createProspectoClaseGratis(
+    tenantId,
+    { nombre, telefono, nota },
+    client
+  );
   if (!id) return null;
 
-  await setReservaProspecto(tenantId, reserva.id, id);
+  await setReservaProspecto(tenantId, reserva.id, id, client);
   return id;
 }

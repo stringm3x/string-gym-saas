@@ -157,7 +157,12 @@ describe("reservarConCupo (delega en createReserva)", () => {
       enListaEspera: false,
     });
     const r = await reservarConCupo("t1", "s1", { miembroId: "m1" });
-    expect(createReserva).toHaveBeenCalledWith("t1", "s1", { miembroId: "m1" });
+    expect(createReserva).toHaveBeenCalledWith(
+      "t1",
+      "s1",
+      { miembroId: "m1" },
+      undefined
+    );
     expect(r.enListaEspera).toBe(false);
     expect(r.reserva?.estado).toBe("confirmada");
   });
@@ -191,8 +196,8 @@ describe("promoverListaEspera", () => {
     });
 
     const r = await promoverListaEspera("t1", "s1");
-    expect(getReservasBySesion).toHaveBeenCalledWith("t1", "s1");
-    expect(confirmarReserva).toHaveBeenCalledWith("t1", "c");
+    expect(getReservasBySesion).toHaveBeenCalledWith("t1", "s1", undefined);
+    expect(confirmarReserva).toHaveBeenCalledWith("t1", "c", undefined);
     expect(r?.id).toBe("c");
     expect(r?.estado).toBe("confirmada");
   });

@@ -121,9 +121,9 @@ export async function middleware(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  // Rutas públicas: login, registro, aceptar invitación, landing raíz.
+  // Rutas públicas: login, registro, aceptar invitación, recibos, API pública.
   const segments = pathname.split("/").filter(Boolean);
-  const publicRoutes = ["login", "registro", "auth", "recibos"];
+  const publicRoutes = ["login", "registro", "auth", "recibos", "api"];
   const isPublicRoute =
     segments.length === 0 || publicRoutes.includes(segments[0]);
 

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Clase,
   ClaseInput,
@@ -8,6 +9,13 @@ import type {
   ReservaMiembro,
   SesionToCreate,
 } from "@/lib/types/clases";
+
+/**
+ * Las funciones que la API pública usa aceptan un `client` opcional: el app
+ * (con sesión) usa el client de sesión por defecto (RLS), y la API REST pasa
+ * el admin client (service-role) ya scopeado por `tenantId`.
+ */
+type Db = SupabaseClient;
 
 const CLASE_COLS =
   "id, tenant_id, nombre, descripcion, instructor, color, tipo, duracion_minutos, cupo_maximo, es_recurrente, dias_semana, hora_inicio, fecha_inicio, fecha_fin, activa, created_at";
@@ -139,14 +147,13 @@ const SESION_COLS =
 export async function getSesionesByRango(
   tenantId: string,
   fechaInicio: string,
-  fechaFin: string
+  fechaFin: string,
+  client?: Db
 ): Promise<ClaseSesion[]> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("clases_sesiones")
-    .select(
-      `${SESION_COLS}, clase:clases(nombre, color, instructor, tipo)`
-    )
+    .select(`${SESION_COLS}, clase:clases(nombre, color, instructor, tipo)`)
     .eq("tenant_id", tenantId)
     .gte("fecha", fechaInicio)
     .lte("fecha", fechaFin)
@@ -158,9 +165,10 @@ export async function getSesionesByRango(
 
 export async function getSesionById(
   tenantId: string,
-  sesionId: string
+  sesionId: string,
+  client?: Db
 ): Promise<ClaseSesion | null> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("clases_sesiones")
     .select(
@@ -233,9 +241,10 @@ const RESERVA_COLS =
 
 export async function getReservasBySesion(
   tenantId: string,
-  sesionId: string
+  sesionId: string,
+  client?: Db
 ): Promise<ClaseReserva[]> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("clases_reservas")
     .select(
@@ -277,9 +286,10 @@ export async function getReservasByMiembro(
 export async function createReserva(
   tenantId: string,
   sesionId: string,
-  input: ReservaInput
+  input: ReservaInput,
+  client?: Db
 ): Promise<{ reserva: ClaseReserva | null; enListaEspera: boolean; error?: string }> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
 
   const { data: sesion } = await supabase
     .from("clases_sesiones")
@@ -350,14 +360,15 @@ export async function createReserva(
 }
 
 /**
- * Cancela una reserva. Devuelve la sesion_id para que el caller (Bloque 2)
- * pueda promover la lista de espera de esa sesión.
+ * Cancela una reserva. Devuelve la sesion_id para que el caller pueda promover
+ * la lista de espera de esa sesión.
  */
 export async function cancelarReserva(
   tenantId: string,
-  reservaId: string
+  reservaId: string,
+  client?: Db
 ): Promise<{ ok: boolean; sesionId?: string; error?: string }> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("clases_reservas")
     .update({ estado: "cancelada" })
@@ -388,14 +399,15 @@ export async function checkInReserva(
   return { ok: true };
 }
 
-// ─────────── Helpers para utils del Bloque 2 (cupo / lista-espera / prospecto) ───────────
+// ─────────── Helpers para utils (cupo / lista-espera / prospecto) ───────────
 
 /** Confirma una reserva (promoción de lista de espera). */
 export async function confirmarReserva(
   tenantId: string,
-  reservaId: string
+  reservaId: string,
+  client?: Db
 ): Promise<{ reserva: ClaseReserva | null; error?: string }> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("clases_reservas")
     .update({ estado: "confirmada" })
@@ -411,9 +423,10 @@ export async function confirmarReserva(
 export async function setReservaProspecto(
   tenantId: string,
   reservaId: string,
-  prospectoId: string
+  prospectoId: string,
+  client?: Db
 ): Promise<void> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   await supabase
     .from("clases_reservas")
     .update({ prospecto_id: prospectoId })
@@ -424,9 +437,10 @@ export async function setReservaProspecto(
 /** Busca un miembro por teléfono (para no duplicar como prospecto). */
 export async function findMiembroByTelefono(
   tenantId: string,
-  telefono: string
+  telefono: string,
+  client?: Db
 ): Promise<{ id: string } | null> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("miembros")
     .select("id")
@@ -439,9 +453,10 @@ export async function findMiembroByTelefono(
 /** Inserta un prospecto con origen 'clase_gratis' (requiere migración 025). */
 export async function createProspectoClaseGratis(
   tenantId: string,
-  input: { nombre: string; telefono: string; nota: string }
+  input: { nombre: string; telefono: string; nota: string },
+  client?: Db
 ): Promise<{ id: string | null; error?: string }> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("prospectos")
     .insert({
