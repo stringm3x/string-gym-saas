@@ -2,9 +2,86 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { StaffRol } from "@/lib/types/staff";
 
-export async function middleware(request: NextRequest) {
+function isLocalHost(hostname: string): boolean {
+  return hostname.startsWith("localhost") || hostname.startsWith("127.0.0.1");
+}
+
+/**
+ * Refresca la sesión Supabase y deja pasar la request tal cual.
+ * Usado por las rutas /admin/* (no necesitan la lógica multitenant).
+ */
+function refreshSessionPassthrough(request: NextRequest): NextResponse {
+  const response = NextResponse.next({ request: { headers: request.headers } });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          response.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          response.cookies.set({ name, value: "", ...options });
+        },
+      },
+    }
+  );
+  // Disparamos el refresh (no esperamos su valor: el gate real es el
+  // layout del panel vía getCurrentAdmin()).
+  void supabase.auth.getSession();
+  return response;
+}
+
+/**
+ * Rama SEPARADA para el panel de STRING Admin (ADMIN_DOMAIN).
+ *
+ * Decisión de arquitectura: NO comparte nada con la lógica multitenant
+ * (que asume `segments[0]` = slug de gym). Mantenerla aislada evita que
+ * un bug cross-context exponga datos de tenants en el admin o viceversa.
+ *
+ * El panel vive en el segmento literal `/admin/*`. En el dominio admin la
+ * raíz redirige a `/admin`. El gate de auth real (sesión + super admin)
+ * es el layout del panel, no el middleware.
+ */
+function handleAdminDomain(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
 
+  // La raíz del dominio admin lleva al panel.
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
+  // En el dominio admin solo tienen sentido las rutas /admin/*.
+  if (pathname !== "/admin" && !pathname.startsWith("/admin/")) {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
+  return refreshSessionPassthrough(request);
+}
+
+export async function middleware(request: NextRequest) {
+  const hostname = request.headers.get("host") || "";
+  const { pathname } = request.nextUrl;
+  const adminDomain = process.env.ADMIN_DOMAIN;
+
+  // ───────────────── STRING Admin (dominio dedicado) ─────────────────
+  if (adminDomain && hostname === adminDomain) {
+    return handleAdminDomain(request);
+  }
+
+  // Fuera del dominio admin: el panel /admin/* solo se sirve en local
+  // (dev). En cualquier otro host (p. ej. el dominio del app), se bloquea.
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    if (isLocalHost(hostname)) {
+      return refreshSessionPassthrough(request);
+    }
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // ───────────────── App multitenant (lógica existente) ─────────────────
   let response = NextResponse.next({
     request: { headers: request.headers },
   });
