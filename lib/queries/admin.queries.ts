@@ -135,3 +135,231 @@ export async function listTenantsAdmin(
 
   return rows;
 }
+
+// ─────────────────────────── Detalle ───────────────────────────
+
+export interface TenantDetail {
+  id: string;
+  slug: string;
+  nombre: string;
+  logo_url: string | null;
+  plan: string;
+  estado: string;
+  created_at: string;
+  fecha_inicio_suscripcion: string | null;
+  es_fundador: boolean;
+  fundador_desde: string | null;
+  prueba_hasta: string | null;
+  suspendido_at: string | null;
+  suspension_motivo: string | null;
+  telefono: string | null;
+  direccion: string | null;
+  rfc: string | null;
+  dominio_custom: string | null;
+  owner_id: string;
+  owner_email: string | null;
+  mrr: number;
+}
+
+export interface TenantMetrics {
+  miembros: number;
+  prospectos: number;
+  pagosUltimoMes: number;
+  ultimoCheckin: string | null;
+}
+
+export interface TenantAddon {
+  addon_id: string;
+  estado: "activo" | "suspendido" | "cancelado";
+  fecha_activacion: string;
+  precio_actual: number;
+}
+
+export interface TenantNota {
+  id: string;
+  nota: string;
+  admin_email: string;
+  created_at: string;
+}
+
+export interface TenantPagoManual {
+  id: string;
+  concepto: string;
+  monto: number;
+  metodo: string;
+  referencia: string | null;
+  fecha_pago: string;
+  notas: string | null;
+  admin_email: string;
+  created_at: string;
+}
+
+export interface TenantAdminEvent {
+  id: string;
+  accion: string;
+  admin_email: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+/** Detalle completo de un tenant (gate + service-role). */
+export async function getTenantDetailAdmin(
+  tenantId: string
+): Promise<TenantDetail | null> {
+  const current = await getCurrentAdmin();
+  if (!current) throw new Error("Acceso denegado");
+
+  const admin = createAdminClient();
+  const { data: g, error } = await admin
+    .from("gyms")
+    .select(
+      "id, slug, nombre, logo_url, plan, estado, created_at, fecha_inicio_suscripcion, es_fundador, fundador_desde, prueba_hasta, suspendido_at, suspension_motivo, telefono, direccion, rfc, dominio_custom, owner_id"
+    )
+    .eq("id", tenantId)
+    .maybeSingle();
+
+  if (error || !g) return null;
+
+  let owner_email: string | null = null;
+  if (g.owner_id) {
+    const { data: u } = await admin.auth.admin.getUserById(g.owner_id);
+    owner_email = u?.user?.email ?? null;
+  }
+
+  return {
+    ...g,
+    es_fundador: Boolean(g.es_fundador),
+    owner_email,
+    mrr: tenantMrr(g.plan, g.estado),
+  } as TenantDetail;
+}
+
+/** Métricas rápidas del tenant. */
+export async function getTenantMetrics(
+  tenantId: string
+): Promise<TenantMetrics> {
+  const current = await getCurrentAdmin();
+  if (!current) throw new Error("Acceso denegado");
+
+  const admin = createAdminClient();
+
+  const [miembros, prospectos, pagos, checkin] = await Promise.all([
+    admin
+      .from("miembros")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("archivado", false),
+    admin
+      .from("prospectos")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId),
+    (() => {
+      const desde = new Date();
+      desde.setDate(desde.getDate() - 30);
+      return admin
+        .from("pagos")
+        .select("monto")
+        .eq("tenant_id", tenantId)
+        .is("anulado_at", null)
+        .gte("fecha_pago", desde.toISOString());
+    })(),
+    admin
+      .from("checkins")
+      .select("fecha_hora")
+      .eq("tenant_id", tenantId)
+      .order("fecha_hora", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const pagosUltimoMes = (pagos.data ?? []).reduce(
+    (sum, p) => sum + Number(p.monto ?? 0),
+    0
+  );
+
+  return {
+    miembros: miembros.count ?? 0,
+    prospectos: prospectos.count ?? 0,
+    pagosUltimoMes,
+    ultimoCheckin: checkin.data?.fecha_hora ?? null,
+  };
+}
+
+/** Add-ons registrados del tenant. */
+export async function getTenantAddons(
+  tenantId: string
+): Promise<TenantAddon[]> {
+  const current = await getCurrentAdmin();
+  if (!current) throw new Error("Acceso denegado");
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("gym_addons")
+    .select("addon_id, estado, fecha_activacion, precio_actual")
+    .eq("tenant_id", tenantId);
+
+  return (data ?? []).map((a) => ({
+    ...a,
+    precio_actual: Number(a.precio_actual),
+  })) as TenantAddon[];
+}
+
+/** Notas internas del tenant (timeline). */
+export async function listTenantNotas(
+  tenantId: string
+): Promise<TenantNota[]> {
+  const current = await getCurrentAdmin();
+  if (!current) throw new Error("Acceso denegado");
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("admin_tenant_notas")
+    .select("id, nota, admin_email, created_at")
+    .eq("tenant_id", tenantId)
+    .order("created_at", { ascending: false });
+
+  return (data ?? []) as TenantNota[];
+}
+
+/**
+ * Pagos manuales del tenant (B2B). Si la migración 023 aún no se aplicó,
+ * la tabla no existe → devuelve [] sin romper la página.
+ */
+export async function listTenantPagosManuales(
+  tenantId: string
+): Promise<TenantPagoManual[]> {
+  const current = await getCurrentAdmin();
+  if (!current) throw new Error("Acceso denegado");
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("admin_tenant_pagos")
+    .select("id, concepto, monto, metodo, referencia, fecha_pago, notas, admin_email, created_at")
+    .eq("tenant_id", tenantId)
+    .order("fecha_pago", { ascending: false });
+
+  if (error) return [];
+  return (data ?? []).map((p) => ({
+    ...p,
+    monto: Number(p.monto),
+  })) as TenantPagoManual[];
+}
+
+/** Últimos eventos administrativos de este tenant. */
+export async function getTenantAdminEvents(
+  tenantId: string,
+  limit = 20
+): Promise<TenantAdminEvent[]> {
+  const current = await getCurrentAdmin();
+  if (!current) throw new Error("Acceso denegado");
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("admin_events")
+    .select("id, accion, admin_email, metadata, created_at")
+    .eq("target_tenant_id", tenantId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return (data ?? []) as TenantAdminEvent[];
+}
