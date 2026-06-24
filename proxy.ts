@@ -45,7 +45,7 @@ function refreshSessionPassthrough(request: NextRequest): NextResponse {
  * El panel vive en el segmento literal `/admin/*`. En el DOMINIO admin
  * (producción) la raíz y cualquier ruta ajena redirigen a `/admin` para
  * dar URLs limpias; en LOCAL se accede directo vía `/admin/*`. El gate de
- * auth real (sesión + super admin) es el layout del panel, no el middleware.
+ * auth real (sesión + super admin) es el layout del panel, no el proxy.
  */
 function handleAdminRequest(
   request: NextRequest,
@@ -67,7 +67,7 @@ function handleAdminRequest(
   return refreshSessionPassthrough(request);
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const hostname = request.headers.get("host") || "";
   const { pathname } = request.nextUrl;
 
