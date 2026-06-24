@@ -98,5 +98,14 @@ export interface ReservaInput {
   origen?: ReservaOrigen;
 }
 
+/** Reserva con datos de su sesión (para el historial de un miembro). */
+export interface ReservaMiembro extends ClaseReserva {
+  sesion?: {
+    fecha: string;
+    hora_inicio: string;
+    clase?: { nombre: string; color: string } | null;
+  } | null;
+}
+
 export type DiaSemana = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 export const DIAS_SEMANA = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];

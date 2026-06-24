@@ -6,8 +6,12 @@ import { getCheckinsStats } from "@/lib/queries/dashboard.queries";
 import { getIngresosStats } from "@/lib/queries/dashboard.queries";
 import { hasFeature } from "@/lib/features";
 import { hasPermission } from "@/lib/permissions";
+import { getSesionesByRango } from "@/lib/queries/clases.queries";
+import { hoyYMD } from "@/lib/utils/clases-format";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { AlertasList } from "@/components/alertas/AlertasList";
+import { ClasesHoy } from "@/components/clases/ClasesHoy";
+import type { ClaseSesion } from "@/lib/types/clases";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -35,10 +39,16 @@ export default async function HoyPage({ params }: PageProps) {
     redirect(`/${slug}/dashboard`);
   }
 
-  const [alertas, checkins, ingresos] = await Promise.all([
+  const canClases = hasFeature(tenant.plan, "clases");
+  const hoy = hoyYMD();
+
+  const [alertas, checkins, ingresos, sesionesHoy] = await Promise.all([
     getAlertas(tenant.id, slug),
     getCheckinsStats(tenant.id),
     getIngresosStats(tenant.id),
+    canClases
+      ? getSesionesByRango(tenant.id, hoy, hoy)
+      : Promise.resolve([] as ClaseSesion[]),
   ]);
 
   const vencenHoy =
@@ -75,6 +85,16 @@ export default async function HoyPage({ params }: PageProps) {
           icon={<LuCalendarX className="h-4 w-4" />}
         />
       </div>
+
+      {/* Clases de hoy */}
+      {canClases && (
+        <div>
+          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Clases de hoy
+          </h3>
+          <ClasesHoy sesiones={sesionesHoy} slug={slug} />
+        </div>
+      )}
 
       {/* Alertas */}
       <div>

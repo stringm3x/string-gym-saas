@@ -8,7 +8,7 @@ export interface Prospecto {
   nombre: string;
   telefono: string;
   email: string | null;
-  origen: "landing" | "whatsapp" | "referido" | "manual";
+  origen: "landing" | "whatsapp" | "referido" | "manual" | "clase_gratis";
   estado: ProspectoEstado;
   fecha_prueba_agendada: string | null;
   notas: string | null;

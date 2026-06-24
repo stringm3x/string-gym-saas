@@ -13,6 +13,7 @@ const origenLabels: Record<ProspectoConTags["origen"], string> = {
   whatsapp: "WhatsApp",
   referido: "Referido",
   manual: "Manual",
+  clase_gratis: "Clase gratis",
 };
 
 function formatRelativeDate(isoString: string): string {

@@ -5,6 +5,7 @@ import type {
   ClaseReserva,
   ClaseSesion,
   ReservaInput,
+  ReservaMiembro,
   SesionToCreate,
 } from "@/lib/types/clases";
 
@@ -250,7 +251,7 @@ export async function getReservasBySesion(
 export async function getReservasByMiembro(
   tenantId: string,
   miembroId: string
-): Promise<ClaseReserva[]> {
+): Promise<ReservaMiembro[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("clases_reservas")
@@ -261,7 +262,7 @@ export async function getReservasByMiembro(
     .eq("miembro_id", miembroId)
     .order("created_at", { ascending: false });
   if (error || !data) return [];
-  return data as unknown as ClaseReserva[];
+  return data as unknown as ReservaMiembro[];
 }
 
 /**

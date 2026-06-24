@@ -20,6 +20,9 @@ import { MiembroArchivadoBanner } from "@/components/miembros/MiembroArchivadoBa
 import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
 import { CheckinsHistory } from "@/components/checkins/CheckinsHistory";
 import { PagosHistory } from "@/components/caja/PagosHistory";
+import { getReservasByMiembro } from "@/lib/queries/clases.queries";
+import { MiembroClasesHistorial } from "@/components/clases/MiembroClasesHistorial";
+import type { ReservaMiembro } from "@/lib/types/clases";
 
 interface PageProps {
   params: Promise<{ slug: string; id: string }>;
@@ -28,17 +31,29 @@ interface PageProps {
 export default async function MiembroDetailPage({ params }: PageProps) {
   const { slug, id } = await params;
   const tenant = await getTenant();
+  const canClases = hasFeature(tenant.plan, "clases");
 
-  const [miembro, checkins, pagos, miembroTags, availableTags, notas, plantillas] =
-    await Promise.all([
-      getMiembro(tenant.id, id),
-      listCheckinsByMiembro(tenant.id, id, 20),
-      listPagosByMiembro(tenant.id, id, 30),
-      getTagsForMiembro(tenant.id, id),
-      listTags(tenant.id),
-      listNotas(tenant.id, "miembro", id),
-      listPlantillas(tenant.id, { soloActivas: true }),
-    ]);
+  const [
+    miembro,
+    checkins,
+    pagos,
+    miembroTags,
+    availableTags,
+    notas,
+    plantillas,
+    reservasClases,
+  ] = await Promise.all([
+    getMiembro(tenant.id, id),
+    listCheckinsByMiembro(tenant.id, id, 20),
+    listPagosByMiembro(tenant.id, id, 30),
+    getTagsForMiembro(tenant.id, id),
+    listTags(tenant.id),
+    listNotas(tenant.id, "miembro", id),
+    listPlantillas(tenant.id, { soloActivas: true }),
+    canClases
+      ? getReservasByMiembro(tenant.id, id)
+      : Promise.resolve([] as ReservaMiembro[]),
+  ]);
 
   if (!miembro) {
     notFound();
@@ -142,6 +157,8 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           <CheckinsHistory checkins={checkins} />
         </div>
       </div>
+
+      {canClases && <MiembroClasesHistorial reservas={reservasClases} />}
     </div>
   );
 }
