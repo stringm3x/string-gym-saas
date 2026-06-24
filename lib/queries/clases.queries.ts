@@ -386,3 +386,73 @@ export async function checkInReserva(
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
+
+// ─────────── Helpers para utils del Bloque 2 (cupo / lista-espera / prospecto) ───────────
+
+/** Confirma una reserva (promoción de lista de espera). */
+export async function confirmarReserva(
+  tenantId: string,
+  reservaId: string
+): Promise<{ reserva: ClaseReserva | null; error?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clases_reservas")
+    .update({ estado: "confirmada" })
+    .eq("tenant_id", tenantId)
+    .eq("id", reservaId)
+    .select(RESERVA_COLS)
+    .single();
+  if (error || !data) return { reserva: null, error: error?.message };
+  return { reserva: data as ClaseReserva };
+}
+
+/** Linkea una reserva con el prospecto creado desde una clase gratis. */
+export async function setReservaProspecto(
+  tenantId: string,
+  reservaId: string,
+  prospectoId: string
+): Promise<void> {
+  const supabase = await createClient();
+  await supabase
+    .from("clases_reservas")
+    .update({ prospecto_id: prospectoId })
+    .eq("tenant_id", tenantId)
+    .eq("id", reservaId);
+}
+
+/** Busca un miembro por teléfono (para no duplicar como prospecto). */
+export async function findMiembroByTelefono(
+  tenantId: string,
+  telefono: string
+): Promise<{ id: string } | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("miembros")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("telefono", telefono)
+    .limit(1);
+  return data?.[0] ?? null;
+}
+
+/** Inserta un prospecto con origen 'clase_gratis' (requiere migración 025). */
+export async function createProspectoClaseGratis(
+  tenantId: string,
+  input: { nombre: string; telefono: string; nota: string }
+): Promise<{ id: string | null; error?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("prospectos")
+    .insert({
+      tenant_id: tenantId,
+      nombre: input.nombre,
+      telefono: input.telefono,
+      origen: "clase_gratis",
+      estado: "nuevo",
+      notas: input.nota,
+    })
+    .select("id")
+    .single();
+  if (error || !data) return { id: null, error: error?.message };
+  return { id: data.id };
+}
