@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LuPencil, LuCalendarDays } from "react-icons/lu";
+import { LuPencil, LuCalendarDays, LuCalendarPlus } from "react-icons/lu";
 import { formatDiasSemana, formatHora12 } from "@/lib/utils/clases-format";
-import { toggleClaseActivaAction } from "@/app/(tenant)/[slug]/configuracion/clases/actions";
+import {
+  toggleClaseActivaAction,
+  generarSesionesAction,
+} from "@/app/(tenant)/[slug]/configuracion/clases/actions";
 import type { Clase } from "@/lib/types/clases";
 
 const TIPO_LABEL: Record<Clase["tipo"], string> = {
@@ -26,6 +29,7 @@ export function ClaseCard({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [genMsg, setGenMsg] = useState<string | null>(null);
 
   const horario = clase.es_recurrente
     ? `${formatDiasSemana(clase.dias_semana)} · ${formatHora12(clase.hora_inicio)}`
@@ -34,6 +38,21 @@ export function ClaseCard({
   function toggle() {
     start(async () => {
       await toggleClaseActivaAction(clase.id);
+      router.refresh();
+    });
+  }
+
+  function generar() {
+    setGenMsg(null);
+    start(async () => {
+      const r = await generarSesionesAction(clase.id, 4);
+      setGenMsg(
+        r.ok
+          ? r.sesionesGeneradas
+            ? `${r.sesionesGeneradas} sesiones nuevas`
+            : "Sin sesiones nuevas"
+          : (r.error ?? "Error")
+      );
       router.refresh();
     });
   }
@@ -89,7 +108,19 @@ export function ClaseCard({
           >
             <LuCalendarDays className="h-3.5 w-3.5" /> Ver sesiones
           </Link>
+          {clase.es_recurrente && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={generar}
+              title="Generar sesiones de las próximas 4 semanas"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50"
+            >
+              <LuCalendarPlus className="h-3.5 w-3.5" /> Generar sesiones
+            </button>
+          )}
         </div>
+        {genMsg && <p className="text-[11px] text-text-muted">{genMsg}</p>}
       </div>
     </div>
   );
