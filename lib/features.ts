@@ -38,6 +38,7 @@ export const planFeatures = {
     "dashboard_completo",
     "personalizacion_colores",
     "clases",
+    "api",
   ],
   escala: [
     "alertas_dueno",

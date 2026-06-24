@@ -40,6 +40,7 @@ export function ConfigTabs({ slug, plan, role }: ConfigTabsProps) {
       label: "Plantillas",
       feature: "plantillas_mensaje",
     },
+    { href: `${base}/api`, label: "API", ownerOnly: true, feature: "api" },
   ];
 
   const tabs = allTabs.filter(
