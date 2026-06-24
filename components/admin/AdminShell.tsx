@@ -1,26 +1,13 @@
-import Link from "next/link";
 import { LuShield, LuArrowLeft } from "react-icons/lu";
 import { logoutAdmin } from "@/app/admin/(panel)/actions";
+import { AdminNav } from "@/components/admin/AdminNav";
 import type { StringAdmin } from "@/lib/types/admin";
 
-interface NavItem {
-  href: string;
-  label: string;
-  ready: boolean; // false → aún no construido (Bloques 3-5)
-}
-
-const NAV: NavItem[] = [
-  { href: "/admin", label: "Dashboard", ready: true },
-  { href: "/admin/tenants", label: "Tenants", ready: true },
-  { href: "/admin/solicitudes", label: "Solicitudes", ready: true },
-  { href: "/admin/eventos", label: "Audit log", ready: true },
-  { href: "/admin/cuenta", label: "Mi cuenta", ready: true },
-];
-
 /**
- * Shell del panel admin: sidebar + header diferenciados (acento rojo)
- * del app normal de gyms. Server component; el gate (sesión + super
- * admin) lo aplica el layout antes de renderizar esto.
+ * Shell del panel admin: sidebar + header diferenciados (acento verde
+ * STRING) del app normal de gyms. Server component; el gate (sesión +
+ * super admin) lo aplica el layout antes de renderizar esto. La nav
+ * activa la resalta AdminNav (client, vía usePathname).
  */
 export function AdminShell({
   admin,
@@ -42,29 +29,7 @@ export function AdminShell({
           </span>
         </div>
 
-        <nav className="flex-1 space-y-0.5 px-3 py-4">
-          {NAV.map((item) =>
-            item.ready ? (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-bg hover:text-text-primary"
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <span
-                key={item.href}
-                className="flex cursor-default items-center justify-between rounded-lg px-3 py-2 text-sm text-text-muted"
-              >
-                {item.label}
-                <span className="rounded bg-bg px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-text-muted">
-                  pronto
-                </span>
-              </span>
-            )
-          )}
-        </nav>
+        <AdminNav />
 
         {appDomain && (
           <a
