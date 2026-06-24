@@ -11,6 +11,7 @@ import {
   LuTarget,
   LuBell,
   LuSettings,
+  LuCalendarDays,
 } from "react-icons/lu";
 import { SidebarLink } from "./SidebarLink";
 import { hasFeature, type Plan } from "@/lib/features";
@@ -113,6 +114,15 @@ export function Sidebar({
             label="Caja"
             icon={<LuWallet size={18} />}
             active={activeSection === "caja"}
+          />
+        )}
+
+        {hasFeature(plan, "clases") && can("ver_clases") && (
+          <SidebarLink
+            href={`${base}/clases`}
+            label="Clases"
+            icon={<LuCalendarDays size={18} />}
+            active={activeSection === "clases"}
           />
         )}
 

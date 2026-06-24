@@ -35,4 +35,6 @@ export type Permission =
   | "configurar_general"
   | "ver_alertas"
   | "ver_dashboard_completo"
-  | "ver_pantalla_hoy";
+  | "ver_pantalla_hoy"
+  | "ver_clases"
+  | "gestionar_clases";

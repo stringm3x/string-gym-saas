@@ -22,6 +22,8 @@ const PERMISSIONS_BY_ROLE: Record<StaffRol, Permission[]> = {
     "ver_alertas",
     "ver_dashboard_completo",
     "ver_pantalla_hoy",
+    "ver_clases",
+    "gestionar_clases",
   ],
   receptionist: [
     "ver_checkins_dia",
@@ -32,6 +34,7 @@ const PERMISSIONS_BY_ROLE: Record<StaffRol, Permission[]> = {
     "hacer_checkin_manual",
     "ver_inventario_stock",
     "vender_desde_caja",
+    "ver_clases",
   ],
 };
 
