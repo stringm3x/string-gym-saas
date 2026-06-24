@@ -36,27 +36,32 @@ function refreshSessionPassthrough(request: NextRequest): NextResponse {
 }
 
 /**
- * Rama SEPARADA para el panel de STRING Admin (ADMIN_DOMAIN).
+ * Rama SEPARADA para el panel de STRING Admin.
  *
  * Decisión de arquitectura: NO comparte nada con la lógica multitenant
  * (que asume `segments[0]` = slug de gym). Mantenerla aislada evita que
  * un bug cross-context exponga datos de tenants en el admin o viceversa.
  *
- * El panel vive en el segmento literal `/admin/*`. En el dominio admin la
- * raíz redirige a `/admin`. El gate de auth real (sesión + super admin)
- * es el layout del panel, no el middleware.
+ * El panel vive en el segmento literal `/admin/*`. En el DOMINIO admin
+ * (producción) la raíz y cualquier ruta ajena redirigen a `/admin` para
+ * dar URLs limpias; en LOCAL se accede directo vía `/admin/*`. El gate de
+ * auth real (sesión + super admin) es el layout del panel, no el middleware.
  */
-function handleAdminDomain(request: NextRequest): NextResponse {
+function handleAdminRequest(
+  request: NextRequest,
+  isAdminDomain: boolean
+): NextResponse {
   const { pathname } = request.nextUrl;
 
-  // La raíz del dominio admin lleva al panel.
-  if (pathname === "/") {
-    return NextResponse.redirect(new URL("/admin", request.url));
-  }
-
-  // En el dominio admin solo tienen sentido las rutas /admin/*.
-  if (pathname !== "/admin" && !pathname.startsWith("/admin/")) {
-    return NextResponse.redirect(new URL("/admin", request.url));
+  if (isAdminDomain) {
+    // La raíz del dominio admin lleva al panel.
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+    // En el dominio admin solo tienen sentido las rutas /admin/*.
+    if (pathname !== "/admin" && !pathname.startsWith("/admin/")) {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
   }
 
   return refreshSessionPassthrough(request);
@@ -65,19 +70,25 @@ function handleAdminDomain(request: NextRequest): NextResponse {
 export async function middleware(request: NextRequest) {
   const hostname = request.headers.get("host") || "";
   const { pathname } = request.nextUrl;
-  const adminDomain = process.env.ADMIN_DOMAIN;
 
-  // ───────────────── STRING Admin (dominio dedicado) ─────────────────
-  if (adminDomain && hostname === adminDomain) {
-    return handleAdminDomain(request);
+  // ───────────────── STRING Admin ─────────────────
+  // Se detecta como request de admin si:
+  //  - el host es el dominio admin (producción), o
+  //  - es local (localhost / 127.0.0.1) y la ruta empieza con /admin.
+  const isAdminDomain =
+    hostname === process.env.ADMIN_DOMAIN ||
+    hostname === "admin.gym.stringwebs.com";
+  const isLocalAdmin =
+    isLocalHost(hostname) &&
+    (pathname === "/admin" || pathname.startsWith("/admin/"));
+
+  if (isAdminDomain || isLocalAdmin) {
+    return handleAdminRequest(request, isAdminDomain);
   }
 
-  // Fuera del dominio admin: el panel /admin/* solo se sirve en local
-  // (dev). En cualquier otro host (p. ej. el dominio del app), se bloquea.
+  // Fuera del dominio admin y fuera de local: el panel /admin/* no se
+  // sirve (p. ej. en el dominio del app). Se bloquea hacia el login.
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
-    if (isLocalHost(hostname)) {
-      return refreshSessionPassthrough(request);
-    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
