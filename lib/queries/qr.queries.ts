@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -49,9 +50,10 @@ export interface MiembroQrScan {
  */
 export async function getMiembroByQrToken(
   tenantId: string,
-  token: string
+  token: string,
+  client?: SupabaseClient
 ): Promise<MiembroQrScan | null> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("miembros")
     .select("id, nombre, fecha_vencimiento, archivado, plan_id")

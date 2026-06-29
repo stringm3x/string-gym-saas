@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { LuQrCode } from "react-icons/lu";
+import { LuQrCode, LuMonitor } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { hasFeature } from "@/lib/features";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
@@ -50,13 +50,21 @@ export default async function CheckinsPage({ params }: PageProps) {
       </div>
 
       {hasFeature(tenant.plan, "qr_access") && (
-        <div className="flex justify-center">
+        <div className="flex flex-wrap justify-center gap-2">
           <Link
             href={`/${slug}/checkins/scanner`}
             className="inline-flex items-center gap-2 rounded-lg border border-brand-green/40 bg-brand-green/10 px-4 py-2.5 text-sm font-semibold text-brand-green hover:bg-brand-green/20"
           >
             <LuQrCode className="h-4 w-4" /> Escanear QR
           </Link>
+          <a
+            href={`/kiosco/${slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary"
+          >
+            <LuMonitor className="h-4 w-4" /> Modo Kiosco
+          </a>
         </div>
       )}
 

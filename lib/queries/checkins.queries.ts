@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface Checkin {
   id: string;
@@ -16,11 +17,12 @@ export interface CheckinConMiembro extends Checkin {
  */
 export async function createCheckin(
   tenantId: string,
-  miembroId: string
+  miembroId: string,
+  client?: SupabaseClient
 ): Promise<
   { ok: true; id: string; fecha_hora: string } | { ok: false; error: string }
 > {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
 
   const { data, error } = await supabase
     .from("checkins")
