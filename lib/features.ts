@@ -40,6 +40,7 @@ export const planFeatures = {
     "clases",
     "api",
     "qr_access",
+    "mercadopago",
   ],
   escala: [
     "alertas_dueno",

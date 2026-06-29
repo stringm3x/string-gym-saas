@@ -41,6 +41,12 @@ export function ConfigTabs({ slug, plan, role }: ConfigTabsProps) {
       feature: "plantillas_mensaje",
     },
     { href: `${base}/api`, label: "API", ownerOnly: true, feature: "api" },
+    {
+      href: `${base}/pagos`,
+      label: "Pagos",
+      ownerOnly: true,
+      feature: "mercadopago",
+    },
   ];
 
   const tabs = allTabs.filter(

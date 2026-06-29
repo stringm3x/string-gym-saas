@@ -8,11 +8,14 @@ import { listPlanes } from "@/lib/queries/planes.queries";
 import { listPromociones } from "@/lib/queries/promociones.queries";
 import { listProductosParaVenta } from "@/lib/queries/productos.queries";
 import { getTenant } from "@/lib/tenant";
+import { hasFeature } from "@/lib/features";
+import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { formatMoneda } from "@/lib/utils/format";
 import { PagoForm } from "@/components/caja/PagoForm";
 import { PagosFeed } from "@/components/caja/PagosFeed";
 import { CajaFilters } from "@/components/caja/CajaFilters";
 import { VisitaRapidaButton } from "@/components/caja/VisitaRapidaButton";
+import { CobroMpButton } from "@/components/caja/CobroMpButton";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -39,6 +42,8 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
 
   const categoria = parseCategoria(sp.cat);
 
+  const canMp = hasFeature(tenant.plan, "mercadopago");
+
   const [
     pagos,
     resumen,
@@ -46,6 +51,7 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     promocionesMembresia,
     promocionesProducto,
     productos,
+    gym,
   ] = await Promise.all([
     listPagosDelDia(tenant.id, categoria, 50),
     getResumenCaja(tenant.id, categoria),
@@ -56,6 +62,7 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     }),
     listPromociones(tenant.id, { soloActivasVigentes: true, tipo: "producto" }),
     listProductosParaVenta(tenant.id),
+    getGymInfo(tenant.id),
   ]);
 
   return (
@@ -90,6 +97,10 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
               productos={productos}
             />
           </div>
+
+          {canMp && (
+            <CobroMpButton planes={planes} gymNombre={gym?.nombre ?? ""} />
+          )}
         </section>
 
         {/* ── Reporte: cobrado hoy ─────────────────────────── */}
