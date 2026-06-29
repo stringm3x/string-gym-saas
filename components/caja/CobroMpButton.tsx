@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { LuCreditCard, LuExternalLink } from "react-icons/lu";
+import { useEffect, useState, useTransition } from "react";
+import { LuCreditCard, LuExternalLink, LuSearch, LuX } from "react-icons/lu";
 import { Modal } from "@/components/ui/Modal";
 import { crearCobroMpAction } from "@/app/(tenant)/[slug]/caja/mp-actions";
+import { searchMiembrosAction } from "@/app/(tenant)/[slug]/checkins/actions";
 import type { PlanMembresia } from "@/lib/queries/planes.queries";
+
+type MiembroLite = { id: string; nombre: string };
 
 const INPUT =
   "w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
@@ -24,12 +27,38 @@ export function CobroMpButton({
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
 
+  // Miembro (opcional): si se selecciona y hay plan, el webhook extiende su
+  // vencimiento al confirmarse el pago.
+  const [miembro, setMiembro] = useState<MiembroLite | null>(null);
+  const [query, setQuery] = useState("");
+  const [resultados, setResultados] = useState<MiembroLite[]>([]);
+
+  useEffect(() => {
+    if (miembro) return;
+    let cancel = false;
+    const t = setTimeout(async () => {
+      if (query.trim().length < 2) {
+        if (!cancel) setResultados([]);
+        return;
+      }
+      const r = await searchMiembrosAction(query);
+      if (!cancel) setResultados(r.map((m) => ({ id: m.id, nombre: m.nombre })));
+    }, 250);
+    return () => {
+      cancel = true;
+      clearTimeout(t);
+    };
+  }, [query, miembro]);
+
   function reset() {
     setTitulo("");
     setMonto("");
     setPlanId("");
     setError(null);
     setLink(null);
+    setMiembro(null);
+    setQuery("");
+    setResultados([]);
   }
 
   function elegirPlan(id: string) {
@@ -48,6 +77,7 @@ export function CobroMpButton({
         titulo: titulo.trim(),
         monto: Number(monto),
         planId: planId || undefined,
+        miembroId: miembro?.id || undefined,
       });
       if (!r.ok) {
         setError(r.error);
@@ -96,6 +126,57 @@ export function CobroMpButton({
           </div>
         ) : (
           <div className="space-y-3">
+            {/* Miembro (opcional) — necesario para extender su vencimiento */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-text-secondary">
+                Miembro (opcional)
+              </label>
+              {miembro ? (
+                <div className="flex items-center justify-between rounded-lg border border-border bg-bg px-3 py-2 text-sm">
+                  <span className="text-text-primary">{miembro.nombre}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMiembro(null);
+                      setQuery("");
+                    }}
+                    className="text-text-muted hover:text-danger"
+                    aria-label="Quitar miembro"
+                  >
+                    <LuX className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <LuSearch className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Buscar miembro…"
+                    className={`${INPUT} pl-9`}
+                  />
+                  {resultados.length > 0 && (
+                    <ul className="absolute z-10 mt-1 w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+                      {resultados.map((m) => (
+                        <li key={m.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMiembro(m);
+                              setResultados([]);
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-bg"
+                          >
+                            {m.nombre}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+
             {planes.length > 0 && (
               <div>
                 <label className="mb-1 block text-xs font-medium text-text-secondary">

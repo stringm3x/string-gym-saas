@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAndProcessWebhook } from "@/lib/mercadopago/webhook";
+import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
 
 export const runtime = "nodejs";
 
@@ -58,19 +59,62 @@ export async function POST(request: NextRequest) {
   const metadata = (ext.metadata ?? {}) as ExtMetadata;
 
   if (result.status === "approved") {
+    const miembroId = metadata.miembroId ?? null;
+    const planId = metadata.planId ?? null;
+
+    // Si el cobro es de una membresía (miembro + plan), calcular el periodo
+    // con la MISMA lógica del cobro manual (día de pago) para luego extender
+    // el vencimiento del miembro. Sin miembro/plan → pago genérico (sin extensión).
+    let periodoInicio: string | null = null;
+    let periodoFin: string | null = null;
+    if (miembroId && planId) {
+      const [planRes, miembroRes] = await Promise.all([
+        admin
+          .from("planes_membresia")
+          .select("dias_duracion")
+          .eq("id", planId)
+          .maybeSingle(),
+        admin
+          .from("miembros")
+          .select("fecha_vencimiento")
+          .eq("tenant_id", result.tenantId)
+          .eq("id", miembroId)
+          .maybeSingle(),
+      ]);
+      if (planRes.data?.dias_duracion) {
+        const rango = calcularRangoPorDias(
+          planRes.data.dias_duracion,
+          miembroRes.data?.fecha_vencimiento
+        );
+        periodoInicio = rango.periodo_inicio;
+        periodoFin = rango.periodo_fin;
+      }
+    }
+
     const { data: pago } = await admin
       .from("pagos")
       .insert({
         tenant_id: result.tenantId,
-        miembro_id: metadata.miembroId ?? null,
+        miembro_id: miembroId,
         concepto: "membresia",
         monto: result.monto || Number(ext.monto),
         metodo_pago: mapMetodo(result.metodo),
         fecha_pago: new Date().toISOString(),
-        plan_id: metadata.planId ?? null,
+        plan_id: planId,
+        periodo_inicio: periodoInicio,
+        periodo_fin: periodoFin,
       })
       .select("id")
       .single();
+
+    // Extender el vencimiento del miembro (paridad con el cobro manual).
+    if (miembroId && periodoFin) {
+      await admin
+        .from("miembros")
+        .update({ fecha_vencimiento: periodoFin })
+        .eq("tenant_id", result.tenantId)
+        .eq("id", miembroId);
+    }
 
     await admin
       .from("pagos_externos")
