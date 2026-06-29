@@ -38,13 +38,19 @@ export function SidebarLink({
   return (
     <Link
       href={href}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "group flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
+        "group relative flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
         active
-          ? "bg-surface text-text-primary"
-          : "text-text-secondary hover:bg-surface hover:text-text-primary"
+          ? "bg-brand-green/[0.08] text-text-primary"
+          : "text-text-secondary hover:bg-text-primary/[0.04] hover:text-text-primary"
       )}
     >
+      {/* Barra de acento del item activo */}
+      {active && (
+        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand-green" />
+      )}
+
       <span className="flex items-center gap-3">
         <span
           className={cn(

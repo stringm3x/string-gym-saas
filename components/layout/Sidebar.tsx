@@ -36,6 +36,14 @@ interface SidebarProps {
   };
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+      {children}
+    </p>
+  );
+}
+
 export function Sidebar({
   slug,
   plan,
@@ -47,9 +55,23 @@ export function Sidebar({
   const base = `/${slug}`;
   const { can } = useStaff();
 
+  // Visibilidad por item (rol + plan).
+  const v = {
+    hoy: hasFeature(plan, "pantalla_hoy") && can("ver_pantalla_hoy"),
+    dashboard: can("ver_dashboard_completo"),
+    miembros: can("crear_miembros"),
+    checkins: can("ver_checkins_dia"),
+    caja: can("registrar_pagos"),
+    clases: hasFeature(plan, "clases") && can("ver_clases"),
+    inventario: hasFeature(plan, "inventario") && can("ver_inventario_stock"),
+    prospectos: hasFeature(plan, "prospectos") && can("ver_prospectos"),
+    alertas: hasFeature(plan, "alertas_dueno") && can("ver_alertas"),
+  };
+
   return (
     <aside className="flex h-full w-60 flex-col border-r border-border bg-sidebar px-3 py-6">
-      <div className="mb-8 flex h-10 items-center px-3">
+      {/* Marca: logo del gym si lo subió; si no, wordmark STRING GYM + nombre */}
+      <div className="mb-4 px-3">
         {logoUrl ? (
           <div className="relative h-10 w-full">
             <Image
@@ -63,14 +85,19 @@ export function Sidebar({
             />
           </div>
         ) : (
-          <span className="truncate font-display text-xl uppercase tracking-wide text-text-primary">
-            {gymNombre || "Mi Gym"}
-          </span>
+          <>
+            <span className="font-display text-xl uppercase tracking-wide text-text-primary">
+              STRING<span className="text-brand-green">GYM</span>
+            </span>
+            <p className="mt-0.5 truncate text-xs text-text-muted">
+              {gymNombre || "Mi Gym"}
+            </p>
+          </>
         )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1">
-        {hasFeature(plan, "pantalla_hoy") && can("ver_pantalla_hoy") && (
+      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
+        {v.hoy && (
           <SidebarLink
             href={`${base}/hoy`}
             label="Hoy"
@@ -78,8 +105,7 @@ export function Sidebar({
             active={activeSection === "hoy"}
           />
         )}
-
-        {can("ver_dashboard_completo") && (
+        {v.dashboard && (
           <SidebarLink
             href={`${base}/dashboard`}
             label="Dashboard"
@@ -88,7 +114,10 @@ export function Sidebar({
           />
         )}
 
-        {can("crear_miembros") && (
+        {(v.miembros || v.checkins || v.caja) && (
+          <SectionLabel>Operación</SectionLabel>
+        )}
+        {v.miembros && (
           <SidebarLink
             href={`${base}/miembros`}
             label="Miembros"
@@ -98,8 +127,7 @@ export function Sidebar({
             badgeVariant="warning"
           />
         )}
-
-        {can("ver_checkins_dia") && (
+        {v.checkins && (
           <SidebarLink
             href={`${base}/checkins`}
             label="Check-in"
@@ -107,8 +135,7 @@ export function Sidebar({
             active={activeSection === "checkins"}
           />
         )}
-
-        {can("registrar_pagos") && (
+        {v.caja && (
           <SidebarLink
             href={`${base}/caja`}
             label="Caja"
@@ -117,7 +144,8 @@ export function Sidebar({
           />
         )}
 
-        {hasFeature(plan, "clases") && can("ver_clases") && (
+        {(v.clases || v.inventario) && <SectionLabel>Módulos</SectionLabel>}
+        {v.clases && (
           <SidebarLink
             href={`${base}/clases`}
             label="Clases"
@@ -125,8 +153,7 @@ export function Sidebar({
             active={activeSection === "clases"}
           />
         )}
-
-        {hasFeature(plan, "inventario") && can("ver_inventario_stock") && (
+        {v.inventario && (
           <SidebarLink
             href={`${base}/inventario`}
             label="Inventario"
@@ -137,7 +164,8 @@ export function Sidebar({
           />
         )}
 
-        {hasFeature(plan, "prospectos") && can("ver_prospectos") && (
+        {(v.prospectos || v.alertas) && <SectionLabel>CRM</SectionLabel>}
+        {v.prospectos && (
           <SidebarLink
             href={`${base}/prospectos`}
             label="Prospectos"
@@ -146,8 +174,7 @@ export function Sidebar({
             badge={badges.prospectos}
           />
         )}
-
-        {hasFeature(plan, "alertas_dueno") && can("ver_alertas") && (
+        {v.alertas && (
           <SidebarLink
             href={`${base}/alertas`}
             label="Alertas"
@@ -160,7 +187,8 @@ export function Sidebar({
       </nav>
 
       {can("configurar_general") && (
-        <div className="mt-auto border-t border-border pt-3">
+        <div className="mt-auto pt-3">
+          <div className="mb-2 border-t border-border" />
           <SidebarLink
             href={`${base}/configuracion`}
             label="Configuración"
