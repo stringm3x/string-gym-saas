@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAdmin } from "@/lib/admin/helpers";
 import { ADDONS_CATALOG } from "@/lib/addons";
+import { exportTenantData } from "@/lib/utils/export-tenant";
+import { sendDatosExportados } from "@/lib/email/export-tenant";
 import {
   cambiarPlanSchema,
   suspenderSchema,
@@ -152,20 +154,54 @@ export async function cancelarTenantAction(
   }
 
   const admin = createAdminClient();
+
+  // Exportación de datos: si se pidió, se genera el ZIP y se envía al owner
+  // ANTES de cancelar. Si el envío falla, se marca pendiente para reintentar.
+  let exportPendiente = false;
+  let exportEnviado = false;
+  if (parsed.data.exportar) {
+    exportPendiente = true;
+    try {
+      const { data: gym } = await admin
+        .from("gyms")
+        .select("owner_id, nombre, slug")
+        .eq("id", tenantId)
+        .single();
+      const { data: u } = gym?.owner_id
+        ? await admin.auth.admin.getUserById(gym.owner_id)
+        : { data: null };
+      const email = u?.user?.email;
+      if (gym && email) {
+        const zip = await exportTenantData(tenantId);
+        exportEnviado = await sendDatosExportados({
+          email,
+          nombreGym: gym.nombre,
+          slug: gym.slug,
+          zip,
+        });
+        exportPendiente = !exportEnviado;
+      }
+    } catch (e) {
+      console.error("[cancelarTenant] export falló:", e);
+      exportPendiente = true;
+    }
+  }
+
   const { error } = await admin
     .from("gyms")
     .update({
       estado: "cancelado",
       suspendido_at: new Date().toISOString(),
       suspension_motivo: parsed.data.motivo,
+      exportar_datos_pendiente: exportPendiente,
     })
     .eq("id", tenantId);
   if (error) return { ok: false, error: error.message };
 
   await logEvent("tenant.cancelar", tenantId, {
     motivo: parsed.data.motivo,
-    // El export real se construye después; aquí solo se deja registro.
-    exportar_datos_pendiente: parsed.data.exportar,
+    exportar_solicitado: parsed.data.exportar,
+    export_enviado: exportEnviado,
   });
   revalidate(tenantId);
   return { ok: true };
