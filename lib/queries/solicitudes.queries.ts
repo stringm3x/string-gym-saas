@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { TRIAL_DIAS } from "@/lib/constants";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type SolicitudEstado =
@@ -167,8 +168,11 @@ export async function activarSolicitud(id: string): Promise<ActivarResult> {
   }
   const ownerId = userRes.user.id;
 
-  // 2. Gym (trigger create_owner_staff crea el staff owner).
+  // 2. Gym en prueba gratuita (Fase 7.3): estado 'prueba' + fin de prueba a
+  // TRIAL_DIAS. El trigger create_owner_staff crea el staff owner. Al vencer,
+  // el proxy redirige a /suspendida; Carlos reactiva o extiende desde el Admin.
   const slug = await slugUnico(admin, nombreGym);
+  const pruebaHasta = new Date(Date.now() + TRIAL_DIAS * 24 * 60 * 60 * 1000);
   const { data: gym, error: gymErr } = await admin
     .from("gyms")
     .insert({
@@ -176,7 +180,8 @@ export async function activarSolicitud(id: string): Promise<ActivarResult> {
       slug,
       owner_id: ownerId,
       plan,
-      estado: "activo",
+      estado: "prueba",
+      prueba_hasta: pruebaHasta.toISOString(),
     })
     .select("id, slug")
     .single();

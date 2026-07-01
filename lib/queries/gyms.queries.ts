@@ -6,6 +6,8 @@ export interface GymInfo {
   slug: string;
   nombre: string;
   logo_url: string | null;
+  /** Timestamp de aceptación de Términos (Fase 7.3); null si aún no acepta. */
+  acepto_terminos_at?: string | null;
 }
 
 export interface GymFull extends GymInfo {
@@ -23,7 +25,7 @@ export async function getGymInfo(tenantId: string): Promise<GymInfo | null> {
 
   const { data, error } = await supabase
     .from("gyms")
-    .select("id, slug, nombre, logo_url")
+    .select("id, slug, nombre, logo_url, acepto_terminos_at")
     .eq("id", tenantId)
     .single();
 
@@ -62,6 +64,25 @@ export async function updateGymConfig(
       rfc: input.rfc ?? null,
     })
     .eq("id", tenantId);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/**
+ * Marca la aceptación de Términos del gym (Fase 7.3). Idempotente: solo
+ * escribe si aún no había aceptado, para conservar el timestamp original.
+ */
+export async function aceptarTerminos(
+  tenantId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("gyms")
+    .update({ acepto_terminos_at: new Date().toISOString() })
+    .eq("id", tenantId)
+    .is("acepto_terminos_at", null);
 
   if (error) return { ok: false, error: error.message };
   return { ok: true };

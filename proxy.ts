@@ -150,10 +150,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Validar que el gym existe, está activo y pertenece al usuario.
+  // Validar que el gym existe y pertenece al usuario.
   const { data: gym, error } = await supabase
     .from("gyms")
-    .select("id, slug, estado, plan, owner_id")
+    .select("id, slug, estado, plan, owner_id, prueba_hasta")
     .eq("slug", slug)
     .single();
 
@@ -161,9 +161,33 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (gym.estado !== "activo") {
+  // ── Prueba vencida / suspensión (Fase 7.3) ──
+  // La propia página /[slug]/suspendida se deja pasar (si no, loop infinito).
+  const isSuspendidaRoute = segments[1] === "suspendida";
+
+  // 'cancelado' no tiene página amigable: el tenant ya no opera → login.
+  if (gym.estado === "cancelado") {
     return NextResponse.redirect(new URL("/login", request.url));
   }
+
+  const pruebaVencida =
+    gym.estado === "prueba" &&
+    !!gym.prueba_hasta &&
+    new Date(gym.prueba_hasta) < new Date(new Date().toDateString());
+  const bloqueado = gym.estado === "suspendido" || pruebaVencida;
+
+  if (bloqueado && !isSuspendidaRoute) {
+    return NextResponse.redirect(
+      new URL(`/${slug}/suspendida`, request.url)
+    );
+  }
+  // Un gym operativo no debe quedarse en /suspendida.
+  if (!bloqueado && isSuspendidaRoute) {
+    return NextResponse.redirect(new URL(`/${slug}/hoy`, request.url));
+  }
+
+  // Estado usable: 'activo', 'prueba' vigente, o cualquier estado cuando se
+  // visita la propia página de suspensión (para poder mostrarla).
 
   // Resolver el rol del usuario en este gym. El owner se valida por
   // owner_id (robusto, sin tocar `staff`). Un staff (recepcionista) se
@@ -193,6 +217,8 @@ export async function proxy(request: NextRequest) {
   response.headers.set("x-tenant-slug", gym.slug);
   response.headers.set("x-tenant-plan", gym.plan);
   response.headers.set("x-staff-role", role);
+  // El layout del tenant lee esto para renderizar /suspendida sin sidebar.
+  response.headers.set("x-pathname", pathname);
 
   return response;
 }

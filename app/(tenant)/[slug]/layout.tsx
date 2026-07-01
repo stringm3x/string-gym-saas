@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getTenant } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
@@ -12,6 +13,7 @@ import { getActiveStaff } from "@/lib/queries/staff.queries";
 import { hasFeature } from "@/lib/features";
 import { SidebarWithActiveSection } from "@/components/layout/SidebarWithActiveSection";
 import { Header } from "@/components/layout/Header";
+import { TerminosGate } from "@/components/layout/TerminosGate";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AddonsProvider } from "@/lib/contexts/AddonsContext";
 import { StaffProvider } from "@/lib/contexts/StaffContext";
@@ -36,6 +38,14 @@ export default async function TenantLayout({
   } = await supabase.auth.getUser();
   if (!user) {
     redirect("/login");
+  }
+
+  // La página /suspendida se renderiza a pantalla completa, sin el shell
+  // (sidebar/header) ni el gate de Términos. El proxy solo la deja pasar a
+  // gyms bloqueados; aquí detectamos la ruta vía el header x-pathname.
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  if (pathname.endsWith("/suspendida")) {
+    return <>{children}</>;
   }
 
   const tieneAlertas = hasFeature(tenant.plan, "alertas_dueno");
@@ -88,11 +98,15 @@ export default async function TenantLayout({
     alertas: alertasBadge,
   };
 
+  // Gate de Términos (Fase 7.3): bloquea el app hasta que el gym acepte.
+  const debeAceptarTerminos = !gym.acepto_terminos_at;
+
   return (
     <ToastProvider>
       {marcaCss && (
         <style dangerouslySetInnerHTML={{ __html: marcaCss }} />
       )}
+      {debeAceptarTerminos && <TerminosGate />}
       <StaffProvider staff={currentStaff}>
         <AddonsProvider addons={addons}>
           <div className="flex h-screen overflow-hidden bg-bg">
