@@ -10,6 +10,10 @@ import { getAlertas } from "@/lib/queries/alertas.queries";
 import { listGymAddons } from "@/lib/queries/addons.queries";
 import { getGymMarca } from "@/lib/queries/marca.queries";
 import { getActiveStaff } from "@/lib/queries/staff.queries";
+import {
+  getNotificaciones,
+  countNotificacionesNoLeidas,
+} from "@/lib/queries/notifications.queries";
 import { hasFeature } from "@/lib/features";
 import { SidebarWithActiveSection } from "@/components/layout/SidebarWithActiveSection";
 import { Header } from "@/components/layout/Header";
@@ -59,6 +63,8 @@ export default async function TenantLayout({
     addons,
     marca,
     currentStaff,
+    notificaciones,
+    notificacionesNoLeidas,
   ] = await Promise.all([
     getGymInfo(tenant.id),
     countMiembrosVencenHoy(tenant.id),
@@ -68,6 +74,8 @@ export default async function TenantLayout({
     listGymAddons(tenant.id),
     getGymMarca(tenant.id),
     getActiveStaff(tenant.id, user.id),
+    getNotificaciones(tenant.id),
+    countNotificacionesNoLeidas(tenant.id),
   ]);
 
   if (!gym) {
@@ -119,7 +127,13 @@ export default async function TenantLayout({
           />
 
           <div className="flex flex-1 flex-col overflow-hidden bg-canvas">
-            <Header gymNombre={gym.nombre} plan={tenant.plan} />
+            <Header
+              gymNombre={gym.nombre}
+              plan={tenant.plan}
+              slug={slug}
+              notificaciones={notificaciones}
+              notificacionesNoLeidas={notificacionesNoLeidas}
+            />
 
             <main className="flex-1 overflow-y-auto px-8 py-6">{children}</main>
           </div>

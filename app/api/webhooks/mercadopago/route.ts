@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAndProcessWebhook } from "@/lib/mercadopago/webhook";
 import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
+import { createNotification } from "@/lib/utils/notifications";
 
 export const runtime = "nodejs";
 
@@ -124,6 +125,16 @@ export async function POST(request: NextRequest) {
         pago_id: pago?.id ?? null,
       })
       .eq("id", ext.id);
+
+    // Notificación in-app al gym (Fase 7.3).
+    const montoPago = result.monto || Number(ext.monto);
+    await createNotification(
+      result.tenantId,
+      "pago",
+      `Pago confirmado con MercadoPago: $${montoPago.toLocaleString("es-MX")}`,
+      undefined,
+      "caja"
+    );
   } else {
     // rejected / cancelled / pending (OXXO) / in_process … reflejar estado.
     await admin

@@ -4,6 +4,7 @@ import type { PagoInput } from "@/lib/validations/pago.schema";
 import type { VisitaRapidaInput } from "@/lib/validations/visita-rapida.schema";
 import { generarTokenRecibo } from "@/lib/utils/tokens";
 import { aplicarMovimiento } from "@/lib/queries/productos.queries";
+import { createNotification } from "@/lib/utils/notifications";
 
 export type CategoriaCaja =
   | "all"
@@ -132,6 +133,25 @@ export async function createPago(
       };
     }
   }
+
+  // Notificación in-app (Fase 7.3). No bloquea el pago si falla.
+  let quien = "";
+  if (input.miembro_id) {
+    const { data: m } = await supabase
+      .from("miembros")
+      .select("nombre")
+      .eq("tenant_id", tenantId)
+      .eq("id", input.miembro_id)
+      .maybeSingle();
+    if (m?.nombre) quien = ` de ${m.nombre}`;
+  }
+  await createNotification(
+    tenantId,
+    "pago",
+    `Pago registrado: $${input.monto.toLocaleString("es-MX")}${quien}`,
+    undefined,
+    "caja"
+  );
 
   return { ok: true, id: data.id, token };
 }

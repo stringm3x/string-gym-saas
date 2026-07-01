@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createNotification } from "@/lib/utils/notifications";
 
 export interface GymPublic {
   id: string;
@@ -54,5 +55,15 @@ export async function apiCreateProspecto(
     .select("id")
     .single();
   if (error || !data) return { id: null, error: error?.message };
+
+  // Notificación in-app al gym (Fase 7.3).
+  await createNotification(
+    tenantId,
+    "prospecto",
+    `Nuevo prospecto: ${input.nombre}`,
+    input.mensaje,
+    "prospectos"
+  );
+
   return { id: data.id };
 }
