@@ -2,9 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createPago } from "@/lib/queries/pagos.queries";
 import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
 import {
-  DIAS_FRECUENCIA,
-  type PlanPagoInput,
-} from "@/lib/validations/creditos.schema";
+  repartirMonto,
+  fechasCuotas,
+  diasEntreHoyY,
+} from "@/lib/utils/creditos-calc";
+import type { PlanPagoInput } from "@/lib/validations/creditos.schema";
 import type {
   PlanPago,
   CuotaPago,
@@ -15,35 +17,6 @@ import type {
 } from "@/lib/types/creditos";
 
 type MetodoPago = "efectivo" | "tarjeta" | "transferencia";
-
-// ─────────────────────────── helpers ───────────────────────────
-
-/** Fecha (YYYY-MM-DD) a `dias` de hoy, en hora local. */
-function fechaISOaDias(dias: number): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + dias);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-/** Reparte `total` en `n` cuotas exactas (centavos), el remanente a la última. */
-function repartirMonto(total: number, n: number): number[] {
-  const totalCent = Math.round(total * 100);
-  const base = Math.floor(totalCent / n);
-  const montos = Array.from({ length: n }, () => base);
-  montos[n - 1] += totalCent - base * n;
-  return montos.map((c) => c / 100);
-}
-
-function diasEntreHoyY(fecha: string): number {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const f = new Date(fecha + "T00:00:00");
-  return Math.round((f.getTime() - hoy.getTime()) / 86400000);
-}
 
 // ─────────────────────────── mutaciones ───────────────────────────
 
@@ -72,14 +45,14 @@ export async function createPlanPago(
     return { ok: false, error: error?.message ?? "No se pudo crear el plan." };
   }
 
-  const interval = DIAS_FRECUENCIA[input.frecuencia];
   const montos = repartirMonto(input.total, input.cuotas);
+  const fechas = fechasCuotas(input.cuotas, input.frecuencia);
   const filas = montos.map((monto, i) => ({
     plan_id: plan.id,
     tenant_id: tenantId,
     numero_cuota: i + 1,
     monto,
-    fecha_vencimiento: fechaISOaDias(i * interval),
+    fecha_vencimiento: fechas[i],
   }));
 
   const { error: cuotasErr } = await supabase

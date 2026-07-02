@@ -26,6 +26,10 @@ import type { ReservaMiembro } from "@/lib/types/clases";
 import { getMiembroQrData, type MiembroQrData } from "@/lib/queries/qr.queries";
 import { generarQRDataUrl } from "@/lib/utils/qr-generator";
 import { MiembroQrPanel } from "@/components/miembros/MiembroQrPanel";
+import { getPlanesPagoByMiembro } from "@/lib/queries/creditos.queries";
+import { listPlanes } from "@/lib/queries/planes.queries";
+import { MiembroCreditos } from "@/components/creditos/MiembroCreditos";
+import type { PlanPagoConCuotas } from "@/lib/types/creditos";
 
 interface PageProps {
   params: Promise<{ slug: string; id: string }>;
@@ -36,6 +40,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const tenant = await getTenant();
   const canClases = hasFeature(tenant.plan, "clases");
   const canQr = hasFeature(tenant.plan, "qr_access");
+  const canCreditos = hasFeature(tenant.plan, "creditos");
 
   const [
     miembro,
@@ -47,6 +52,8 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     plantillas,
     reservasClases,
     qrData,
+    planesPago,
+    planesMembresia,
   ] = await Promise.all([
     getMiembro(tenant.id, id),
     listCheckinsByMiembro(tenant.id, id, 20),
@@ -61,6 +68,12 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     canQr
       ? getMiembroQrData(tenant.id, id)
       : Promise.resolve(null as MiembroQrData | null),
+    canCreditos
+      ? getPlanesPagoByMiembro(tenant.id, id)
+      : Promise.resolve([] as PlanPagoConCuotas[]),
+    canCreditos
+      ? listPlanes(tenant.id, { soloActivos: true })
+      : Promise.resolve([]),
   ]);
 
   if (!miembro) {
@@ -179,6 +192,15 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           nombre={miembro.nombre}
           miembroId={miembro.id}
           canRegenerar={tenant.role === "owner"}
+        />
+      )}
+
+      {canCreditos && !miembro.archivado && (
+        <MiembroCreditos
+          miembroId={miembro.id}
+          miembroNombre={miembro.nombre}
+          planes={planesPago}
+          planesMembresia={planesMembresia}
         />
       )}
     </div>
