@@ -12,6 +12,7 @@ import {
   LuBell,
   LuSettings,
   LuCalendarDays,
+  LuHandCoins,
 } from "react-icons/lu";
 import { SidebarLink } from "./SidebarLink";
 import { hasFeature, type Plan } from "@/lib/features";
@@ -62,6 +63,7 @@ export function Sidebar({
     miembros: can("crear_miembros"),
     checkins: can("ver_checkins_dia"),
     caja: can("registrar_pagos"),
+    cuentasPorCobrar: hasFeature(plan, "creditos") && can("registrar_pagos"),
     clases: hasFeature(plan, "clases") && can("ver_clases"),
     inventario: hasFeature(plan, "inventario") && can("ver_inventario_stock"),
     prospectos: hasFeature(plan, "prospectos") && can("ver_prospectos"),
@@ -114,7 +116,7 @@ export function Sidebar({
           />
         )}
 
-        {(v.miembros || v.checkins || v.caja) && (
+        {(v.miembros || v.checkins || v.caja || v.cuentasPorCobrar) && (
           <SectionLabel>Operación</SectionLabel>
         )}
         {v.miembros && (
@@ -141,6 +143,14 @@ export function Sidebar({
             label="Caja"
             icon={<LuWallet size={18} />}
             active={activeSection === "caja"}
+          />
+        )}
+        {v.cuentasPorCobrar && (
+          <SidebarLink
+            href={`${base}/cuentas-por-cobrar`}
+            label="Cuentas por cobrar"
+            icon={<LuHandCoins size={18} />}
+            active={activeSection === "cuentas-por-cobrar"}
           />
         )}
 

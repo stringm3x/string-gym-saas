@@ -47,6 +47,7 @@ export const planFeatures = {
     "whatsapp_automatico",
     "reportes_avanzados",
     "personalizacion_avanzada",
+    "creditos",
   ],
 } as const;
 
