@@ -13,6 +13,7 @@ import {
   LuSettings,
   LuCalendarDays,
   LuHandCoins,
+  LuMegaphone,
 } from "react-icons/lu";
 import { SidebarLink } from "./SidebarLink";
 import { hasFeature, type Plan } from "@/lib/features";
@@ -54,7 +55,7 @@ export function Sidebar({
   badges = {},
 }: SidebarProps) {
   const base = `/${slug}`;
-  const { can } = useStaff();
+  const { can, isOwner } = useStaff();
 
   // Visibilidad por item (rol + plan).
   const v = {
@@ -68,6 +69,7 @@ export function Sidebar({
     inventario: hasFeature(plan, "inventario") && can("ver_inventario_stock"),
     prospectos: hasFeature(plan, "prospectos") && can("ver_prospectos"),
     alertas: hasFeature(plan, "alertas_dueno") && can("ver_alertas"),
+    campanas: hasFeature(plan, "campanas") && isOwner,
   };
 
   return (
@@ -174,7 +176,9 @@ export function Sidebar({
           />
         )}
 
-        {(v.prospectos || v.alertas) && <SectionLabel>CRM</SectionLabel>}
+        {(v.prospectos || v.alertas || v.campanas) && (
+          <SectionLabel>CRM</SectionLabel>
+        )}
         {v.prospectos && (
           <SidebarLink
             href={`${base}/prospectos`}
@@ -192,6 +196,14 @@ export function Sidebar({
             active={activeSection === "alertas"}
             badge={badges.alertas}
             badgeVariant="danger"
+          />
+        )}
+        {v.campanas && (
+          <SidebarLink
+            href={`${base}/comunicaciones/campanas`}
+            label="Campañas"
+            icon={<LuMegaphone size={18} />}
+            active={activeSection === "comunicaciones"}
           />
         )}
       </nav>
