@@ -38,12 +38,14 @@ export async function login(
 
   const userId = authData.user.id;
 
-  // 1. ¿Es OWNER de un gym activo? (camino histórico, sin tocar staff)
+  // 1. ¿Es OWNER de un gym operable? El login solo valida credenciales +
+  // pertenencia; el proxy es el guardián real (prueba vencida / suspendido →
+  // /suspendida). Se excluye 'cancelado' (el proxy lo rebota a /login).
   const { data: ownerGym } = await supabase
     .from("gyms")
     .select("slug, plan")
     .eq("owner_id", userId)
-    .eq("estado", "activo")
+    .in("estado", ["activo", "prueba", "suspendido"])
     .maybeSingle();
 
   if (ownerGym) {
@@ -66,7 +68,7 @@ export async function login(
       .eq("id", staffRow.gym_id)
       .maybeSingle();
 
-    if (gym && gym.estado === "activo") {
+    if (gym && ["activo", "prueba", "suspendido"].includes(gym.estado)) {
       // Recepcionista → su pantalla principal es check-ins.
       // (Un owner ya fue cubierto en el paso 1; defensivo por si acaso.)
       if (staffRow.rol === "owner") {
