@@ -1,5 +1,7 @@
 import { randomBytes, createHash } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSesionesByRango } from "@/lib/queries/clases.queries";
+import type { ClaseSesion } from "@/lib/types/clases";
 import type { Plan } from "@/lib/features";
 
 const OTP_TTL_MIN = 10;
@@ -27,6 +29,17 @@ export interface PortalGym {
   plan: Plan;
   telefono: string | null;
   estado: string;
+}
+
+/** ¿El gym tiene MercadoPago conectado? (para ofrecer renovación en línea). */
+export async function getPortalMpDisponible(tenantId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("gyms")
+    .select("mp_access_token")
+    .eq("id", tenantId)
+    .maybeSingle();
+  return !!data?.mp_access_token;
 }
 
 /** Gym público por slug (para el portal). */
@@ -227,4 +240,134 @@ export async function getMiembroPortal(
     .eq("id", miembroId)
     .maybeSingle();
   return (data as MiembroPortal | null) ?? null;
+}
+
+export interface ReservaPortal {
+  id: string;
+  sesion_id: string;
+  estado: string;
+  fecha: string;
+  hora_inicio: string;
+  clase_nombre: string;
+}
+
+interface ReservaRaw {
+  id: string;
+  sesion_id: string;
+  estado: string;
+  sesion: {
+    fecha: string;
+    hora_inicio: string;
+    clase: { nombre: string } | null;
+  } | null;
+}
+
+/** Próximas reservas activas del miembro (sesión de hoy en adelante). */
+export async function getProximasReservasPortal(
+  tenantId: string,
+  miembroId: string
+): Promise<ReservaPortal[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("clases_reservas")
+    .select(
+      "id, sesion_id, estado, sesion:clases_sesiones(fecha, hora_inicio, clase:clases(nombre))"
+    )
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .in("estado", ["confirmada", "en_lista_espera"]);
+
+  const hoy = new Date().toISOString().slice(0, 10);
+  return ((data ?? []) as unknown as ReservaRaw[])
+    .filter((r) => r.sesion && r.sesion.fecha >= hoy)
+    .map((r) => ({
+      id: r.id,
+      sesion_id: r.sesion_id,
+      estado: r.estado,
+      fecha: r.sesion!.fecha,
+      hora_inicio: r.sesion!.hora_inicio,
+      clase_nombre: r.sesion!.clase?.nombre ?? "Clase",
+    }))
+    .sort((a, b) =>
+      (a.fecha + a.hora_inicio).localeCompare(b.fecha + b.hora_inicio)
+    );
+}
+
+export interface CheckinPortal {
+  id: string;
+  fecha_hora: string;
+}
+
+/**
+ * Clases disponibles para reservar desde el portal: sesiones programadas de
+ * hoy hasta `dias` adelante. Reusa getSesionesByRango con service-role.
+ */
+export async function getClasesDisponiblesPortal(
+  tenantId: string,
+  dias = 14
+): Promise<ClaseSesion[]> {
+  const admin = createAdminClient();
+  const hoy = new Date().toISOString().slice(0, 10);
+  const hasta = new Date(Date.now() + dias * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const sesiones = await getSesionesByRango(tenantId, hoy, hasta, admin);
+  return sesiones.filter((s) => s.estado === "programada");
+}
+
+export interface ReciboPortal {
+  id: string;
+  fecha_pago: string;
+  concepto: string;
+  monto: number;
+  token_publico: string;
+}
+
+/** Pagos del miembro con recibo público descargable (no anulados). */
+export async function getRecibosPortal(
+  tenantId: string,
+  miembroId: string
+): Promise<ReciboPortal[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("pagos")
+    .select("id, fecha_pago, concepto, monto, token_publico, anulado_at")
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .is("anulado_at", null)
+    .order("fecha_pago", { ascending: false });
+
+  return ((data ?? []) as Array<{
+    id: string;
+    fecha_pago: string;
+    concepto: string;
+    monto: number | string;
+    token_publico: string | null;
+  }>)
+    .filter((p) => p.token_publico)
+    .map((p) => ({
+      id: p.id,
+      fecha_pago: p.fecha_pago,
+      concepto: p.concepto,
+      monto: Number(p.monto),
+      token_publico: p.token_publico as string,
+    }));
+}
+
+/** Check-ins del miembro en los últimos `dias` días. */
+export async function getCheckinsPortal(
+  tenantId: string,
+  miembroId: string,
+  dias = 30
+): Promise<CheckinPortal[]> {
+  const admin = createAdminClient();
+  const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await admin
+    .from("checkins")
+    .select("id, fecha_hora")
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .gte("fecha_hora", desde)
+    .order("fecha_hora", { ascending: false });
+  return (data ?? []) as CheckinPortal[];
 }

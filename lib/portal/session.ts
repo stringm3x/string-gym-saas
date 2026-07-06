@@ -1,7 +1,11 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { hasFeature } from "@/lib/features";
 import {
   getSessionByToken,
+  getPortalGym,
   type SessionMiembro,
+  type PortalGym,
 } from "@/lib/queries/portal.queries";
 
 const COOKIE = "portal_session";
@@ -34,4 +38,22 @@ export async function getPortalSession(): Promise<SessionMiembro | null> {
   const token = await getPortalToken();
   if (!token) return null;
   return getSessionByToken(token);
+}
+
+/**
+ * Guard de las páginas del portal: valida feature del gym + sesión vigente que
+ * pertenezca a ese gym. Redirige al login si algo falla. Devuelve gym+sesión.
+ */
+export async function requirePortal(
+  slug: string
+): Promise<{ gym: PortalGym; session: SessionMiembro }> {
+  const gym = await getPortalGym(slug);
+  if (!gym || !hasFeature(gym.plan, "portal_miembro")) {
+    redirect(`/portal/${slug}/login`);
+  }
+  const session = await getPortalSession();
+  if (!session || session.tenantId !== gym.id) {
+    redirect(`/portal/${slug}/login`);
+  }
+  return { gym, session };
 }
