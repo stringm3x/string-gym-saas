@@ -49,6 +49,7 @@ export const planFeatures = {
     "reportes_avanzados",
     "personalizacion_avanzada",
     "creditos",
+    "portal_miembro",
   ],
 } as const;
 

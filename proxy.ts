@@ -134,6 +134,7 @@ export async function proxy(request: NextRequest) {
     "sdk-docs",
     "qr",
     "kiosco",
+    "portal",
   ];
   const isPublicRoute =
     segments.length === 0 || publicRoutes.includes(segments[0]);
