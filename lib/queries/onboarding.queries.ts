@@ -1,4 +1,27 @@
 import { createClient } from "@/lib/supabase/server";
+import { DEMO_MIEMBRO_NOTAS } from "@/lib/constants";
+
+export interface DemoMiembro {
+  id: string;
+  qr_token: string | null;
+}
+
+/** Miembro de demo autocreado (Fase P.2), si existe. Se identifica por su nota. */
+export async function getDemoMiembro(
+  tenantId: string
+): Promise<DemoMiembro | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("miembros")
+    .select("id, qr_token")
+    .eq("tenant_id", tenantId)
+    .eq("notas", DEMO_MIEMBRO_NOTAS)
+    .eq("archivado", false)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return (data as DemoMiembro | null) ?? null;
+}
 
 export interface OnboardingEstado {
   tienePlanes: boolean;

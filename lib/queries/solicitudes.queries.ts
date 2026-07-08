@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TRIAL_DIAS } from "@/lib/constants";
+import { TRIAL_DIAS, DEMO_MIEMBRO_NOTAS } from "@/lib/constants";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type SolicitudEstado =
@@ -190,7 +190,37 @@ export async function activarSolicitud(id: string): Promise<ActivarResult> {
     return { ok: false, error: gymErr?.message ?? "No se pudo crear el gym." };
   }
 
-  // 3. Marcar solicitud como activada.
+  // 3. Miembro de demo (Fase P.2): deja al owner probar Portal/QR/check-in.
+  // Best-effort — no bloquea la activación si algo falla. Un gym recién creado
+  // aún no tiene planes, así que plan_id suele quedar null. El email = el del
+  // owner, para que pueda entrar al portal del demo con su propio correo.
+  try {
+    const { data: planBarato } = await admin
+      .from("planes_membresia")
+      .select("id")
+      .eq("tenant_id", gym.id)
+      .eq("activo", true)
+      .order("precio", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const vencDemo = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    await admin.from("miembros").insert({
+      tenant_id: gym.id,
+      nombre: "Demo Miembro",
+      telefono: "5500000000",
+      email: sol.email,
+      estado: "activo",
+      fecha_vencimiento: vencDemo,
+      plan_id: planBarato?.id ?? null,
+      notas: DEMO_MIEMBRO_NOTAS,
+    });
+  } catch {
+    /* best-effort */
+  }
+
+  // 4. Marcar solicitud como activada.
   await admin.from("solicitudes_prueba").update({ estado: "activado" }).eq("id", id);
 
   return {

@@ -11,3 +11,7 @@ export const PRIVACIDAD_URL = "https://www.stringwebs.com/privacidad";
 
 /** Días de prueba gratuita al activar un tenant (Fase 7.3). */
 export const TRIAL_DIAS = 14;
+
+/** Nota del miembro de demo autocreado al activar un tenant (Fase P.2). */
+export const DEMO_MIEMBRO_NOTAS =
+  "Miembro de demo creado automáticamente. Úsalo para probar el Portal del Miembro.";

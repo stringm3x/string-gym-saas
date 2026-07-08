@@ -5,8 +5,12 @@ import {
   LuDownload,
   LuArrowRight,
 } from "react-icons/lu";
+import { LuExternalLink, LuQrCode } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
-import { getOnboardingEstado } from "@/lib/queries/onboarding.queries";
+import {
+  getOnboardingEstado,
+  getDemoMiembro,
+} from "@/lib/queries/onboarding.queries";
 import { completarOnboardingAction } from "./actions";
 
 interface PageProps {
@@ -28,7 +32,10 @@ function EstadoBadge({ hecho }: { hecho: boolean }) {
 export default async function OnboardingPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
-  const estado = await getOnboardingEstado(tenant.id);
+  const [estado, demo] = await Promise.all([
+    getOnboardingEstado(tenant.id),
+    getDemoMiembro(tenant.id),
+  ]);
 
   const btnPrimary =
     "inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90";
@@ -125,6 +132,33 @@ export default async function OnboardingPage({ params }: PageProps) {
           </Link>
         </div>
       </section>
+
+      {/* Demo del Portal del Miembro (Fase P.2) */}
+      {demo && (
+        <section className="rounded-xl border border-brand-green/30 bg-brand-green/5 p-5">
+          <h2 className="text-base font-semibold text-text-primary">
+            🎯 Prueba el Portal del Miembro
+          </h2>
+          <p className="mt-1 text-sm text-text-secondary">
+            Creamos un miembro de demo para que veas cómo lo ven tus clientes.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <a
+              href={`/portal/${slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={btnPrimary}
+            >
+              Ver Portal del Demo <LuExternalLink className="h-4 w-4" />
+            </a>
+            {demo.qr_token && (
+              <a href={`/qr/${demo.qr_token}`} className={btnGhost}>
+                <LuQrCode className="h-4 w-4" /> Ver QR del Demo
+              </a>
+            )}
+          </div>
+        </section>
+      )}
 
       <form action={completarOnboardingAction} className="pt-2">
         <button
