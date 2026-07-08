@@ -8,6 +8,8 @@ export interface GymInfo {
   logo_url: string | null;
   /** Timestamp de aceptación de Términos (Fase 7.3); null si aún no acepta. */
   acepto_terminos_at?: string | null;
+  /** Guía de primer acceso completada (Fase P.1). */
+  onboarding_completado?: boolean;
 }
 
 export interface GymFull extends GymInfo {
@@ -25,7 +27,7 @@ export async function getGymInfo(tenantId: string): Promise<GymInfo | null> {
 
   const { data, error } = await supabase
     .from("gyms")
-    .select("id, slug, nombre, logo_url, acepto_terminos_at")
+    .select("id, slug, nombre, logo_url, acepto_terminos_at, onboarding_completado")
     .eq("id", tenantId)
     .single();
 

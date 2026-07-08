@@ -88,6 +88,18 @@ export default async function TenantLayout({
     redirect("/login?error=no-access");
   }
 
+  // Guía de primer acceso (Fase P.1): el owner que no la completó va a
+  // /onboarding, excepto si ya está ahí o en configuración.
+  const seccion = pathname.split("/").filter(Boolean)[1] ?? "";
+  if (
+    tenant.role === "owner" &&
+    gym.onboarding_completado === false &&
+    seccion !== "onboarding" &&
+    seccion !== "configuracion"
+  ) {
+    redirect(`/${slug}/onboarding`);
+  }
+
   // Colores personalizados solo para Pro+ (Básico usa defaults STRING).
   const aplicaColores =
     marca && hasFeature(tenant.plan, "personalizacion_colores");

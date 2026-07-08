@@ -47,6 +47,8 @@ export function ConfigTabs({ slug, plan, role }: ConfigTabsProps) {
       ownerOnly: true,
       feature: "mercadopago",
     },
+    // Enlace a la guía de inicio (vive fuera de /configuracion).
+    { href: `/${slug}/onboarding`, label: "Guía de inicio" },
   ];
 
   const tabs = allTabs.filter(
