@@ -28,6 +28,7 @@ import { generarQRDataUrl } from "@/lib/utils/qr-generator";
 import { MiembroQrPanel } from "@/components/miembros/MiembroQrPanel";
 import { getPlanesPagoByMiembro } from "@/lib/queries/creditos.queries";
 import { listPlanes } from "@/lib/queries/planes.queries";
+import { listProductosConStock } from "@/lib/queries/productos.queries";
 import { MiembroCreditos } from "@/components/creditos/MiembroCreditos";
 import type { PlanPagoConCuotas } from "@/lib/types/creditos";
 
@@ -54,6 +55,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     qrData,
     planesPago,
     planesMembresia,
+    productosStock,
   ] = await Promise.all([
     getMiembro(tenant.id, id),
     listCheckinsByMiembro(tenant.id, id, 20),
@@ -73,6 +75,9 @@ export default async function MiembroDetailPage({ params }: PageProps) {
       : Promise.resolve([] as PlanPagoConCuotas[]),
     canCreditos
       ? listPlanes(tenant.id, { soloActivos: true })
+      : Promise.resolve([]),
+    canCreditos
+      ? listProductosConStock(tenant.id)
       : Promise.resolve([]),
   ]);
 
@@ -201,6 +206,12 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           miembroNombre={miembro.nombre}
           planes={planesPago}
           planesMembresia={planesMembresia}
+          productos={productosStock.map((p) => ({
+            id: p.id,
+            nombre: p.nombre,
+            precio: p.precio,
+            stock: p.stock_actual,
+          }))}
         />
       )}
     </div>

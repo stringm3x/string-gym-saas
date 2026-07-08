@@ -5,6 +5,8 @@ export interface PlanPago {
   tenant_id: string;
   miembro_id: string;
   plan_membresia_id: string | null;
+  producto_id: string | null;
+  cantidad: number | null;
   total: number;
   cuotas: number;
   concepto: string | null;

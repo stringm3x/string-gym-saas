@@ -12,18 +12,28 @@ interface PlanMembresiaOpt {
   precio: number;
 }
 
+interface ProductoOpt {
+  id: string;
+  nombre: string;
+  precio: number;
+  stock: number;
+}
+
 export function MiembroCreditos({
   miembroId,
   miembroNombre,
   planes,
   planesMembresia,
+  productos,
 }: {
   miembroId: string;
   miembroNombre: string;
   planes: PlanPagoConCuotas[];
   planesMembresia: PlanMembresiaOpt[];
+  productos: ProductoOpt[];
 }) {
   const [creando, setCreando] = useState(false);
+  const sinCatalogo = planesMembresia.length === 0 && productos.length === 0;
 
   return (
     <div className="rounded-xl border border-border bg-surface p-6">
@@ -36,11 +46,11 @@ export function MiembroCreditos({
           <button
             type="button"
             onClick={() => setCreando(true)}
-            disabled={planesMembresia.length === 0}
+            disabled={sinCatalogo}
             className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
             title={
-              planesMembresia.length === 0
-                ? "Crea un plan de membresía primero"
+              sinCatalogo
+                ? "Crea un plan de membresía o un producto primero"
                 : undefined
             }
           >
@@ -54,6 +64,7 @@ export function MiembroCreditos({
           <PlanPagoForm
             miembroId={miembroId}
             planesMembresia={planesMembresia}
+            productos={productos}
             onDone={() => setCreando(false)}
           />
         )}
@@ -63,10 +74,10 @@ export function MiembroCreditos({
             <p className="text-sm text-text-secondary">
               Este miembro no tiene planes de pago a plazos.
             </p>
-            {planesMembresia.length === 0 && (
+            {sinCatalogo && (
               <p className="mt-1 text-xs text-text-muted">
-                Crea primero un plan de membresía para poder ofrecer pagos a
-                plazos.
+                Crea primero un plan de membresía o un producto para poder
+                ofrecer pagos a plazos.
               </p>
             )}
           </div>

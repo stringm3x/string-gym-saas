@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createPago } from "@/lib/queries/pagos.queries";
+import { aplicarMovimiento } from "@/lib/queries/productos.queries";
 import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
 import {
   repartirMonto,
@@ -26,13 +27,39 @@ export async function createPlanPago(
   input: PlanPagoInput
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const supabase = await createClient();
+  const esProducto = input.tipo === "producto";
+  const cantidad = input.cantidad ?? 1;
+
+  // Producto: el miembro se lo lleva hoy → se descuenta stock al crear el plan.
+  const restaurarStock = async () => {
+    if (esProducto && input.producto_id) {
+      await aplicarMovimiento(tenantId, {
+        producto_id: input.producto_id,
+        tipo: "entrada",
+        cantidad,
+        motivo: "Reverso plan a plazos",
+      });
+    }
+  };
+
+  if (esProducto && input.producto_id) {
+    const mov = await aplicarMovimiento(tenantId, {
+      producto_id: input.producto_id,
+      tipo: "salida",
+      cantidad,
+      motivo: "Plan a plazos (producto)",
+    });
+    if (!mov.ok) return { ok: false, error: mov.error };
+  }
 
   const { data: plan, error } = await supabase
     .from("planes_pago")
     .insert({
       tenant_id: tenantId,
       miembro_id: input.miembro_id,
-      plan_membresia_id: input.plan_membresia_id,
+      plan_membresia_id: esProducto ? null : input.plan_membresia_id,
+      producto_id: esProducto ? input.producto_id : null,
+      cantidad: esProducto ? cantidad : null,
       total: input.total,
       cuotas: input.cuotas,
       concepto: input.concepto || null,
@@ -42,6 +69,7 @@ export async function createPlanPago(
     .single();
 
   if (error || !plan) {
+    await restaurarStock();
     return { ok: false, error: error?.message ?? "No se pudo crear el plan." };
   }
 
@@ -60,8 +88,9 @@ export async function createPlanPago(
     .insert(filas);
 
   if (cuotasErr) {
-    // Rollback del plan si las cuotas fallan (no quedan planes sin cuotas).
+    // Rollback: no quedan planes sin cuotas, y se regresa el stock.
     await supabase.from("planes_pago").delete().eq("id", plan.id);
+    await restaurarStock();
     return { ok: false, error: cuotasErr.message };
   }
 
@@ -95,7 +124,7 @@ export async function pagarCuota(
 
   const { data: plan } = await supabase
     .from("planes_pago")
-    .select("id, miembro_id, plan_membresia_id")
+    .select("id, miembro_id, plan_membresia_id, producto_id")
     .eq("tenant_id", tenantId)
     .eq("id", cuota.plan_id)
     .single();
@@ -135,9 +164,12 @@ export async function pagarCuota(
     }
   }
 
+  // Producto: el pago se registra como 'producto' pero SIN producto_id, para
+  // no volver a descontar stock (ya se descontó al crear el plan).
+  const esProducto = !!plan.producto_id;
   const pagoRes = await createPago(tenantId, {
     miembro_id: plan.miembro_id,
-    concepto: "membresia",
+    concepto: esProducto ? "producto" : "membresia",
     monto: Number(cuota.monto),
     metodo_pago: metodo,
     periodo_inicio: periodoInicio,
