@@ -40,6 +40,7 @@ interface SidebarProps {
     inventario?: number;
     prospectos?: number;
     alertas?: number;
+    caja?: number;
   };
 }
 
@@ -190,6 +191,8 @@ export function Sidebar({
             label="Caja"
             icon={<LuWallet size={18} />}
             active={activeSection === "caja"}
+            badge={badges.caja}
+            badgeVariant="danger"
             collapsed={collapsed}
           />
         )}

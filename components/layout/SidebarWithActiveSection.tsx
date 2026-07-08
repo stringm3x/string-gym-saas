@@ -15,6 +15,7 @@ interface SidebarWithActiveSectionProps {
     inventario?: number;
     prospectos?: number;
     alertas?: number;
+    caja?: number;
   };
 }
 

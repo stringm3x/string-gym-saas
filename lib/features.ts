@@ -44,6 +44,7 @@ export const planFeatures = {
     "campanas",
     "opiniones",
     "nutricion",
+    "kiosco_autoservicio",
   ],
   escala: [
     "alertas_dueno",

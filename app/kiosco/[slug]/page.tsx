@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFeature, type Plan } from "@/lib/features";
-import { KioscoDisplay } from "@/components/checkins/KioscoDisplay";
+import { KioscoShell } from "@/components/kiosco/KioscoShell";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -48,10 +48,11 @@ export default async function KioscoPage({
           }}
         />
       )}
-      <KioscoDisplay
+      <KioscoShell
         slug={slug}
         gymNombre={gym.nombre}
         logoUrl={gym.logo_url}
+        canAutoservicio={hasFeature(gym.plan as Plan, "kiosco_autoservicio")}
       />
     </>
   );

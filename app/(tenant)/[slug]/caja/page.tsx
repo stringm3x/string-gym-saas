@@ -11,11 +11,16 @@ import { getTenant } from "@/lib/tenant";
 import { hasFeature } from "@/lib/features";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { formatMoneda } from "@/lib/utils/format";
+import {
+  getCodigosPendientes,
+  limpiarExpirados,
+} from "@/lib/queries/kiosco.queries";
 import { PagoForm } from "@/components/caja/PagoForm";
 import { PagosFeed } from "@/components/caja/PagosFeed";
 import { CajaFilters } from "@/components/caja/CajaFilters";
 import { VisitaRapidaButton } from "@/components/caja/VisitaRapidaButton";
 import { CobroMpButton } from "@/components/caja/CobroMpButton";
+import { AutorizacionesPendientes } from "@/components/caja/AutorizacionesPendientes";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -43,6 +48,10 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
   const categoria = parseCategoria(sp.cat);
 
   const canMp = hasFeature(tenant.plan, "mercadopago");
+  const canAutoservicio = hasFeature(tenant.plan, "kiosco_autoservicio");
+
+  // Housekeeping: marca como usados los códigos ya expirados.
+  if (canAutoservicio) await limpiarExpirados(tenant.id);
 
   const [
     pagos,
@@ -65,6 +74,10 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     getGymInfo(tenant.id),
   ]);
 
+  const codigosPendientes = canAutoservicio
+    ? await getCodigosPendientes(tenant.id)
+    : [];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -78,6 +91,10 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
         </div>
         <VisitaRapidaButton />
       </div>
+
+      {canAutoservicio && (
+        <AutorizacionesPendientes codigos={codigosPendientes} />
+      )}
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         {/* ── Acción: registrar cobro ─────────────────────── */}
