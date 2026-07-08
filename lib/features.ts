@@ -43,6 +43,7 @@ export const planFeatures = {
     "mercadopago",
     "campanas",
     "opiniones",
+    "nutricion",
   ],
   escala: [
     "alertas_dueno",

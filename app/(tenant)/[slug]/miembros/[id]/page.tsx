@@ -31,6 +31,11 @@ import { listPlanes } from "@/lib/queries/planes.queries";
 import { listProductosConStock } from "@/lib/queries/productos.queries";
 import { MiembroCreditos } from "@/components/creditos/MiembroCreditos";
 import type { PlanPagoConCuotas } from "@/lib/types/creditos";
+import {
+  getPlanesNutricion,
+  type PlanNutricion,
+} from "@/lib/queries/nutricion.queries";
+import { MiembroNutricion } from "@/components/nutricion/MiembroNutricion";
 
 interface PageProps {
   params: Promise<{ slug: string; id: string }>;
@@ -42,6 +47,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const canClases = hasFeature(tenant.plan, "clases");
   const canQr = hasFeature(tenant.plan, "qr_access");
   const canCreditos = hasFeature(tenant.plan, "creditos");
+  const canNutricion = hasFeature(tenant.plan, "nutricion");
 
   const [
     miembro,
@@ -56,6 +62,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     planesPago,
     planesMembresia,
     productosStock,
+    planesNutricion,
   ] = await Promise.all([
     getMiembro(tenant.id, id),
     listCheckinsByMiembro(tenant.id, id, 20),
@@ -79,6 +86,9 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     canCreditos
       ? listProductosConStock(tenant.id)
       : Promise.resolve([]),
+    canNutricion
+      ? getPlanesNutricion(tenant.id, id)
+      : Promise.resolve([] as PlanNutricion[]),
   ]);
 
   if (!miembro) {
@@ -197,6 +207,14 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           nombre={miembro.nombre}
           miembroId={miembro.id}
           canRegenerar={tenant.role === "owner"}
+        />
+      )}
+
+      {canNutricion && (
+        <MiembroNutricion
+          miembroId={miembro.id}
+          planes={planesNutricion}
+          disabled={miembro.archivado}
         />
       )}
 

@@ -6,6 +6,7 @@ import {
   LuCalendarDays,
   LuScanLine,
   LuReceipt,
+  LuApple,
 } from "react-icons/lu";
 import { requirePortal } from "@/lib/portal/session";
 import {
@@ -15,8 +16,10 @@ import {
 } from "@/lib/queries/portal.queries";
 import { hasFeature } from "@/lib/features";
 import { yaOpinoHoy, getGooglePlaceId } from "@/lib/queries/opiniones.queries";
+import { getPlanNutricionActivoPortal } from "@/lib/queries/nutricion.queries";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { OpinionForm } from "@/components/portal/OpinionForm";
+import { PlanNutricionCard } from "@/components/nutricion/PlanNutricionCard";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -39,18 +42,21 @@ export default async function PortalHomePage({ params }: PageProps) {
 
   const canClases = hasFeature(gym.plan, "clases");
   const canOpiniones = hasFeature(gym.plan, "opiniones");
-  const [reservas, checkins, opinoHoy, googlePlaceId] = await Promise.all([
-    canClases
-      ? getProximasReservasPortal(session.tenantId, session.miembroId)
-      : Promise.resolve([]),
-    getCheckinsPortal(session.tenantId, session.miembroId, 30),
-    canOpiniones
-      ? yaOpinoHoy(session.tenantId, session.miembroId)
-      : Promise.resolve(true),
-    canOpiniones
-      ? getGooglePlaceId(session.tenantId)
-      : Promise.resolve(null),
-  ]);
+  const canNutricion = hasFeature(gym.plan, "nutricion");
+  const [reservas, checkins, opinoHoy, googlePlaceId, planNutricion] =
+    await Promise.all([
+      canClases
+        ? getProximasReservasPortal(session.tenantId, session.miembroId)
+        : Promise.resolve([]),
+      getCheckinsPortal(session.tenantId, session.miembroId, 30),
+      canOpiniones
+        ? yaOpinoHoy(session.tenantId, session.miembroId)
+        : Promise.resolve(true),
+      canOpiniones ? getGooglePlaceId(session.tenantId) : Promise.resolve(null),
+      canNutricion
+        ? getPlanNutricionActivoPortal(session.tenantId, session.miembroId)
+        : Promise.resolve(null),
+    ]);
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
@@ -167,6 +173,25 @@ export default async function PortalHomePage({ params }: PageProps) {
                   </li>
                 ))}
               </ul>
+            )}
+          </section>
+        )}
+
+        {/* Mi plan de nutrición (Fase I.6) */}
+        {canNutricion && (
+          <section className="rounded-2xl border border-border bg-surface p-6">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+              <LuApple className="h-4 w-4 text-brand-green" /> Mi plan de
+              nutrición
+            </h2>
+            {planNutricion ? (
+              <div className="mt-3">
+                <PlanNutricionCard plan={planNutricion} readOnly />
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-text-secondary">
+                Tu entrenador aún no ha asignado un plan de nutrición.
+              </p>
             )}
           </section>
         )}
