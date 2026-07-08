@@ -42,7 +42,6 @@ export const planFeatures = {
     "qr_access",
     "mercadopago",
     "campanas",
-    "saldo_miembro",
   ],
   escala: [
     "alertas_dueno",

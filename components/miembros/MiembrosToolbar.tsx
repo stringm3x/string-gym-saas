@@ -5,7 +5,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { LuSearch } from "react-icons/lu";
 import { cn } from "@/lib/utils/cn";
 import { Input } from "@/components/ui/Input";
-import { hasFeature, type Feature, type Plan } from "@/lib/features";
+import { hasFeature, type Plan } from "@/lib/features";
 import type { Tag } from "@/lib/queries/tags.queries";
 
 /** Estado unificado: combina el filtro de membresía con el de archivado. */
@@ -15,16 +15,14 @@ type Estado =
   | "por_vencer"
   | "inactivos"
   | "sin_telefono"
-  | "con_deuda"
   | "archivados";
 
-const estadoOptions: { value: Estado; label: string; feature?: Feature }[] = [
+const estadoOptions: { value: Estado; label: string }[] = [
   { value: "all", label: "Todos" },
   { value: "activos", label: "Activos" },
   { value: "por_vencer", label: "Por vencer" },
   { value: "inactivos", label: "Inactivos" },
   { value: "sin_telefono", label: "Sin teléfono" },
-  { value: "con_deuda", label: "Con deuda", feature: "saldo_miembro" },
   { value: "archivados", label: "Archivados" },
 ];
 
@@ -113,9 +111,7 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface p-1">
-          {estadoOptions
-            .filter((opt) => !opt.feature || hasFeature(plan, opt.feature))
-            .map((opt) => {
+          {estadoOptions.map((opt) => {
             const active = currentEstado === opt.value;
             return (
               <button
