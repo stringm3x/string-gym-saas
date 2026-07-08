@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { getTenant } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
@@ -135,6 +135,9 @@ export default async function TenantLayout({
             plan={tenant.plan}
             gymNombre={gym.nombre}
             logoUrl={gym.logo_url}
+            initialCollapsed={
+              (await cookies()).get("sidebar_collapsed")?.value === "1"
+            }
             badges={badges}
           />
 

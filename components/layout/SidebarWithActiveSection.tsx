@@ -9,6 +9,7 @@ interface SidebarWithActiveSectionProps {
   plan: Plan;
   gymNombre: string;
   logoUrl?: string | null;
+  initialCollapsed?: boolean;
   badges?: {
     miembros?: number;
     inventario?: number;
@@ -26,6 +27,7 @@ export function SidebarWithActiveSection({
   plan,
   gymNombre,
   logoUrl,
+  initialCollapsed,
   badges,
 }: SidebarWithActiveSectionProps) {
   const pathname = usePathname();
@@ -40,6 +42,7 @@ export function SidebarWithActiveSection({
       activeSection={activeSection}
       gymNombre={gymNombre}
       logoUrl={logoUrl}
+      initialCollapsed={initialCollapsed}
       badges={badges}
     />
   );

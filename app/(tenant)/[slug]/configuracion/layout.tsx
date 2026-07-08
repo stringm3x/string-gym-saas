@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getTenant } from "@/lib/tenant";
 import { hasPermission } from "@/lib/permissions";
-import { ConfigTabs } from "@/components/configuracion/ConfigTabs";
+import { ConfigNav } from "@/components/configuracion/ConfigNav";
 
 export default async function ConfiguracionLayout({
   children,
@@ -29,9 +29,16 @@ export default async function ConfiguracionLayout({
         </p>
       </div>
 
-      <ConfigTabs slug={slug} plan={tenant.plan} role={tenant.role} />
-
-      <div>{children}</div>
+      <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <aside className="lg:sticky lg:top-6 lg:self-start">
+          <div className="rounded-xl border border-border bg-surface p-2">
+            <ConfigNav slug={slug} plan={tenant.plan} role={tenant.role} />
+          </div>
+        </aside>
+        <div className="min-w-0 rounded-xl border border-border bg-surface p-6">
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

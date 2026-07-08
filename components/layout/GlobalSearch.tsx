@@ -65,14 +65,27 @@ export function GlobalSearch({ slug }: { slug: string }) {
 
   return (
     <>
+      {/* Mobile: ícono. sm+: pill con placeholder + atajo. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Buscar miembros"
         title="Buscar (⌘K)"
-        className="flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface hover:text-text-primary"
+        className="flex h-9 w-9 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-surface hover:text-text-primary sm:hidden"
       >
         <LuSearch className="h-5 w-5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Buscar miembros"
+        className="hidden items-center gap-2 rounded-lg border border-border bg-surface py-1.5 pl-3 pr-2 text-sm text-text-muted transition-colors hover:border-brand-green/40 hover:text-text-secondary sm:flex"
+      >
+        <LuSearch className="h-4 w-4" />
+        <span>Buscar miembros…</span>
+        <kbd className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+          ⌘K
+        </kbd>
       </button>
 
       {open && (
