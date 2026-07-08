@@ -2,6 +2,7 @@
 
 import { useCountUp } from "@/lib/hooks/useCountUp";
 import { cn } from "@/lib/utils/cn";
+import { Sparkline } from "@/components/dashboard/Sparkline";
 
 interface StatCardProps {
   label: string;
@@ -19,6 +20,10 @@ interface StatCardProps {
   hint?: string;
   /** Posición para el stagger de entrada. */
   index?: number;
+  /** Serie corta para el sparkline (solo cards con histórico). */
+  sparkline?: number[];
+  /** Color del sparkline (por defecto el acento del gym). */
+  sparklineColor?: string;
 }
 
 const valueColors = {
@@ -52,6 +57,8 @@ export function StatCard({
   delta,
   hint,
   index = 0,
+  sparkline,
+  sparklineColor = "#4fe05a",
 }: StatCardProps) {
   const animated = useCountUp(value);
 
@@ -109,6 +116,12 @@ export function StatCard({
         )}
         {hint && <span className="text-xs text-text-secondary">{hint}</span>}
       </div>
+
+      {sparkline && (
+        <div className="relative mt-3">
+          <Sparkline data={sparkline} color={sparklineColor} />
+        </div>
+      )}
     </div>
   );
 }

@@ -18,9 +18,23 @@ import {
   listMiembrosPorVencer,
 } from "@/lib/queries/dashboard.queries";
 import { countVisitasRapidasHoy } from "@/lib/queries/pagos.queries";
+import { getGymMarca } from "@/lib/queries/marca.queries";
+import {
+  getIngresosPorSemana,
+  getCheckinsPorDiaSemana,
+  getRetencion,
+  getMembresiasBreakdown,
+  getDashboardSparklines,
+} from "@/lib/queries/dashboard-charts.queries";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { CheckinsChart } from "@/components/dashboard/CheckinsChart";
 import { PorVencerList } from "@/components/dashboard/PorVencerList";
+import { IngresosSemanaChart } from "@/components/dashboard/IngresosSemanaChart";
+import { CheckinsSemanaChart } from "@/components/dashboard/CheckinsSemanaChart";
+import { RetencionCard } from "@/components/dashboard/RetencionCard";
+import { MembresiasDonut } from "@/components/dashboard/MembresiasDonut";
+
+const COLOR_ACENTO_DEFAULT = "#4fe05a";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -34,14 +48,33 @@ export default async function DashboardPage({ params }: PageProps) {
     redirect(`/${slug}/checkins`);
   }
 
-  const [miembros, ingresos, checkins, porVencer, visitasHoy] =
-    await Promise.all([
+  const [
+    miembros,
+    ingresos,
+    checkins,
+    porVencer,
+    visitasHoy,
+    marca,
+    ingresosSemana,
+    checkinsDia,
+    retencion,
+    membresias,
+    sparklines,
+  ] = await Promise.all([
     getMiembrosStats(tenant.id),
     getIngresosStats(tenant.id),
     getCheckinsStats(tenant.id),
     listMiembrosPorVencer(tenant.id, 7),
     countVisitasRapidasHoy(tenant.id),
+    getGymMarca(tenant.id),
+    getIngresosPorSemana(tenant.id),
+    getCheckinsPorDiaSemana(tenant.id),
+    getRetencion(tenant.id),
+    getMembresiasBreakdown(tenant.id),
+    getDashboardSparklines(tenant.id),
   ]);
+
+  const colorAcento = marca?.color_acento ?? COLOR_ACENTO_DEFAULT;
 
   // Calcular delta del mes vs mes anterior
   const deltaMes = (() => {
@@ -100,6 +133,8 @@ export default async function DashboardPage({ params }: PageProps) {
           value={checkins.hoy}
           variant="default"
           icon={<LuScanLine className="h-4 w-4" />}
+          sparkline={checkins.ultimos7Dias.map((d) => d.cantidad)}
+          sparklineColor={colorAcento}
         />
         <StatCard
           index={4}
@@ -107,6 +142,8 @@ export default async function DashboardPage({ params }: PageProps) {
           value={visitasHoy}
           variant="default"
           icon={<LuUserPlus className="h-4 w-4" />}
+          sparkline={sparklines.visitasDiarias}
+          sparklineColor={colorAcento}
         />
       </div>
 
@@ -119,6 +156,8 @@ export default async function DashboardPage({ params }: PageProps) {
           format="currency"
           variant="success"
           icon={<LuWallet className="h-4 w-4" />}
+          sparkline={sparklines.ingresosDiarios}
+          sparklineColor={colorAcento}
         />
         <StatCard
           index={6}
@@ -127,6 +166,8 @@ export default async function DashboardPage({ params }: PageProps) {
           format="currency"
           variant="default"
           icon={<LuCalendarDays className="h-4 w-4" />}
+          sparkline={ingresosSemana.map((s) => s.monto)}
+          sparklineColor={colorAcento}
         />
         <StatCard
           index={7}
@@ -137,6 +178,8 @@ export default async function DashboardPage({ params }: PageProps) {
           icon={<LuTrendingUp className="h-4 w-4" />}
           delta={deltaMes}
           hint="vs mes anterior"
+          sparkline={sparklines.ingresosMensuales}
+          sparklineColor={colorAcento}
         />
       </div>
 
@@ -147,6 +190,14 @@ export default async function DashboardPage({ params }: PageProps) {
       >
         <CheckinsChart data={checkins.ultimos7Dias} />
         <PorVencerList miembros={porVencer} slug={slug} />
+      </div>
+
+      {/* Gráficas (Fase I.1) */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <IngresosSemanaChart data={ingresosSemana} color={colorAcento} />
+        <CheckinsSemanaChart data={checkinsDia} color={colorAcento} />
+        <RetencionCard data={retencion} />
+        <MembresiasDonut data={membresias} slug={slug} />
       </div>
     </div>
   );
