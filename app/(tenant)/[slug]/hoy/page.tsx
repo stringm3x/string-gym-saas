@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LuScanLine, LuWallet, LuCalendarX } from "react-icons/lu";
+import { LuScanLine, LuWallet, LuCalendarX, LuTriangleAlert } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { getAlertas } from "@/lib/queries/alertas.queries";
+import { countMiembrosSinTelefono } from "@/lib/queries/miembros.queries";
 import { getCheckinsStats } from "@/lib/queries/dashboard.queries";
 import { getIngresosStats } from "@/lib/queries/dashboard.queries";
 import { hasFeature } from "@/lib/features";
@@ -42,14 +44,16 @@ export default async function HoyPage({ params }: PageProps) {
   const canClases = hasFeature(tenant.plan, "clases");
   const hoy = hoyYMD();
 
-  const [alertas, checkins, ingresos, sesionesHoy] = await Promise.all([
-    getAlertas(tenant.id, slug),
-    getCheckinsStats(tenant.id),
-    getIngresosStats(tenant.id),
-    canClases
-      ? getSesionesByRango(tenant.id, hoy, hoy)
-      : Promise.resolve([] as ClaseSesion[]),
-  ]);
+  const [alertas, checkins, ingresos, sesionesHoy, sinTelefono] =
+    await Promise.all([
+      getAlertas(tenant.id, slug),
+      getCheckinsStats(tenant.id),
+      getIngresosStats(tenant.id),
+      canClases
+        ? getSesionesByRango(tenant.id, hoy, hoy)
+        : Promise.resolve([] as ClaseSesion[]),
+      countMiembrosSinTelefono(tenant.id),
+    ]);
 
   const vencenHoy =
     alertas.find((a) => a.tipo === "vencimiento_hoy")?.count ?? 0;
@@ -85,6 +89,23 @@ export default async function HoyPage({ params }: PageProps) {
           icon={<LuCalendarX className="h-4 w-4" />}
         />
       </div>
+
+      {/* Reporte discreto: miembros sin teléfono */}
+      {sinTelefono > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning/5 px-4 py-2.5">
+          <span className="flex items-center gap-2 text-sm text-text-secondary">
+            <LuTriangleAlert className="h-4 w-4 text-warning" />
+            {sinTelefono} miembro{sinTelefono === 1 ? "" : "s"} sin teléfono
+            registrado
+          </span>
+          <Link
+            href={`/${slug}/miembros?filter=sin_telefono`}
+            className="text-sm font-medium text-brand-green hover:opacity-80"
+          >
+            Ver lista
+          </Link>
+        </div>
+      )}
 
       {/* Clases de hoy */}
       {canClases && (

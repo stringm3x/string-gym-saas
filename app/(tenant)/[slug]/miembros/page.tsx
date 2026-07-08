@@ -33,7 +33,8 @@ export default async function MiembrosPage({
   const filter =
     sp.filter === "activos" ||
     sp.filter === "inactivos" ||
-    sp.filter === "por_vencer"
+    sp.filter === "por_vencer" ||
+    sp.filter === "sin_telefono"
       ? sp.filter
       : "all";
 

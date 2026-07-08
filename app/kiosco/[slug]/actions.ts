@@ -13,8 +13,21 @@ export type KioscoError =
   | "ERROR";
 
 export type KioscoResult =
-  | { success: true; nombre: string; plan: string | null }
+  | {
+      success: true;
+      nombre: string;
+      plan: string | null;
+      miembroId: string;
+      /** true si el miembro no tiene teléfono usable (para pedirlo). */
+      sinContacto: boolean;
+    }
   | { success: false; error: KioscoError; nombre?: string };
+
+/** Teléfono ausente o placeholder → conviene pedirlo. */
+function sinTelefono(tel: string | null): boolean {
+  const t = (tel ?? "").replace(/\D/g, "");
+  return t.length === 0 || t === "0000000000";
+}
 
 function hoyYMD(): string {
   const n = new Date();
@@ -70,5 +83,42 @@ export async function checkInKioscoAction(
     plan = p?.nombre ?? null;
   }
 
-  return { success: true, nombre: miembro.nombre, plan };
+  return {
+    success: true,
+    nombre: miembro.nombre,
+    plan,
+    miembroId: miembro.id,
+    sinContacto: sinTelefono(miembro.telefono),
+  };
+}
+
+/**
+ * Actualiza el teléfono de un miembro desde el kiosco (público, sin sesión).
+ * Scoped por gym (slug) + id del miembro. No lanza; valida 10 dígitos.
+ */
+export async function actualizarTelefonoKioscoAction(
+  slug: string,
+  miembroId: string,
+  telefono: string
+): Promise<{ ok: boolean; error?: string }> {
+  const digits = (telefono || "").replace(/\D/g, "");
+  if (digits.length !== 10) {
+    return { ok: false, error: "Escribe un número de 10 dígitos." };
+  }
+
+  const admin = createAdminClient();
+  const { data: gym } = await admin
+    .from("gyms")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!gym) return { ok: false, error: "Gimnasio no encontrado." };
+
+  const { error } = await admin
+    .from("miembros")
+    .update({ telefono: digits })
+    .eq("tenant_id", gym.id)
+    .eq("id", miembroId);
+  if (error) return { ok: false, error: "No se pudo guardar." };
+  return { ok: true };
 }

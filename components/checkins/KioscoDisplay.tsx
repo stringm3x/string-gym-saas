@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { LuCamera, LuKeyboard, LuCircleCheck, LuCircleX } from "react-icons/lu";
 import {
   checkInKioscoAction,
+  actualizarTelefonoKioscoAction,
   type KioscoResult,
   type KioscoError,
 } from "@/app/kiosco/[slug]/actions";
@@ -37,12 +38,22 @@ export function KioscoDisplay({
   const [token, setToken] = useState("");
   const [pending, start] = useTransition();
   const [result, setResult] = useState<KioscoResult | null>(null);
+  const [telInput, setTelInput] = useState("");
+  const [savingTel, startSaveTel] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const lockRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function focusInput() {
     if (modo === "lector") inputRef.current?.focus();
+  }
+
+  function reset() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setResult(null);
+    setTelInput("");
+    lockRef.current = false;
+    focusInput();
   }
 
   useEffect(() => {
@@ -59,11 +70,18 @@ export function KioscoDisplay({
       setResult(r);
       setToken("");
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setResult(null);
-        lockRef.current = false;
-        focusInput();
-      }, 3000);
+      // Si hay que pedir el teléfono, NO auto-reseteamos: esperamos al miembro.
+      const pideContacto = r.success && r.sinContacto;
+      if (!pideContacto) {
+        timerRef.current = setTimeout(reset, 3000);
+      }
+    });
+  }
+
+  function guardarTelefono(miembroId: string) {
+    startSaveTel(async () => {
+      await actualizarTelefonoKioscoAction(slug, miembroId, telInput);
+      reset();
     });
   }
 
@@ -112,6 +130,43 @@ export function KioscoDisplay({
                 </p>
                 {result.plan && (
                   <p className="text-xl text-text-secondary">{result.plan}</p>
+                )}
+
+                {result.sinContacto && (
+                  <div className="mt-6 w-full max-w-md border-t border-brand-green/20 pt-6">
+                    <p className="text-lg font-semibold text-text-primary">
+                      Actualiza tu contacto para recibir recordatorios
+                    </p>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      autoFocus
+                      value={telInput}
+                      onChange={(e) =>
+                        setTelInput(e.target.value.replace(/\D/g, "").slice(0, 10))
+                      }
+                      placeholder="¿Cuál es tu WhatsApp? (10 dígitos)"
+                      className="mt-3 w-full rounded-xl border border-border bg-bg px-4 py-3 text-center text-2xl tracking-wider text-text-primary focus:border-brand-green focus:outline-none"
+                    />
+                    <div className="mt-4 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={reset}
+                        disabled={savingTel}
+                        className="flex-1 rounded-xl border border-border px-4 py-3 text-lg text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
+                      >
+                        Ahora no
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => guardarTelefono(result.miembroId)}
+                        disabled={savingTel || telInput.length !== 10}
+                        className="flex-1 rounded-xl bg-brand-green px-4 py-3 text-lg font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+                      >
+                        {savingTel ? "Guardando…" : "Guardar"}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </>
             ) : (

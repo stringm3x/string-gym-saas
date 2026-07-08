@@ -9,13 +9,20 @@ import { hasFeature, type Plan } from "@/lib/features";
 import type { Tag } from "@/lib/queries/tags.queries";
 
 /** Estado unificado: combina el filtro de membresía con el de archivado. */
-type Estado = "all" | "activos" | "por_vencer" | "inactivos" | "archivados";
+type Estado =
+  | "all"
+  | "activos"
+  | "por_vencer"
+  | "inactivos"
+  | "sin_telefono"
+  | "archivados";
 
 const estadoOptions: { value: Estado; label: string }[] = [
   { value: "all", label: "Todos" },
   { value: "activos", label: "Activos" },
   { value: "por_vencer", label: "Por vencer" },
   { value: "inactivos", label: "Inactivos" },
+  { value: "sin_telefono", label: "Sin teléfono" },
   { value: "archivados", label: "Archivados" },
 ];
 

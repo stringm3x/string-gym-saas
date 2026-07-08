@@ -26,7 +26,7 @@ export interface MiembroConTags extends Miembro {
 export interface MiembrosListParams {
   tenantId: string;
   search?: string;
-  filter?: "all" | "activos" | "inactivos" | "por_vencer";
+  filter?: "all" | "activos" | "inactivos" | "por_vencer" | "sin_telefono";
   tagId?: string;
   /** Incluye archivados junto con los activos. */
   incluirArchivados?: boolean;
@@ -108,6 +108,11 @@ export async function listMiembros({
     query = query
       .gte("fecha_vencimiento", isoHoy)
       .lte("fecha_vencimiento", iso7);
+  } else if (filter === "sin_telefono") {
+    // Sin teléfono usable: null, vacío o placeholder '0000000000'.
+    query = query.or(
+      "telefono.is.null,telefono.eq.,telefono.eq.0000000000"
+    );
   }
 
   const { data, error } = await query;
@@ -360,6 +365,22 @@ export async function countMiembrosVencenHoy(
     .eq("tenant_id", tenantId)
     .eq("archivado", false)
     .eq("fecha_vencimiento", hoy);
+
+  if (error) return 0;
+  return count ?? 0;
+}
+
+/** Cuenta miembros activos sin teléfono usable (null, vacío o '0000000000'). */
+export async function countMiembrosSinTelefono(
+  tenantId: string
+): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("miembros")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("archivado", false)
+    .or("telefono.is.null,telefono.eq.,telefono.eq.0000000000");
 
   if (error) return 0;
   return count ?? 0;

@@ -39,6 +39,7 @@ export async function getMiembroByQrTokenPublic(
 export interface MiembroQrScan {
   id: string;
   nombre: string;
+  telefono: string | null;
   fecha_vencimiento: string | null;
   archivado: boolean;
   plan_id: string | null;
@@ -56,7 +57,7 @@ export async function getMiembroByQrToken(
   const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("miembros")
-    .select("id, nombre, fecha_vencimiento, archivado, plan_id")
+    .select("id, nombre, telefono, fecha_vencimiento, archivado, plan_id")
     .eq("tenant_id", tenantId)
     .eq("qr_token", token)
     .maybeSingle();
