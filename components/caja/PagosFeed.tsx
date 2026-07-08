@@ -33,7 +33,9 @@ export function PagosFeed({ pagos, slug }: PagosFeedProps) {
       {pagos.map((p) => (
         <li
           key={p.id}
-          className="flex items-center justify-between gap-4 px-4 py-3"
+          className={`flex items-center justify-between gap-4 px-4 py-3 ${
+            p.anulado_at ? "opacity-50" : ""
+          }`}
         >
           <div className="flex min-w-0 items-center gap-3">
             <Badge
