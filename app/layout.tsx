@@ -23,8 +23,20 @@ const ubuntuMono = Ubuntu_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "STRING GYM",
+  metadataBase: new URL("https://app.gym.stringwebs.com"),
+  title: {
+    default: "STRING GYM — CRM para gimnasios",
+    template: "%s | STRING GYM",
+  },
   description: "CRM y gestión operativa para gimnasios — STRING GYM",
+  applicationName: "STRING GYM",
+  openGraph: {
+    title: "STRING GYM — CRM para gimnasios",
+    description: "CRM y gestión operativa para gimnasios — STRING GYM",
+    siteName: "STRING GYM",
+    locale: "es_MX",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
