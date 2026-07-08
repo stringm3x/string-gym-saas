@@ -11,13 +11,10 @@
 import type { Plan } from "@/lib/features";
 
 export type AddonId =
-  | "landing_dominio"
   | "ia_rutinas"
   | "chatbot_captacion"
-  | "portal_miembro"
-  | "acceso_qr"
-  | "pasarela_pago"
-  | "creditos_cxc";
+  | "cfdi_facturacion"
+  | "multisucursal";
 
 export type AddonEstado = "disponible" | "proximamente" | "en_desarrollo";
 
@@ -38,25 +35,6 @@ export interface AddonDefinition {
 }
 
 export const ADDONS_CATALOG: AddonDefinition[] = [
-  {
-    id: "landing_dominio",
-    nombre: "Landing pública con dominio propio",
-    descripcionCorta: "Tu propia página web con dominio personalizado",
-    descripcionLarga:
-      "Da a tu gimnasio una presencia profesional online. Página web con tus planes, horarios, ubicación y formulario que alimenta directamente tu pipeline de prospectos. Conecta tu propio dominio (ej. evolutiongym.com) sin pagar hosting aparte.",
-    precio: 199,
-    planMinimo: "basico",
-    estado: "en_desarrollo",
-    faseConstruccion: "Fase 7",
-    iconName: "LuGlobe",
-    beneficios: [
-      "Página web profesional editable",
-      "Dominio propio incluido (.com, .mx, etc.)",
-      "Formulario web alimenta prospectos automáticamente",
-      "Optimizada para móvil",
-      "SEO básico configurado",
-    ],
-  },
   {
     id: "ia_rutinas",
     nombre: "Rutinas inteligentes con IA",
@@ -96,79 +74,41 @@ export const ADDONS_CATALOG: AddonDefinition[] = [
     ],
   },
   {
-    id: "portal_miembro",
-    nombre: "Portal del miembro",
-    descripcionCorta: "Auto-servicio para tus clientes",
+    id: "cfdi_facturacion",
+    nombre: "CFDI Facturación",
+    descripcionCorta: "Factura tus cobros con CFDI 4.0",
     descripcionLarga:
-      "Tus miembros entran a su propio portal para ver su membresía, historial de check-ins, rutinas asignadas. Pueden renovar membresía y obtener su QR de acceso. Reduce preguntas en recepción.",
-    precio: 249,
-    planMinimo: "pro",
-    estado: "proximamente",
-    faseConstruccion: "Futuro",
-    iconName: "LuCircleUser",
-    beneficios: [
-      "Login propio para cada miembro",
-      "Ven su historial y rutina",
-      "Renuevan membresía solos",
-      "Reduce preguntas en recepción",
-      "Branding del gym",
-    ],
-  },
-  {
-    id: "acceso_qr",
-    nombre: "Acceso por QR / huella",
-    descripcionCorta: "Check-in automático sin recepcionista",
-    descripcionLarga:
-      "Lector QR o biométrico en la puerta del gym. Los miembros entran solos, sin necesidad de que alguien los busque en el sistema. Hardware se vende como kit aparte o lo proporciona el gym.",
-    precio: 399,
-    planMinimo: "basico",
-    estado: "proximamente",
-    faseConstruccion: "Futuro",
-    iconName: "LuQrCode",
-    beneficios: [
-      "Check-in 100% automático",
-      "Lector QR o biométrico en puerta",
-      "No requiere recepcionista para acceso",
-      "Tracking real de horarios de visita",
-      "Hardware disponible como kit",
-    ],
-  },
-  {
-    id: "pasarela_pago",
-    nombre: "Pasarela de pago integrada",
-    descripcionCorta: "Cobra con tarjeta desde el sistema",
-    descripcionLarga:
-      "Integración con MercadoPago/Stripe. Cobra con tarjeta directamente desde Caja sin terminal externa. Genera links de pago para enviar por WhatsApp a clientes que pagan a distancia. Reduce manejo de efectivo.",
-    precio: 349,
-    planMinimo: "basico",
-    estado: "proximamente",
-    faseConstruccion: "Futuro",
-    iconName: "LuCreditCard",
-    beneficios: [
-      "Cobra con tarjeta sin terminal externa",
-      "Links de pago por WhatsApp",
-      "Conciliación automática",
-      "Reduce manejo de efectivo",
-      "MercadoPago + Stripe",
-    ],
-  },
-  {
-    id: "creditos_cxc",
-    nombre: "Créditos y cuentas por cobrar",
-    descripcionCorta: "Para gyms que cobran a plazos",
-    descripcionLarga:
-      "Gestión de pagos diferidos: cargos, abonos parciales, saldo pendiente por miembro. Reporte de cuentas por cobrar. Alertas de WhatsApp para liquidación de saldos.",
+      "Emite facturas CFDI 4.0 timbradas ante el SAT directamente desde el sistema. Tus miembros piden su factura y se genera con los datos del cobro, sin capturar nada dos veces. Descarga de PDF y XML.",
     precio: 299,
     planMinimo: "pro",
     estado: "proximamente",
-    faseConstruccion: "Cuando 2do cliente lo pida",
-    iconName: "LuReceipt",
+    faseConstruccion: "Próximamente",
+    iconName: "LuFileText",
     beneficios: [
-      "Tabla de cargos y abonos por miembro",
-      "Saldo pendiente visible",
-      "Reporte de cuentas por cobrar",
-      "Alertas WhatsApp de liquidación",
-      "Historial completo de cobros parciales",
+      "Facturación CFDI 4.0 timbrada ante el SAT",
+      "Factura a partir del cobro registrado",
+      "Descarga de PDF y XML",
+      "Autoservicio de factura para el miembro",
+      "Reduce trabajo manual de contabilidad",
+    ],
+  },
+  {
+    id: "multisucursal",
+    nombre: "Multi-sucursal",
+    descripcionCorta: "Gestiona varias sucursales en una cuenta",
+    descripcionLarga:
+      "Administra todas tus sucursales desde una sola cuenta: miembros, caja e inventario por sucursal, con reportes consolidados del negocio completo. Control de accesos por sucursal para tu equipo.",
+    precio: 999,
+    planMinimo: "escala",
+    estado: "proximamente",
+    faseConstruccion: "Próximamente",
+    iconName: "LuBuilding2",
+    beneficios: [
+      "Varias sucursales en una sola cuenta",
+      "Caja, miembros e inventario por sucursal",
+      "Reportes consolidados del negocio",
+      "Permisos de staff por sucursal",
+      "Comparativos entre sucursales",
     ],
   },
 ];
