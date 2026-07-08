@@ -29,15 +29,15 @@ export function PagosFeed({ pagos, slug }: PagosFeedProps) {
   }
 
   return (
-    <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+    <ul className="max-h-96 divide-y divide-white/5 overflow-y-auto rounded-xl border border-border bg-surface">
       {pagos.map((p) => (
         <li
           key={p.id}
-          className={`flex items-center justify-between gap-4 px-4 py-3 ${
+          className={`flex items-center justify-between gap-4 px-4 py-4 ${
             p.anulado_at ? "opacity-50" : ""
           }`}
         >
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3.5">
             <Badge
               variant={p.es_visita_rapida ? "info" : "neutral"}
               className="shrink-0"
