@@ -26,7 +26,13 @@ export interface MiembroConTags extends Miembro {
 export interface MiembrosListParams {
   tenantId: string;
   search?: string;
-  filter?: "all" | "activos" | "inactivos" | "por_vencer" | "sin_telefono";
+  filter?:
+    | "all"
+    | "activos"
+    | "inactivos"
+    | "por_vencer"
+    | "sin_telefono"
+    | "con_deuda";
   tagId?: string;
   /** Incluye archivados junto con los activos. */
   incluirArchivados?: boolean;
@@ -113,6 +119,16 @@ export async function listMiembros({
     query = query.or(
       "telefono.is.null,telefono.eq.,telefono.eq.0000000000"
     );
+  } else if (filter === "con_deuda") {
+    // Miembros con saldo negativo (deuda). Se resuelven los ids primero.
+    const { data: deudores } = await supabase
+      .from("saldo_miembro")
+      .select("miembro_id")
+      .eq("tenant_id", tenantId)
+      .lt("saldo_actual", 0);
+    const ids = (deudores ?? []).map((r) => r.miembro_id as string);
+    // Sin deudores → forzar resultado vacío.
+    query = query.in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
   }
 
   const { data, error } = await query;

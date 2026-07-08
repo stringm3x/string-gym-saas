@@ -4,6 +4,7 @@ import { LuScanLine, LuWallet, LuCalendarX, LuTriangleAlert } from "react-icons/
 import { getTenant } from "@/lib/tenant";
 import { getAlertas } from "@/lib/queries/alertas.queries";
 import { countMiembrosSinTelefono } from "@/lib/queries/miembros.queries";
+import { countMiembrosConDeuda } from "@/lib/queries/saldo.queries";
 import { getCheckinsStats } from "@/lib/queries/dashboard.queries";
 import { getIngresosStats } from "@/lib/queries/dashboard.queries";
 import { hasFeature } from "@/lib/features";
@@ -44,7 +45,8 @@ export default async function HoyPage({ params }: PageProps) {
   const canClases = hasFeature(tenant.plan, "clases");
   const hoy = hoyYMD();
 
-  const [alertas, checkins, ingresos, sesionesHoy, sinTelefono] =
+  const canSaldo = hasFeature(tenant.plan, "saldo_miembro");
+  const [alertas, checkins, ingresos, sesionesHoy, sinTelefono, conDeuda] =
     await Promise.all([
       getAlertas(tenant.id, slug),
       getCheckinsStats(tenant.id),
@@ -53,6 +55,7 @@ export default async function HoyPage({ params }: PageProps) {
         ? getSesionesByRango(tenant.id, hoy, hoy)
         : Promise.resolve([] as ClaseSesion[]),
       countMiembrosSinTelefono(tenant.id),
+      canSaldo ? countMiembrosConDeuda(tenant.id) : Promise.resolve(0),
     ]);
 
   const vencenHoy =
@@ -100,6 +103,22 @@ export default async function HoyPage({ params }: PageProps) {
           </span>
           <Link
             href={`/${slug}/miembros?filter=sin_telefono`}
+            className="text-sm font-medium text-brand-green hover:opacity-80"
+          >
+            Ver lista
+          </Link>
+        </div>
+      )}
+
+      {/* Reporte discreto: miembros con deuda de saldo */}
+      {conDeuda > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger/30 bg-danger/5 px-4 py-2.5">
+          <span className="flex items-center gap-2 text-sm text-text-secondary">
+            <LuTriangleAlert className="h-4 w-4 text-danger" />
+            {conDeuda} miembro{conDeuda === 1 ? "" : "s"} con deuda pendiente
+          </span>
+          <Link
+            href={`/${slug}/miembros?filter=con_deuda`}
             className="text-sm font-medium text-brand-green hover:opacity-80"
           >
             Ver lista

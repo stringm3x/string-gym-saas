@@ -34,7 +34,8 @@ export default async function MiembrosPage({
     sp.filter === "activos" ||
     sp.filter === "inactivos" ||
     sp.filter === "por_vencer" ||
-    sp.filter === "sin_telefono"
+    sp.filter === "sin_telefono" ||
+    sp.filter === "con_deuda"
       ? sp.filter
       : "all";
 

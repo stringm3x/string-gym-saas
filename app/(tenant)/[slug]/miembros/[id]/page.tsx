@@ -30,6 +30,12 @@ import { getPlanesPagoByMiembro } from "@/lib/queries/creditos.queries";
 import { listPlanes } from "@/lib/queries/planes.queries";
 import { MiembroCreditos } from "@/components/creditos/MiembroCreditos";
 import type { PlanPagoConCuotas } from "@/lib/types/creditos";
+import {
+  getSaldoMiembro,
+  getMovimientosSaldo,
+  type MovimientoSaldo,
+} from "@/lib/queries/saldo.queries";
+import { MiembroSaldo } from "@/components/saldo/MiembroSaldo";
 
 interface PageProps {
   params: Promise<{ slug: string; id: string }>;
@@ -41,6 +47,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const canClases = hasFeature(tenant.plan, "clases");
   const canQr = hasFeature(tenant.plan, "qr_access");
   const canCreditos = hasFeature(tenant.plan, "creditos");
+  const canSaldo = hasFeature(tenant.plan, "saldo_miembro");
 
   const [
     miembro,
@@ -54,6 +61,8 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     qrData,
     planesPago,
     planesMembresia,
+    saldoActual,
+    movimientosSaldo,
   ] = await Promise.all([
     getMiembro(tenant.id, id),
     listCheckinsByMiembro(tenant.id, id, 20),
@@ -74,6 +83,10 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     canCreditos
       ? listPlanes(tenant.id, { soloActivos: true })
       : Promise.resolve([]),
+    canSaldo ? getSaldoMiembro(tenant.id, id) : Promise.resolve(0),
+    canSaldo
+      ? getMovimientosSaldo(tenant.id, id, 20)
+      : Promise.resolve([] as MovimientoSaldo[]),
   ]);
 
   if (!miembro) {
@@ -192,6 +205,15 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           nombre={miembro.nombre}
           miembroId={miembro.id}
           canRegenerar={tenant.role === "owner"}
+        />
+      )}
+
+      {canSaldo && !miembro.archivado && (
+        <MiembroSaldo
+          miembroId={miembro.id}
+          saldo={saldoActual}
+          movimientos={movimientosSaldo}
+          esOwner={tenant.role === "owner"}
         />
       )}
 

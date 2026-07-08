@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import Link from "next/link";
 import {
   LuSearch,
@@ -33,6 +39,10 @@ import {
   registerPagoAction,
   type PagoResult,
 } from "@/app/(tenant)/[slug]/caja/actions";
+import {
+  getSaldoMiembroAction,
+  venderConSaldoAction,
+} from "@/app/(tenant)/[slug]/caja/saldo-actions";
 import type { PlanMembresia } from "@/lib/queries/planes.queries";
 import type { Promocion } from "@/lib/queries/promociones.queries";
 import type { ProductoConStock } from "@/lib/queries/productos.queries";
@@ -117,6 +127,38 @@ export function PagoForm({
   const [concepto, setConcepto] = useState<Concepto>("membresia");
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
   const [miembro, setMiembro] = useState<MiembroLite | null>(null);
+  // Saldo del miembro (para pagar productos con saldo a favor).
+  const [saldoMiembro, setSaldoMiembro] = useState<number | null>(null);
+  const [usarSaldo, setUsarSaldo] = useState(false);
+  const [saldoPending, startSaldo] = useTransition();
+
+  function seleccionarMiembro(m: MiembroLite | null) {
+    setMiembro(m);
+    setUsarSaldo(false);
+    setSaldoMiembro(null);
+    if (m) {
+      startSaldo(async () => {
+        const s = await getSaldoMiembroAction(m.id);
+        setSaldoMiembro(s);
+      });
+    }
+  }
+
+  function cobrarConSaldo(productoIdSel: string, cantidad: number) {
+    if (!miembro || !productoIdSel) return;
+    startSaldo(async () => {
+      const r = await venderConSaldoAction(miembro.id, productoIdSel, cantidad);
+      if (!r.ok) {
+        toastError("No se pudo cobrar con saldo", r.error);
+        return;
+      }
+      success("Cobrado con saldo del miembro");
+      setSaldoMiembro(r.saldo ?? null);
+      setUsarSaldo(false);
+      setSelProd({ kind: "custom" });
+      setCantidadProducto(1);
+    });
+  }
 
   // Por defecto se selecciona el primer plan (panel de personalización
   // colapsado). "Personalizar precio y duración" lo expande on-demand.
@@ -248,6 +290,7 @@ export function PagoForm({
     setMontoCustom("");
     setCustomPreset("1_mes");
     setCantidadProducto(1);
+    setUsarSaldo(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concepto]);
 
@@ -366,17 +409,20 @@ export function PagoForm({
         <input type="hidden" name="concepto" value={concepto} />
       </div>
 
-      {/* Miembro */}
-      {requiereMiembro && (
+      {/* Miembro (requerido en membresía/visita; opcional en producto para
+          pagar con saldo) */}
+      {(requiereMiembro || concepto === "producto") && (
         <div className="space-y-2">
-          <Label required>Miembro</Label>
+          <Label required={requiereMiembro}>
+            {requiereMiembro ? "Miembro" : "Miembro (opcional — para saldo)"}
+          </Label>
           {miembro ? (
             <SelectedMiembroChip
               miembro={miembro}
-              onClear={() => setMiembro(null)}
+              onClear={() => seleccionarMiembro(null)}
             />
           ) : (
-            <MiembroAutocomplete onSelect={setMiembro} />
+            <MiembroAutocomplete onSelect={seleccionarMiembro} />
           )}
           <input type="hidden" name="miembro_id" value={miembro?.id ?? ""} />
           {state.fieldErrors.miembro_id && (
@@ -490,8 +536,34 @@ export function PagoForm({
         />
       )}
 
-      {/* Método */}
-      <div className="space-y-1.5">
+      {/* Cobrar con saldo del miembro (solo producto + miembro con saldo) */}
+      {concepto === "producto" &&
+        miembro &&
+        productoId &&
+        (saldoMiembro ?? 0) > 0 && (
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-brand-green/30 bg-brand-green/5 px-3 py-2.5">
+            <span className="text-sm text-text-primary">
+              Cobrar con saldo del miembro
+              <span className="ml-1 text-xs text-text-secondary">
+                (disponible ${(saldoMiembro ?? 0).toLocaleString("es-MX")})
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={usarSaldo}
+              onChange={(e) => setUsarSaldo(e.target.checked)}
+              className="h-4 w-4 accent-brand-green"
+            />
+          </label>
+        )}
+
+      {/* Método (oculto si se paga con saldo) */}
+      <div
+        className={cn(
+          "space-y-1.5",
+          concepto === "producto" && usarSaldo && "hidden"
+        )}
+      >
         <Label>Método de pago</Label>
         <div className="grid grid-cols-3 gap-2">
           {metodoOptions.map((opt) => {
@@ -540,9 +612,21 @@ export function PagoForm({
             ${montoFinal.toLocaleString("es-MX")}
           </p>
         </div>
-        <Button type="submit" loading={isPending} size="lg">
-          Registrar pago
-        </Button>
+        {concepto === "producto" && usarSaldo ? (
+          <Button
+            type="button"
+            loading={saldoPending}
+            size="lg"
+            disabled={(saldoMiembro ?? 0) < montoFinal}
+            onClick={() => cobrarConSaldo(productoId, cantidadProducto)}
+          >
+            Cobrar con saldo
+          </Button>
+        ) : (
+          <Button type="submit" loading={isPending} size="lg">
+            Registrar pago
+          </Button>
+        )}
       </div>
       </form>
     </div>
