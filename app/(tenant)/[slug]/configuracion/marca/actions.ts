@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hasFeature } from "@/lib/features";
 import { hasPermission } from "@/lib/permissions";
 import { updateGymMarca, updateGymLogo } from "@/lib/queries/marca.queries";
+import { updateGooglePlaceId } from "@/lib/queries/opiniones.queries";
 import {
   marcaColoresSchema,
   LOGO_MAX_BYTES,
@@ -19,6 +20,20 @@ export interface MarcaFormState {
   ok: boolean;
   error: string | null;
   fieldErrors: Partial<Record<string, string>>;
+}
+
+/** Guarda el Google Place ID del gym (para las reseñas de Google). */
+export async function guardarGooglePlaceIdAction(
+  placeId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "configurar_general")) {
+    return { ok: false, error: "No autorizado." };
+  }
+  const r = await updateGooglePlaceId(tenant.id, placeId);
+  if (!r.ok) return { ok: false, error: r.error };
+  revalidatePath(`/${tenant.slug}/configuracion/marca`);
+  return { ok: true };
 }
 
 export async function updateMarcaAction(

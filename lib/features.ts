@@ -42,6 +42,7 @@ export const planFeatures = {
     "qr_access",
     "mercadopago",
     "campanas",
+    "opiniones",
   ],
   escala: [
     "alertas_dueno",

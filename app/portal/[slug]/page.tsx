@@ -14,7 +14,9 @@ import {
   getCheckinsPortal,
 } from "@/lib/queries/portal.queries";
 import { hasFeature } from "@/lib/features";
+import { yaOpinoHoy, getGooglePlaceId } from "@/lib/queries/opiniones.queries";
 import { PortalHeader } from "@/components/portal/PortalHeader";
+import { OpinionForm } from "@/components/portal/OpinionForm";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -36,11 +38,18 @@ export default async function PortalHomePage({ params }: PageProps) {
   if (!miembro) redirect(`/portal/${slug}/login`);
 
   const canClases = hasFeature(gym.plan, "clases");
-  const [reservas, checkins] = await Promise.all([
+  const canOpiniones = hasFeature(gym.plan, "opiniones");
+  const [reservas, checkins, opinoHoy, googlePlaceId] = await Promise.all([
     canClases
       ? getProximasReservasPortal(session.tenantId, session.miembroId)
       : Promise.resolve([]),
     getCheckinsPortal(session.tenantId, session.miembroId, 30),
+    canOpiniones
+      ? yaOpinoHoy(session.tenantId, session.miembroId)
+      : Promise.resolve(true),
+    canOpiniones
+      ? getGooglePlaceId(session.tenantId)
+      : Promise.resolve(null),
   ]);
 
   const hoy = new Date();
@@ -118,6 +127,11 @@ export default async function PortalHomePage({ params }: PageProps) {
             <LuReceipt className="h-3.5 w-3.5" /> Mis recibos
           </Link>
         </section>
+
+        {/* Opinión del miembro (Fase P.4) */}
+        {canOpiniones && !opinoHoy && (
+          <OpinionForm slug={slug} googlePlaceId={googlePlaceId} />
+        )}
 
         {/* Próximas clases */}
         {canClases && (

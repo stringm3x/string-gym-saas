@@ -14,6 +14,7 @@ import {
   LuCalendarDays,
   LuHandCoins,
   LuMegaphone,
+  LuStar,
 } from "react-icons/lu";
 import { SidebarLink } from "./SidebarLink";
 import { hasFeature, type Plan } from "@/lib/features";
@@ -70,6 +71,7 @@ export function Sidebar({
     prospectos: hasFeature(plan, "prospectos") && can("ver_prospectos"),
     alertas: hasFeature(plan, "alertas_dueno") && can("ver_alertas"),
     campanas: hasFeature(plan, "campanas") && isOwner,
+    opiniones: hasFeature(plan, "opiniones") && isOwner,
   };
 
   return (
@@ -176,7 +178,7 @@ export function Sidebar({
           />
         )}
 
-        {(v.prospectos || v.alertas || v.campanas) && (
+        {(v.prospectos || v.alertas || v.campanas || v.opiniones) && (
           <SectionLabel>CRM</SectionLabel>
         )}
         {v.prospectos && (
@@ -204,6 +206,14 @@ export function Sidebar({
             label="Campañas"
             icon={<LuMegaphone size={18} />}
             active={activeSection === "comunicaciones"}
+          />
+        )}
+        {v.opiniones && (
+          <SidebarLink
+            href={`${base}/opiniones`}
+            label="Opiniones"
+            icon={<LuStar size={18} />}
+            active={activeSection === "opiniones"}
           />
         )}
       </nav>

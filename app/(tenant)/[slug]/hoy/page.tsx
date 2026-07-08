@@ -4,6 +4,7 @@ import { LuScanLine, LuWallet, LuCalendarX, LuTriangleAlert } from "react-icons/
 import { getTenant } from "@/lib/tenant";
 import { getAlertas } from "@/lib/queries/alertas.queries";
 import { countMiembrosSinTelefono } from "@/lib/queries/miembros.queries";
+import { getPromedioSemana } from "@/lib/queries/opiniones.queries";
 import { getCheckinsStats } from "@/lib/queries/dashboard.queries";
 import { getIngresosStats } from "@/lib/queries/dashboard.queries";
 import { hasFeature } from "@/lib/features";
@@ -44,7 +45,8 @@ export default async function HoyPage({ params }: PageProps) {
   const canClases = hasFeature(tenant.plan, "clases");
   const hoy = hoyYMD();
 
-  const [alertas, checkins, ingresos, sesionesHoy, sinTelefono] =
+  const canOpiniones = hasFeature(tenant.plan, "opiniones");
+  const [alertas, checkins, ingresos, sesionesHoy, sinTelefono, opinionesSem] =
     await Promise.all([
       getAlertas(tenant.id, slug),
       getCheckinsStats(tenant.id),
@@ -53,6 +55,9 @@ export default async function HoyPage({ params }: PageProps) {
         ? getSesionesByRango(tenant.id, hoy, hoy)
         : Promise.resolve([] as ClaseSesion[]),
       countMiembrosSinTelefono(tenant.id),
+      canOpiniones
+        ? getPromedioSemana(tenant.id)
+        : Promise.resolve({ promedio: 0, total: 0 }),
     ]);
 
   const vencenHoy =
@@ -103,6 +108,23 @@ export default async function HoyPage({ params }: PageProps) {
             className="text-sm font-medium text-brand-green hover:opacity-80"
           >
             Ver lista
+          </Link>
+        </div>
+      )}
+
+      {/* Alerta: calificación baja esta semana */}
+      {opinionesSem.total > 0 && opinionesSem.promedio < 3 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger/30 bg-danger/5 px-4 py-2.5">
+          <span className="flex items-center gap-2 text-sm text-text-secondary">
+            <LuTriangleAlert className="h-4 w-4 text-danger" />
+            Tu calificación bajó a {opinionesSem.promedio.toFixed(1)} estrellas
+            esta semana
+          </span>
+          <Link
+            href={`/${slug}/opiniones`}
+            className="text-sm font-medium text-brand-green hover:opacity-80"
+          >
+            Ver opiniones
           </Link>
         </div>
       )}
