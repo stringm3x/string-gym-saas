@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LuArrowRight, LuArrowLeft } from "react-icons/lu";
+import { LuArrowRight, LuArrowLeft, LuRefreshCw } from "react-icons/lu";
+
+/** Segundos entre reenvíos de código (coincide con el throttle del backend). */
+const REENVIO_SEG = 60;
 import {
   solicitarCodigoAction,
   verificarCodigoAction,
@@ -21,7 +24,17 @@ export function PortalLoginForm({
   const [codigo, setCodigo] = useState("");
   const [emailMask, setEmailMask] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [reenvioEn, setReenvioEn] = useState(0);
   const [pending, start] = useTransition();
+
+  // Cuenta regresiva del reenvío mientras estamos en el paso del código.
+  useEffect(() => {
+    if (paso !== "codigo") return;
+    const t = setInterval(() => {
+      setReenvioEn((s) => (s <= 0 ? 0 : s - 1));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [paso]);
 
   function solicitar() {
     setError(null);
@@ -32,7 +45,22 @@ export function PortalLoginForm({
         return;
       }
       setEmailMask(r.emailMask ?? "");
+      setReenvioEn(REENVIO_SEG);
       setPaso("codigo");
+    });
+  }
+
+  function reenviar() {
+    if (reenvioEn > 0) return;
+    setError(null);
+    start(async () => {
+      const r = await solicitarCodigoAction(slug, identificador);
+      if (!r.ok) {
+        setError(r.error ?? "No se pudo reenviar. Intenta de nuevo.");
+        return;
+      }
+      setCodigo("");
+      setReenvioEn(REENVIO_SEG);
     });
   }
 
@@ -112,6 +140,23 @@ export function PortalLoginForm({
           >
             {pending ? "Verificando…" : "Entrar"}
           </button>
+
+          {reenvioEn > 0 ? (
+            <p className="text-center text-xs text-text-muted">
+              ¿No llegó? Reenviar en {reenvioEn}s
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={reenviar}
+              disabled={pending}
+              className="inline-flex w-full items-center justify-center gap-1.5 text-xs font-medium text-brand-green transition-opacity hover:opacity-80 disabled:opacity-50"
+            >
+              <LuRefreshCw className="h-3.5 w-3.5" />
+              {pending ? "Reenviando…" : "Reenviar código"}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => {
