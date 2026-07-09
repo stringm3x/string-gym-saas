@@ -122,7 +122,7 @@ export function KioscoComprar({ slug }: { slug: string }) {
 
   // Carrito
   return (
-    <div className="flex h-full w-full max-w-2xl flex-col gap-4 py-4">
+    <div className="flex h-full min-h-0 w-full max-w-2xl flex-col gap-4 py-4">
       <div className="flex shrink-0 items-center justify-between gap-3">
         <button
           type="button"
@@ -142,7 +142,7 @@ export function KioscoComprar({ slug }: { slug: string }) {
         </p>
       ) : (
         <>
-          <div className="flex-1 space-y-2 overflow-y-auto pb-2 pr-1">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-2 pr-1">
             {productos.map((p) => {
               const q = cant[p.id] ?? 0;
               return (

@@ -79,7 +79,7 @@ export function KioscoShell({
       )}
 
       {/* Contenido de la tab activa */}
-      <div className="flex w-full flex-1 items-center justify-center">
+      <div className="flex w-full min-h-0 flex-1 items-center justify-center">
         {tab === "entrada" && <KioscoEntrada slug={slug} />}
         {tab === "comprar" && canAutoservicio && <KioscoComprar slug={slug} />}
         {tab === "membresia" && canAutoservicio && (
