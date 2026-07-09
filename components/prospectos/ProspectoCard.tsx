@@ -2,7 +2,7 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { LuPhone, LuCalendar, LuGripVertical } from "react-icons/lu";
+import { LuPhone, LuCalendar, LuGripVertical, LuUserPlus } from "react-icons/lu";
 import { cn } from "@/lib/utils/cn";
 import { Badge } from "@/components/ui/Badge";
 import { TagBadges } from "@/components/ui/TagSelector";
@@ -37,9 +37,14 @@ function isPruebaProxima(fecha: string | null): boolean {
 interface ProspectoCardProps {
   prospecto: ProspectoConTags;
   onClick: (prospecto: ProspectoConTags) => void;
+  onInscribir?: (prospecto: ProspectoConTags) => void;
 }
 
-export function ProspectoCard({ prospecto, onClick }: ProspectoCardProps) {
+export function ProspectoCard({
+  prospecto,
+  onClick,
+  onInscribir,
+}: ProspectoCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: prospecto.id });
 
@@ -103,6 +108,17 @@ export function ProspectoCard({ prospecto, onClick }: ProspectoCardProps) {
           {formatRelativeDate(prospecto.created_at)}
         </p>
       </button>
+
+      {prospecto.estado === "convertido" && onInscribir && (
+        <button
+          type="button"
+          onClick={() => onInscribir(prospecto)}
+          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-brand-green/30 bg-brand-green/10 px-2.5 py-1.5 text-xs font-medium text-brand-green transition-colors hover:bg-brand-green/20"
+        >
+          <LuUserPlus className="h-3.5 w-3.5" />
+          Inscribir como miembro
+        </button>
+      )}
     </div>
   );
 }

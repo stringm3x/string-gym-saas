@@ -7,11 +7,13 @@ import { useToast } from "@/components/ui/Toast";
 import { KanbanColumn } from "./KanbanColumn";
 import { ProspectoCard } from "./ProspectoCard";
 import { ProspectoModal } from "./ProspectoModal";
+import { InscribirMiembroModal } from "./InscribirMiembroModal";
 import { cambiarEstadoAction } from "@/app/(tenant)/[slug]/prospectos/actions";
 import type { ProspectoConTags } from "@/lib/queries/prospectos.queries";
 import type { ProspectoEstado } from "@/lib/validations/prospecto.schema";
 import type { Tag } from "@/lib/queries/tags.queries";
 import type { PlantillaMensaje } from "@/lib/queries/plantillas.queries";
+import type { PlanMembresia } from "@/lib/queries/planes.queries";
 
 const COLUMNS: { estado: ProspectoEstado; label: string; colorClass: string }[] = [
   { estado: "nuevo", label: "Nuevo", colorClass: "text-text-secondary" },
@@ -42,9 +44,10 @@ interface ProspectosKanbanProps {
   slug: string;
   availableTags?: Tag[];
   plantillas?: PlantillaMensaje[];
+  planes?: PlanMembresia[];
 }
 
-export function ProspectosKanban({ prospectos, slug, availableTags = [], plantillas = [] }: ProspectosKanbanProps) {
+export function ProspectosKanban({ prospectos, slug, availableTags = [], plantillas = [], planes = [] }: ProspectosKanbanProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
 
@@ -54,6 +57,8 @@ export function ProspectosKanban({ prospectos, slug, availableTags = [], plantil
   const [selectedProspecto, setSelectedProspecto] = useState<ProspectoConTags | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [inscribirProspecto, setInscribirProspecto] =
+    useState<ProspectoConTags | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -75,11 +80,8 @@ export function ProspectosKanban({ prospectos, slug, availableTags = [], plantil
 
     if (!prospecto || prospecto.estado === nuevoEstado) return;
 
-    if (nuevoEstado === "convertido") {
-      router.push(`/${slug}/miembros/nuevo?prospecto_id=${prospecto.id}`);
-      return;
-    }
-
+    // Mover a "Convertido" solo cambia el estado; la inscripción se dispara
+    // con el botón "Inscribir como miembro" de la card.
     const estadoAnterior = prospecto.estado;
 
     // Optimistic update
@@ -156,6 +158,7 @@ export function ProspectosKanban({ prospectos, slug, availableTags = [], plantil
                   key={prospecto.id}
                   prospecto={prospecto}
                   onClick={handleCardClick}
+                  onInscribir={setInscribirProspecto}
                 />
               ))}
             </KanbanColumn>
@@ -172,6 +175,16 @@ export function ProspectosKanban({ prospectos, slug, availableTags = [], plantil
         plantillas={plantillas}
         onSuccess={handleModalSuccess}
       />
+
+      {inscribirProspecto && (
+        <InscribirMiembroModal
+          open={!!inscribirProspecto}
+          onClose={() => setInscribirProspecto(null)}
+          slug={slug}
+          prospecto={inscribirProspecto}
+          planes={planes}
+        />
+      )}
     </>
   );
 }

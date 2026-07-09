@@ -3,6 +3,7 @@ import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { listProspectos } from "@/lib/queries/prospectos.queries";
 import { listTags } from "@/lib/queries/tags.queries";
 import { listPlantillas } from "@/lib/queries/plantillas.queries";
+import { listPlanes } from "@/lib/queries/planes.queries";
 import { hasFeature } from "@/lib/features";
 import { hasPermission } from "@/lib/permissions";
 import { redirect } from "next/navigation";
@@ -39,10 +40,11 @@ export default async function ProspectosPage({ params }: PageProps) {
     );
   }
 
-  const [prospectos, availableTags, plantillas] = await Promise.all([
+  const [prospectos, availableTags, plantillas, planes] = await Promise.all([
     listProspectos(tenant.id),
     listTags(tenant.id),
     listPlantillas(tenant.id, { soloActivas: true }),
+    listPlanes(tenant.id, { soloActivos: true }),
   ]);
 
   return (
@@ -58,7 +60,7 @@ export default async function ProspectosPage({ params }: PageProps) {
         </p>
       </div>
 
-      <ProspectosKanban prospectos={prospectos} slug={slug} availableTags={availableTags} plantillas={plantillas} />
+      <ProspectosKanban prospectos={prospectos} slug={slug} availableTags={availableTags} plantillas={plantillas} planes={planes} />
     </div>
   );
 }
