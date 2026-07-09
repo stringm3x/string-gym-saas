@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { hoyCDMX } from "@/lib/utils/dates";
 
 export interface Checkin {
   id: string;
@@ -72,8 +73,7 @@ export async function listCheckinsDeHoy(
 ): Promise<CheckinConMiembro[]> {
   const supabase = await createClient();
 
-  const inicioHoy = new Date();
-  inicioHoy.setHours(0, 0, 0, 0);
+  const inicioHoy = hoyCDMX();
 
   const { data, error } = await supabase
     .from("checkins")
@@ -99,8 +99,7 @@ export async function listCheckinsDeHoy(
  */
 export async function countCheckinsDeHoy(tenantId: string): Promise<number> {
   const supabase = await createClient();
-  const inicioHoy = new Date();
-  inicioHoy.setHours(0, 0, 0, 0);
+  const inicioHoy = hoyCDMX();
 
   const { count, error } = await supabase
     .from("checkins")

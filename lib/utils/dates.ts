@@ -35,6 +35,13 @@ const fmtCorta = new Intl.DateTimeFormat("es-MX", {
   year: "numeric",
 });
 
+const fmtISO = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 interface Wall {
   y: number;
   mo: number; // 1-12
@@ -129,6 +136,18 @@ export function finDeMesCDMX(date: Date | string = new Date()): Date {
   return new Date(wallToInstant(y, mo, 1, 0, 0, 0, 0).getTime() - 1);
 }
 
+/**
+ * "YYYY-MM-DD" a `dias` de una fecha base (por defecto hoy en México).
+ * Aritmética de calendario TZ-agnóstica (parsea y formatea en el mismo frame).
+ */
+export function isoMasDias(dias: number, base: string = hoyISO()): string {
+  const d = new Date(base + "T00:00:00");
+  d.setDate(d.getDate() + dias);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
 /** Fecha legible en español México: "29 de junio de 2026". */
 export function formatearFechaMX(date: Date | string): string {
   return fmtLarga.format(toInstant(date));
@@ -137,6 +156,11 @@ export function formatearFechaMX(date: Date | string): string {
 /** Fecha corta México: "29/06/2026". */
 export function fechaCorta(date: Date | string): string {
   return fmtCorta.format(toInstant(date));
+}
+
+/** Día calendario "YYYY-MM-DD" de un instante en la TZ de México. */
+export function isoEnMX(date: Date | string): string {
+  return fmtISO.format(toInstant(date));
 }
 
 /** ¿Ambas fechas caen en el mismo mes (año+mes) en la TZ de México? */

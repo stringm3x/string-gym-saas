@@ -1,4 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  hoyCDMX,
+  hoyISO,
+  isoMasDias,
+  isoEnMX,
+  inicioDeMesCDMX,
+} from "@/lib/utils/dates";
 
 // ============================================================
 // MIEMBROS
@@ -15,10 +22,8 @@ export async function getMiembrosStats(
   tenantId: string
 ): Promise<MiembrosStats> {
   const supabase = await createClient();
-  const hoyIso = new Date().toISOString().slice(0, 10);
-  const en7 = new Date();
-  en7.setDate(en7.getDate() + 7);
-  const en7Iso = en7.toISOString().slice(0, 10);
+  const hoyIso = hoyISO();
+  const en7Iso = isoMasDias(7);
 
   const [{ count: total }, { count: activos }, { count: por_vencer }] =
     await Promise.all([
@@ -68,16 +73,13 @@ export async function getIngresosStats(
 ): Promise<IngresosStats> {
   const supabase = await createClient();
 
-  const ahora = new Date();
-  const inicioDia = new Date(ahora);
-  inicioDia.setHours(0, 0, 0, 0);
-
-  const inicioSemana = new Date(inicioDia);
-  const dow = inicioSemana.getDay();
-  inicioSemana.setDate(inicioSemana.getDate() - (dow === 0 ? 6 : dow - 1));
-
-  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-  const inicioMesAnt = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+  const inicioDia = hoyCDMX();
+  const dow = new Date(hoyISO() + "T00:00:00Z").getUTCDay();
+  const inicioSemana = new Date(
+    inicioDia.getTime() - (dow === 0 ? 6 : dow - 1) * 86400000
+  );
+  const inicioMes = inicioDeMesCDMX();
+  const inicioMesAnt = inicioDeMesCDMX(new Date(inicioMes.getTime() - 1));
 
   // Una sola query desde inicio mes anterior, subdividir en memoria.
   const { data, error } = await supabase
@@ -119,12 +121,8 @@ export async function getCheckinsStats(
 ): Promise<CheckinsStats> {
   const supabase = await createClient();
 
-  const ahora = new Date();
-  const inicioDia = new Date(ahora);
-  inicioDia.setHours(0, 0, 0, 0);
-
-  const hace7 = new Date(inicioDia);
-  hace7.setDate(hace7.getDate() - 6); // Incluye hoy = 7 días totales
+  const inicioDia = hoyCDMX();
+  const hace7 = new Date(inicioDia.getTime() - 6 * 86400000); // 7 días con hoy
 
   const { data, error } = await supabase
     .from("checkins")
@@ -136,23 +134,17 @@ export async function getCheckinsStats(
     return { hoy: 0, ultimos7Dias: [] };
   }
 
-  // Agrupar por día (YYYY-MM-DD)
+  // Agrupar por día calendario de México (YYYY-MM-DD)
   const conteoPorDia = new Map<string, number>();
   for (let i = 0; i < 7; i++) {
-    const d = new Date(hace7);
-    d.setDate(d.getDate() + i);
-    const key = d.toISOString().slice(0, 10);
-    conteoPorDia.set(key, 0);
+    conteoPorDia.set(isoMasDias(i - 6), 0);
   }
 
   let hoyCount = 0;
-  const hoyKey = inicioDia.toISOString().slice(0, 10);
+  const hoyKey = hoyISO();
 
   for (const c of data) {
-    const fecha = new Date(c.fecha_hora);
-    const key = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate())
-      .toISOString()
-      .slice(0, 10);
+    const key = isoEnMX(c.fecha_hora);
     conteoPorDia.set(key, (conteoPorDia.get(key) ?? 0) + 1);
     if (key === hoyKey) hoyCount += 1;
   }

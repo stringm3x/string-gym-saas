@@ -1,4 +1,5 @@
 import { DIAS_FRECUENCIA, type FrecuenciaCuota } from "@/lib/validations/creditos.schema";
+import { hoyISO } from "@/lib/utils/dates";
 
 /** Formatea un monto en pesos mexicanos con 2 decimales. */
 export function money(n: number): string {
@@ -33,7 +34,7 @@ export function fechaISOaDias(dias: number, base: Date = new Date()): string {
 export function fechasCuotas(
   n: number,
   frecuencia: FrecuenciaCuota,
-  base: Date = new Date()
+  base: Date = new Date(hoyISO() + "T00:00:00")
 ): string[] {
   const interval = DIAS_FRECUENCIA[frecuencia];
   return Array.from({ length: n }, (_, i) => fechaISOaDias(i * interval, base));
@@ -41,8 +42,7 @@ export function fechasCuotas(
 
 /** Días entre hoy y una fecha ISO (negativo = ya venció). */
 export function diasEntreHoyY(fecha: string): number {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const hoy = new Date(hoyISO() + "T00:00:00");
   const f = new Date(fecha + "T00:00:00");
   return Math.round((f.getTime() - hoy.getTime()) / 86400000);
 }

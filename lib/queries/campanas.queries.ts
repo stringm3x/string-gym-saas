@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isoMasDias } from "@/lib/utils/dates";
 import type { Audiencia, CampanaInput } from "@/lib/validations/campanas.schema";
 
 export interface Destinatario {
@@ -24,15 +25,9 @@ export interface Campana {
   created_at: string;
 }
 
-/** Fecha local (YYYY-MM-DD) a `dias` de hoy. */
+/** Fecha (YYYY-MM-DD) a `dias` de hoy, en la TZ de México. */
 function ymd(dias: number): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + dias);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return isoMasDias(dias);
 }
 
 type MiembroRow = {

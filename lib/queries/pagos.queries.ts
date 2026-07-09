@@ -5,6 +5,7 @@ import type { VisitaRapidaInput } from "@/lib/validations/visita-rapida.schema";
 import { generarTokenRecibo } from "@/lib/utils/tokens";
 import { aplicarMovimiento } from "@/lib/queries/productos.queries";
 import { createNotification } from "@/lib/utils/notifications";
+import { hoyCDMX, hoyISO, inicioDeMesCDMX } from "@/lib/utils/dates";
 
 export type CategoriaCaja =
   | "all"
@@ -210,8 +211,7 @@ export async function anularPago(
 
 export async function countVisitasRapidasHoy(tenantId: string): Promise<number> {
   const supabase = await createClient();
-  const inicioHoy = new Date();
-  inicioHoy.setHours(0, 0, 0, 0);
+  const inicioHoy = hoyCDMX();
 
   const { count, error } = await supabase
     .from("pagos")
@@ -245,8 +245,7 @@ export async function listPagosDelDia(
 ): Promise<PagoConMiembro[]> {
   const supabase = await createClient();
 
-  const inicioHoy = new Date();
-  inicioHoy.setHours(0, 0, 0, 0);
+  const inicioHoy = hoyCDMX();
 
   let q = supabase
     .from("pagos")
@@ -313,16 +312,15 @@ export async function getResumenCaja(
 ): Promise<ResumenCaja> {
   const supabase = await createClient();
 
-  const ahora = new Date();
-  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-  const inicioDia = new Date(ahora);
-  inicioDia.setHours(0, 0, 0, 0);
+  const inicioMes = inicioDeMesCDMX();
+  const inicioDia = hoyCDMX();
 
-  // Semana: lunes 00:00 de esta semana.
-  const inicioSemana = new Date(inicioDia);
-  const dow = inicioSemana.getDay(); // 0=domingo, 1=lunes...
+  // Semana: lunes 00:00 de esta semana (en México). El día de la semana se
+  // toma del YMD de hoy en México; México no tiene DST, así que restar días
+  // en ms es exacto.
+  const dow = new Date(hoyISO() + "T00:00:00Z").getUTCDay(); // 0=domingo
   const diasARestar = dow === 0 ? 6 : dow - 1;
-  inicioSemana.setDate(inicioSemana.getDate() - diasARestar);
+  const inicioSemana = new Date(inicioDia.getTime() - diasARestar * 86400000);
 
   let q = supabase
     .from("pagos")

@@ -1,13 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  hoyCDMX,
+  hoyISO,
+  isoMasDias,
+  isoEnMX,
+  inicioDeMesCDMX,
+} from "@/lib/utils/dates";
 
-function ymd(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** Clave de mes (año*12 + mes 0-based) en la TZ de México. */
+function claveMesMX(input: Date | string): number {
+  const [y, m] = isoEnMX(input).split("-").map(Number);
+  return y * 12 + (m - 1);
 }
 
-function medianoche(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+/** Día de la semana (0=Dom … 6=Sáb) de un instante, en la TZ de México. */
+function dowMX(input: Date | string): number {
+  return new Date(isoEnMX(input) + "T00:00:00Z").getUTCDay();
 }
 
 // ─────────────── Sparklines de las cards de evento ───────────────
@@ -26,8 +34,7 @@ export async function getDashboardSparklines(
   tenantId: string
 ): Promise<DashboardSparklines> {
   const supabase = await createClient();
-  const inicio = new Date();
-  inicio.setMonth(inicio.getMonth() - 6);
+  const inicio = new Date(hoyCDMX().getTime() - 190 * 86400000); // ~6 meses
 
   const { data } = await supabase
     .from("pagos")
@@ -36,27 +43,23 @@ export async function getDashboardSparklines(
     .gte("fecha_pago", inicio.toISOString())
     .is("anulado_at", null);
 
-  const hoy = medianoche();
-  const inicio7 = new Date(hoy);
-  inicio7.setDate(hoy.getDate() - 6);
-
   const ingresosDiarios = [0, 0, 0, 0, 0, 0, 0];
   const visitasDiarias = [0, 0, 0, 0, 0, 0, 0];
   const ingresosMensuales = [0, 0, 0, 0, 0, 0];
-  const claveMes = (d: Date) => d.getFullYear() * 12 + d.getMonth();
-  const baseMes = claveMes(new Date());
+  // Índice del día por su fecha México (últimos 7 días, viejo→nuevo).
+  const dayIdx = new Map<string, number>();
+  for (let i = 0; i < 7; i++) dayIdx.set(isoMasDias(i - 6), i);
+  const baseMes = claveMesMX(new Date());
 
   for (const p of data ?? []) {
-    const f = new Date(p.fecha_pago);
-    const fMid = new Date(f);
-    fMid.setHours(0, 0, 0, 0);
-    const di = Math.floor((fMid.getTime() - inicio7.getTime()) / 86400000);
+    const kd = isoEnMX(p.fecha_pago);
     const monto = Number(p.monto);
-    if (di >= 0 && di <= 6) {
+    const di = dayIdx.get(kd);
+    if (di !== undefined) {
       ingresosDiarios[di] += monto;
       if (p.es_visita_rapida) visitasDiarias[di] += 1;
     }
-    const mi = 5 - (baseMes - claveMes(f));
+    const mi = 5 - (baseMes - claveMesMX(kd));
     if (mi >= 0 && mi <= 5) ingresosMensuales[mi] += monto;
   }
 
@@ -75,9 +78,8 @@ export async function getIngresosPorSemana(
   tenantId: string
 ): Promise<IngresoSemana[]> {
   const supabase = await createClient();
-  const hoy = medianoche();
-  const inicio = new Date(hoy);
-  inicio.setDate(hoy.getDate() - 27); // 4 semanas atrás (28 días)
+  // Lunes 00:00 México de hace 4 semanas (28 días con hoy).
+  const inicio = new Date(hoyCDMX().getTime() - 27 * 86400000);
 
   const { data } = await supabase
     .from("pagos")
@@ -122,10 +124,10 @@ export async function getCheckinsPorDiaSemana(
     .eq("tenant_id", tenantId)
     .gte("fecha_hora", desde);
 
-  // getDay(): 0=Dom … 6=Sáb. Reordenamos a Lun–Dom.
+  // Día de semana en México (0=Dom … 6=Sáb). Reordenamos a Lun–Dom.
   const porDow = [0, 0, 0, 0, 0, 0, 0];
   for (const c of data ?? []) {
-    porDow[new Date(c.fecha_hora).getDay()]++;
+    porDow[dowMX(c.fecha_hora)]++;
   }
   const orden = [1, 2, 3, 4, 5, 6, 0];
   const labels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -153,8 +155,9 @@ const MESES = [
  */
 export async function getRetencion(tenantId: string): Promise<Retencion> {
   const supabase = await createClient();
-  const ahora = new Date();
-  const inicioM2 = new Date(ahora.getFullYear(), ahora.getMonth() - 2, 1);
+  const inicioMesActual = inicioDeMesCDMX();
+  const inicioM1 = inicioDeMesCDMX(new Date(inicioMesActual.getTime() - 1));
+  const inicioM2 = inicioDeMesCDMX(new Date(inicioM1.getTime() - 1));
 
   const [pagosRes, activosRes] = await Promise.all([
     supabase
@@ -169,22 +172,21 @@ export async function getRetencion(tenantId: string): Promise<Retencion> {
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenantId)
       .eq("archivado", false)
-      .gte("fecha_vencimiento", ymd(medianoche())),
+      .gte("fecha_vencimiento", hoyISO()),
   ]);
 
   // Miembros distintos con pago de membresía por mes (últimos 3 meses).
   const setPorMes: Array<Set<string>> = [new Set(), new Set(), new Set()];
-  const claveMes = (d: Date) => d.getFullYear() * 12 + d.getMonth();
-  const baseClave = claveMes(ahora);
+  const baseClave = claveMesMX(new Date());
   for (const p of pagosRes.data ?? []) {
     if (!p.miembro_id) continue;
-    const idx = 2 - (baseClave - claveMes(new Date(p.fecha_pago)));
+    const idx = 2 - (baseClave - claveMesMX(p.fecha_pago));
     if (idx >= 0 && idx <= 2) setPorMes[idx].add(p.miembro_id);
   }
 
   const tendencia = setPorMes.map((s, i) => {
-    const d = new Date(ahora.getFullYear(), ahora.getMonth() - (2 - i), 1);
-    return { mes: MESES[d.getMonth()], renovaciones: s.size };
+    const mesIdx = (((baseClave - (2 - i)) % 12) + 12) % 12;
+    return { mes: MESES[mesIdx], renovaciones: s.size };
   });
 
   const renovacionesMes = setPorMes[2].size;
@@ -220,8 +222,8 @@ export async function getMembresiasBreakdown(
     .eq("tenant_id", tenantId)
     .eq("archivado", false);
 
-  const hoy = ymd(medianoche());
-  const en7 = ymd(new Date(Date.now() + 7 * 86400000));
+  const hoy = hoyISO();
+  const en7 = isoMasDias(7);
 
   let activos = 0;
   let porVencer = 0;
