@@ -122,8 +122,8 @@ export function KioscoComprar({ slug }: { slug: string }) {
 
   // Carrito
   return (
-    <div className="flex max-h-full w-full max-w-2xl flex-col gap-4 overflow-y-auto py-4">
-      <div className="flex items-center justify-between gap-3">
+    <div className="flex h-full w-full max-w-2xl flex-col gap-4 py-4">
+      <div className="flex shrink-0 items-center justify-between gap-3">
         <button
           type="button"
           onClick={reset}
@@ -142,7 +142,7 @@ export function KioscoComprar({ slug }: { slug: string }) {
         </p>
       ) : (
         <>
-          <div className="space-y-2">
+          <div className="flex-1 space-y-2 overflow-y-auto pb-2 pr-1">
             {productos.map((p) => {
               const q = cant[p.id] ?? 0;
               return (
@@ -186,52 +186,53 @@ export function KioscoComprar({ slug }: { slug: string }) {
             })}
           </div>
 
-          {/* Método de pago */}
-          <div className="mt-2">
-            <p className="mb-2 text-sm font-medium text-text-secondary">
-              Método de pago
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {metodos.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMetodo(m)}
-                  className={
-                    "rounded-xl border px-5 py-2.5 text-base font-medium transition-colors " +
-                    (metodo === m
-                      ? "border-brand-green bg-brand-green/10 text-text-primary"
-                      : "border-border text-text-secondary hover:text-text-primary")
-                  }
-                >
-                  {METODO_LABEL[m]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {error && (
-            <p className="text-center text-base font-medium text-danger">
-              {error}
-            </p>
-          )}
-
-          {/* Total + acción */}
-          <div className="sticky bottom-0 mt-2 flex items-center justify-between gap-4 border-t border-border bg-bg pt-4">
+          {/* Footer fijo: método + total + acción (siempre visible) */}
+          <div className="shrink-0 space-y-3 border-t border-border pt-3">
             <div>
-              <p className="text-sm text-text-secondary">Total</p>
-              <p className="text-3xl font-bold text-text-primary">
-                {pesos(total)}
+              <p className="mb-2 text-sm font-medium text-text-secondary">
+                Método de pago
               </p>
+              <div className="flex flex-wrap gap-2">
+                {metodos.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMetodo(m)}
+                    className={
+                      "rounded-xl border px-5 py-2.5 text-base font-medium transition-colors " +
+                      (metodo === m
+                        ? "border-brand-green bg-brand-green/10 text-text-primary"
+                        : "border-border text-text-secondary hover:text-text-primary")
+                    }
+                  >
+                    {METODO_LABEL[m]}
+                  </button>
+                ))}
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={generar}
-              disabled={items.length === 0 || pending}
-              className="rounded-2xl bg-brand-green px-8 py-4 text-lg font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-40"
-            >
-              {pending ? "Generando…" : "Generar código"}
-            </button>
+
+            {error && (
+              <p className="text-center text-base font-medium text-danger">
+                {error}
+              </p>
+            )}
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-text-secondary">Total</p>
+                <p className="text-3xl font-bold text-text-primary">
+                  {pesos(total)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={generar}
+                disabled={items.length === 0 || pending}
+                className="rounded-2xl bg-brand-green px-8 py-4 text-lg font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+              >
+                {pending ? "Generando…" : "Generar código"}
+              </button>
+            </div>
           </div>
         </>
       )}
