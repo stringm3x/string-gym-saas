@@ -1,3 +1,5 @@
+import { hoyISO } from "./dates";
+
 /**
  * Duraciones predefinidas para membresía.
  * Días aproximados — usados para mostrar opciones rápidas en el form.
@@ -60,7 +62,7 @@ function toISODate(d: Date): string {
  */
 export function tipoOperacionMembresia(
   fechaVencimientoActual: string | null | undefined,
-  hoy: Date = new Date()
+  hoy: Date = new Date(hoyISO() + "T00:00:00")
 ): TipoOperacionMembresia {
   if (!fechaVencimientoActual) return "nuevo";
 
@@ -88,7 +90,7 @@ export function tipoOperacionMembresia(
 export function calcularRangoPorDias(
   dias: number,
   fechaVencimientoActual: string | null | undefined,
-  hoy: Date = new Date()
+  hoy: Date = new Date(hoyISO() + "T00:00:00")
 ): {
   periodo_inicio: string;
   periodo_fin: string;
@@ -121,7 +123,7 @@ export function calcularRangoPorDias(
 export function calcularRangoMembresia(
   preset: DuracionPreset,
   fechaVencimientoActual: string | null | undefined,
-  hoy: Date = new Date()
+  hoy: Date = new Date(hoyISO() + "T00:00:00")
 ): { periodo_inicio: string; periodo_fin: string } {
   const { periodo_inicio, periodo_fin } = calcularRangoPorDias(
     duracionPresets[preset].dias,

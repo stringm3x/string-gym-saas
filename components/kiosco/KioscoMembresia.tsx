@@ -10,6 +10,7 @@ import {
   renovarMembresiaMpKioscoAction,
 } from "@/app/kiosco/[slug]/actions";
 import type { KioscoPlan } from "@/lib/queries/kiosco.queries";
+import { hoyISO } from "@/lib/utils/dates";
 
 type Paso = "scan" | "estado" | "planes" | "metodo" | "codigo" | "mp";
 type Miembro = { id: string; nombre: string; fecha_vencimiento: string | null };
@@ -27,8 +28,7 @@ function fechaLarga(iso: string): string {
 }
 
 function diasRestantes(fecha: string): number {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const hoy = new Date(hoyISO() + "T00:00:00");
   const venc = new Date(fecha + "T00:00:00");
   return Math.round((venc.getTime() - hoy.getTime()) / 86400000);
 }

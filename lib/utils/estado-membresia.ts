@@ -5,6 +5,8 @@
  * UI muestran SIEMPRE el estado calculado para tener una sola fuente
  * de verdad: la fecha.
  */
+import { hoyISO } from "./dates";
+
 export type EstadoMembresia =
   | "activo"
   | "por_vencer"
@@ -24,7 +26,7 @@ const MS_POR_DIA = 1000 * 60 * 60 * 24;
  */
 export function getEstadoMembresia(
   fechaVencimiento: string | null | undefined,
-  hoy: Date = new Date()
+  hoy: Date = new Date(hoyISO() + "T00:00:00")
 ): EstadoMembresia {
   if (!fechaVencimiento) {
     return "sin_membresia";
@@ -49,7 +51,7 @@ export function getEstadoMembresia(
  */
 export function diasParaVencer(
   fechaVencimiento: string | null | undefined,
-  hoy: Date = new Date()
+  hoy: Date = new Date(hoyISO() + "T00:00:00")
 ): number | null {
   if (!fechaVencimiento) return null;
 

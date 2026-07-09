@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { inicioDeMesCDMX } from "@/lib/utils/dates";
 
 export type OpinionOrigen = "portal" | "kiosco" | "manual";
 
@@ -30,9 +31,9 @@ export async function getOpinionesResumen(
   tenantId: string
 ): Promise<OpinionesResumen> {
   const supabase = await createClient();
-  const ahora = new Date();
-  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-  const inicioMesAnt = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+  const inicioMes = inicioDeMesCDMX();
+  // 1ms antes del inicio del mes cae en el mes anterior → su inicio.
+  const inicioMesAnt = inicioDeMesCDMX(new Date(inicioMes.getTime() - 1));
 
   const [rango, ultimasRes] = await Promise.all([
     supabase
@@ -142,14 +143,12 @@ export async function yaOpinoEsteMes(
   miembroId: string
 ): Promise<boolean> {
   const admin = createAdminClient();
-  const ahora = new Date();
-  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const { count } = await admin
     .from("opiniones")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
     .eq("miembro_id", miembroId)
-    .gte("created_at", inicioMes.toISOString());
+    .gte("created_at", inicioDeMesCDMX().toISOString());
   return (count ?? 0) > 0;
 }
 

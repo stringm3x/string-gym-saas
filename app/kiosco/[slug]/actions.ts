@@ -13,6 +13,7 @@ import {
   type KioscoPlan,
 } from "@/lib/queries/kiosco.queries";
 import { createCheckoutPreference } from "@/lib/mercadopago/preferences";
+import { hoyISO } from "@/lib/utils/dates";
 
 export type KioscoError =
   | "QR_NO_ENCONTRADO"
@@ -36,11 +37,6 @@ export type KioscoResult =
 function sinTelefono(tel: string | null): boolean {
   const t = (tel ?? "").replace(/\D/g, "");
   return t.length === 0 || t === "0000000000";
-}
-
-function hoyYMD(): string {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
 }
 
 /**
@@ -72,7 +68,7 @@ export async function checkInKioscoAction(
   if (miembro.archivado) {
     return { success: false, error: "MIEMBRO_ARCHIVADO", nombre: miembro.nombre };
   }
-  if (miembro.fecha_vencimiento && miembro.fecha_vencimiento < hoyYMD()) {
+  if (miembro.fecha_vencimiento && miembro.fecha_vencimiento < hoyISO()) {
     return { success: false, error: "MEMBRESIA_VENCIDA", nombre: miembro.nombre };
   }
 

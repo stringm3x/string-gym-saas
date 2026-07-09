@@ -17,6 +17,7 @@ import {
 import { hasFeature } from "@/lib/features";
 import { yaOpinoEsteMes, getGooglePlaceId } from "@/lib/queries/opiniones.queries";
 import { getPlanNutricionActivoPortal } from "@/lib/queries/nutricion.queries";
+import { hoyISO } from "@/lib/utils/dates";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { OpinionForm } from "@/components/portal/OpinionForm";
 import { PlanNutricionCard } from "@/components/nutricion/PlanNutricionCard";
@@ -58,8 +59,7 @@ export default async function PortalHomePage({ params }: PageProps) {
         : Promise.resolve(null),
     ]);
 
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const hoy = new Date(hoyISO() + "T00:00:00");
   const venc = miembro.fecha_vencimiento
     ? new Date(miembro.fecha_vencimiento + "T00:00:00")
     : null;

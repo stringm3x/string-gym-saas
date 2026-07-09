@@ -5,6 +5,7 @@ import { requirePortal } from "@/lib/portal/session";
 import { hasFeature } from "@/lib/features";
 import { yaOpinoEsteMes, crearOpinion } from "@/lib/queries/opiniones.queries";
 import { getMiembroPortal } from "@/lib/queries/portal.queries";
+import { hoyISO } from "@/lib/utils/dates";
 
 /**
  * Registra la opinión del miembro desde el portal (máx. 1 por mes, solo
@@ -26,13 +27,10 @@ export async function enviarOpinionPortalAction(
     return { ok: false, error: "Selecciona de 1 a 5 estrellas." };
   }
 
-  // Solo miembros con membresía activa (fecha_vencimiento >= hoy).
+  // Solo miembros con membresía activa (fecha_vencimiento >= hoy en México).
   const miembro = await getMiembroPortal(gym.id, session.miembroId);
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
   const vigente =
-    !!miembro?.fecha_vencimiento &&
-    new Date(miembro.fecha_vencimiento + "T00:00:00") >= hoy;
+    !!miembro?.fecha_vencimiento && miembro.fecha_vencimiento >= hoyISO();
   if (!vigente) {
     return { ok: false, error: "Tu membresía no está activa." };
   }

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { cn } from "@/lib/utils/cn";
 import { formatFecha } from "@/lib/utils/format";
+import { hoyISO } from "@/lib/utils/dates";
 import { duracionPresets, type DuracionPreset } from "@/lib/utils/membresia-rango";
 import {
   PlanPromoSelector,
@@ -48,8 +49,7 @@ const customPresets: DuracionPreset[] = [
 
 /** Rango desde hoy por una cantidad de días (miembro nuevo, sin vigencia previa). */
 function rangoDesdeHoy(dias: number): { inicio: string; fin: string } {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const hoy = new Date(hoyISO() + "T00:00:00");
   const fin = new Date(hoy);
   fin.setDate(fin.getDate() + dias - 1);
   const toISO = (d: Date) =>
