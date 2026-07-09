@@ -53,6 +53,20 @@ export async function getPortalGym(slug: string): Promise<PortalGym | null> {
   return (data as PortalGym | null) ?? null;
 }
 
+/**
+ * Color de acento del gym para tematizar el portal. Query DEDICADA (no toca
+ * getPortalGym) para no acoplar su SELECT a esta columna.
+ */
+export async function getPortalColorAcento(slug: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("gyms")
+    .select("color_acento")
+    .eq("slug", slug)
+    .maybeSingle();
+  return (data?.color_acento as string | null) ?? null;
+}
+
 export interface PortalMiembro {
   id: string;
   nombre: string;
