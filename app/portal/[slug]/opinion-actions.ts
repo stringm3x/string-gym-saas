@@ -3,11 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { requirePortal } from "@/lib/portal/session";
 import { hasFeature } from "@/lib/features";
-import { yaOpinoHoy, crearOpinion } from "@/lib/queries/opiniones.queries";
+import { yaOpinoEsteMes, crearOpinion } from "@/lib/queries/opiniones.queries";
+import { getMiembroPortal } from "@/lib/queries/portal.queries";
 
 /**
- * Registra la opinión del miembro desde el portal (máx. 1 por día). Devuelve
- * si fue de 5 estrellas para ofrecer la reseña en Google (Bloque 3).
+ * Registra la opinión del miembro desde el portal (máx. 1 por mes, solo
+ * miembros con membresía vigente). Devuelve si fue de 5 estrellas para
+ * ofrecer la reseña en Google (Bloque 3).
  */
 export async function enviarOpinionPortalAction(
   slug: string,
@@ -24,8 +26,19 @@ export async function enviarOpinionPortalAction(
     return { ok: false, error: "Selecciona de 1 a 5 estrellas." };
   }
 
-  if (await yaOpinoHoy(gym.id, session.miembroId)) {
-    return { ok: false, error: "Ya dejaste tu opinión hoy. ¡Gracias!" };
+  // Solo miembros con membresía activa (fecha_vencimiento >= hoy).
+  const miembro = await getMiembroPortal(gym.id, session.miembroId);
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const vigente =
+    !!miembro?.fecha_vencimiento &&
+    new Date(miembro.fecha_vencimiento + "T00:00:00") >= hoy;
+  if (!vigente) {
+    return { ok: false, error: "Tu membresía no está activa." };
+  }
+
+  if (await yaOpinoEsteMes(gym.id, session.miembroId)) {
+    return { ok: false, error: "Ya dejaste tu opinión este mes. ¡Gracias!" };
   }
 
   const r = await crearOpinion({

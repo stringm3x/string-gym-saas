@@ -15,7 +15,7 @@ import {
   getCheckinsPortal,
 } from "@/lib/queries/portal.queries";
 import { hasFeature } from "@/lib/features";
-import { yaOpinoHoy, getGooglePlaceId } from "@/lib/queries/opiniones.queries";
+import { yaOpinoEsteMes, getGooglePlaceId } from "@/lib/queries/opiniones.queries";
 import { getPlanNutricionActivoPortal } from "@/lib/queries/nutricion.queries";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { OpinionForm } from "@/components/portal/OpinionForm";
@@ -43,14 +43,14 @@ export default async function PortalHomePage({ params }: PageProps) {
   const canClases = hasFeature(gym.plan, "clases");
   const canOpiniones = hasFeature(gym.plan, "opiniones");
   const canNutricion = hasFeature(gym.plan, "nutricion");
-  const [reservas, checkins, opinoHoy, googlePlaceId, planNutricion] =
+  const [reservas, checkins, opinoEsteMes, googlePlaceId, planNutricion] =
     await Promise.all([
       canClases
         ? getProximasReservasPortal(session.tenantId, session.miembroId)
         : Promise.resolve([]),
       getCheckinsPortal(session.tenantId, session.miembroId, 30),
       canOpiniones
-        ? yaOpinoHoy(session.tenantId, session.miembroId)
+        ? yaOpinoEsteMes(session.tenantId, session.miembroId)
         : Promise.resolve(true),
       canOpiniones ? getGooglePlaceId(session.tenantId) : Promise.resolve(null),
       canNutricion
@@ -135,7 +135,7 @@ export default async function PortalHomePage({ params }: PageProps) {
         </section>
 
         {/* Opinión del miembro (Fase P.4) */}
-        {canOpiniones && !opinoHoy && (
+        {canOpiniones && vigente && !opinoEsteMes && (
           <OpinionForm slug={slug} googlePlaceId={googlePlaceId} />
         )}
 

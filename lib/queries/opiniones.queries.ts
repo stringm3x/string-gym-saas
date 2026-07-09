@@ -136,20 +136,20 @@ export async function getPromedioSemana(
   return { promedio: promedio(nums), total: nums.length };
 }
 
-/** ¿El miembro ya dejó una opinión hoy? (máx. 1 por día). Service-role. */
-export async function yaOpinoHoy(
+/** ¿El miembro ya dejó una opinión este mes? (máx. 1 por mes). Service-role. */
+export async function yaOpinoEsteMes(
   tenantId: string,
   miembroId: string
 ): Promise<boolean> {
   const admin = createAdminClient();
-  const inicioDia = new Date();
-  inicioDia.setHours(0, 0, 0, 0);
+  const ahora = new Date();
+  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const { count } = await admin
     .from("opiniones")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
     .eq("miembro_id", miembroId)
-    .gte("created_at", inicioDia.toISOString());
+    .gte("created_at", inicioMes.toISOString());
   return (count ?? 0) > 0;
 }
 
