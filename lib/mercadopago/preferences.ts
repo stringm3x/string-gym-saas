@@ -19,9 +19,10 @@ export type CreatePreferenceResult =
   | { ok: false; error: string };
 
 /** URL del webhook (incluye el tenant para resolverlo sin OAuth). */
-function notificationUrl(tenantId: string): string | undefined {
-  const domain = process.env.APP_DOMAIN;
-  if (!domain) return undefined;
+function notificationUrl(tenantId: string): string {
+  // Fallback al dominio de producción si la env var no está configurada,
+  // para que el webhook de MercadoPago siempre pueda confirmar el pago.
+  const domain = process.env.APP_DOMAIN ?? "app.gym.stringwebs.com";
   return `https://${domain}/api/webhooks/mercadopago?tenant=${tenantId}`;
 }
 
