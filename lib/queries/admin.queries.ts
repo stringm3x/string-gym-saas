@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { TZ_MX } from "@/lib/utils/dates";
 import { getCurrentAdmin } from "@/lib/admin/helpers";
 import { tenantMrr } from "@/lib/admin/pricing";
 
@@ -497,7 +498,7 @@ export async function getTenantsRequierenAtencion(): Promise<TenantsAtencion> {
           slug: g.slug,
           plan: g.plan,
           estado: g.estado,
-          detalle: `Suspendido desde ${new Date(g.suspendido_at).toLocaleDateString("es-MX")}`,
+          detalle: `Suspendido desde ${new Date(g.suspendido_at).toLocaleDateString("es-MX", { timeZone: TZ_MX })}`,
         });
       }
     }

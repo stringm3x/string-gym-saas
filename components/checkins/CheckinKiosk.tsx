@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { LuSearch, LuCircleCheck, LuCircleAlert, LuUser } from "react-icons/lu";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { TZ_MX } from "@/lib/utils/dates";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -86,6 +87,7 @@ export function CheckinKiosk() {
           nombre: result.miembro.nombre,
           estadoMembresia: result.miembro.estadoMembresia as EstadoMembresia,
           hora: new Date().toLocaleTimeString("es-MX", {
+            timeZone: TZ_MX,
             hour: "2-digit",
             minute: "2-digit",
           }),

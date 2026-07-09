@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { getCurrentAdmin } from "@/lib/admin/helpers";
 import { CuentaActions } from "@/components/admin/CuentaActions";
+import { TZ_MX } from "@/lib/utils/dates";
 
 function fechaHora(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "long",
     year: "numeric",

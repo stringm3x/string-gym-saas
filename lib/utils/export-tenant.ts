@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { TZ_MX } from "@/lib/utils/dates";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -84,9 +85,13 @@ export async function exportTenantData(tenantId: string): Promise<Buffer> {
     checkins.map((c) => {
       const d = new Date(c.fecha_hora);
       return [
-        c.fecha_hora ? d.toLocaleDateString("es-MX") : "",
+        c.fecha_hora ? d.toLocaleDateString("es-MX", { timeZone: TZ_MX }) : "",
         c.fecha_hora
-          ? d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+          ? d.toLocaleTimeString("es-MX", {
+              timeZone: TZ_MX,
+              hour: "2-digit",
+              minute: "2-digit",
+            })
           : "",
         c.miembro_id ? nombreMiembro.get(c.miembro_id) ?? "" : "",
       ];

@@ -15,6 +15,7 @@ import { TenantActionsPanel } from "@/components/admin/TenantActionsPanel";
 import { PagosManualesTable } from "@/components/admin/PagosManualesTable";
 import { NotasInternas } from "@/components/admin/NotasInternas";
 import { AuditLogTable } from "@/components/admin/AuditLogTable";
+import { TZ_MX } from "@/lib/utils/dates";
 
 const MXN = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -32,6 +33,7 @@ const ESTADO_STYLE: Record<string, string> = {
 function fecha(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     year: "numeric",

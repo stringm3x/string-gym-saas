@@ -4,6 +4,7 @@ import { hasFeature } from "@/lib/features";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import { getOpinionesResumen } from "@/lib/queries/opiniones.queries";
+import { TZ_MX } from "@/lib/utils/dates";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -26,6 +27,7 @@ function Estrellas({ n, size = "h-4 w-4" }: { n: number; size?: string }) {
 
 function fecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     year: "numeric",

@@ -10,6 +10,7 @@ import {
   type NotaFormState,
 } from "@/app/(tenant)/[slug]/notas/actions";
 import type { Nota, TipoAccion } from "@/lib/queries/notas.queries";
+import { TZ_MX } from "@/lib/utils/dates";
 
 const initialState: NotaFormState = { ok: false, error: null };
 
@@ -23,6 +24,7 @@ const tipoIcono: Record<TipoAccion, React.ReactNode> = {
 
 function formatDateTime(isoString: string): string {
   return new Date(isoString).toLocaleString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     year: "numeric",

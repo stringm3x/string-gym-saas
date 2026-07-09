@@ -17,6 +17,7 @@ import {
 } from "@/app/(tenant)/[slug]/notificaciones-actions";
 import type { Notificacion } from "@/lib/queries/notifications.queries";
 import type { NotificacionTipo } from "@/lib/utils/notifications";
+import { TZ_MX } from "@/lib/utils/dates";
 
 const ICONO: Record<NotificacionTipo, typeof LuBell> = {
   vencimiento: LuClock,
@@ -36,6 +37,7 @@ function tiempoRelativo(iso: string): string {
   const d = Math.floor(h / 24);
   if (d < 7) return `hace ${d} d`;
   return new Date(iso).toLocaleDateString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
   });

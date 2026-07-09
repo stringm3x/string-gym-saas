@@ -17,7 +17,7 @@ import {
 import { hasFeature } from "@/lib/features";
 import { yaOpinoEsteMes, getGooglePlaceId } from "@/lib/queries/opiniones.queries";
 import { getPlanNutricionActivoPortal } from "@/lib/queries/nutricion.queries";
-import { hoyISO } from "@/lib/utils/dates";
+import { hoyISO, TZ_MX } from "@/lib/utils/dates";
 import { PortalHeader } from "@/components/portal/PortalHeader";
 import { OpinionForm } from "@/components/portal/OpinionForm";
 import { PlanNutricionCard } from "@/components/nutricion/PlanNutricionCard";
@@ -218,12 +218,14 @@ export default async function PortalHomePage({ params }: PageProps) {
                 {checkins.slice(0, 5).map((c) => (
                   <li key={c.id} className="text-xs text-text-secondary">
                     {new Date(c.fecha_hora).toLocaleDateString("es-MX", {
+                      timeZone: TZ_MX,
                       weekday: "long",
                       day: "2-digit",
                       month: "short",
                     })}
                     {" · "}
                     {new Date(c.fecha_hora).toLocaleTimeString("es-MX", {
+                      timeZone: TZ_MX,
                       hour: "2-digit",
                       minute: "2-digit",
                     })}

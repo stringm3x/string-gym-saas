@@ -12,9 +12,11 @@ import type { Plan } from "@/lib/features";
 import { AdminDashboardCards } from "@/components/admin/AdminDashboardCards";
 import { TenantsAtencionList } from "@/components/admin/TenantsAtencionList";
 import { ACCION_LABEL } from "@/components/admin/AuditLogTable";
+import { TZ_MX } from "@/lib/utils/dates";
 
 function fechaHora(iso: string) {
   return new Date(iso).toLocaleString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     hour: "2-digit",

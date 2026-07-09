@@ -8,7 +8,9 @@
  * offset es dinámico por si eso cambiara.
  */
 
-const TZ = "America/Mexico_City";
+/** Zona horaria de México, para pasar como `timeZone` a formateadores nativos. */
+export const TZ_MX = "America/Mexico_City";
+const TZ = TZ_MX;
 
 const partsFmt = new Intl.DateTimeFormat("en-CA", {
   timeZone: TZ,

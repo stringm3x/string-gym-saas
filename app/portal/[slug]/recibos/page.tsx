@@ -4,6 +4,7 @@ import { requirePortal } from "@/lib/portal/session";
 import { getRecibosPortal } from "@/lib/queries/portal.queries";
 import { money } from "@/lib/utils/creditos-calc";
 import { PortalHeader } from "@/components/portal/PortalHeader";
+import { TZ_MX } from "@/lib/utils/dates";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -18,6 +19,7 @@ const CONCEPTO_LABEL: Record<string, string> = {
 
 function fecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     year: "numeric",

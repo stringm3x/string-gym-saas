@@ -1,4 +1,5 @@
 import type { TenantAdminEvent } from "@/lib/queries/admin.queries";
+import { TZ_MX } from "@/lib/utils/dates";
 
 /** Etiquetas legibles de las acciones del audit log. */
 export const ACCION_LABEL: Record<string, string> = {
@@ -17,6 +18,7 @@ export const ACCION_LABEL: Record<string, string> = {
 
 function fechaHora(iso: string) {
   return new Date(iso).toLocaleString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     hour: "2-digit",

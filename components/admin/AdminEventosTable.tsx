@@ -6,12 +6,14 @@ import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 import type { EventoLogRow } from "@/lib/queries/admin.queries";
 import { ACCION_LABEL } from "@/components/admin/AuditLogTable";
 import { exportEventosCsv } from "@/app/admin/(panel)/eventos/actions";
+import { TZ_MX } from "@/lib/utils/dates";
 
 const SELECT =
   "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-brand-green focus:outline-none";
 
 function fechaHora(iso: string) {
   return new Date(iso).toLocaleString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     year: "numeric",

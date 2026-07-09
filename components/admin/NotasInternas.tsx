@@ -4,9 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { agregarNotaInternaAction } from "@/app/admin/(panel)/tenants/[tenantId]/actions";
 import type { TenantNota } from "@/lib/queries/admin.queries";
+import { TZ_MX } from "@/lib/utils/dates";
 
 function fechaHora(iso: string) {
   return new Date(iso).toLocaleString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     year: "numeric",

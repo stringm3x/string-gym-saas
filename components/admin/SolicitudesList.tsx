@@ -9,6 +9,7 @@ import {
   activarSolicitudAction,
 } from "@/app/admin/(panel)/solicitudes/actions";
 import type { Solicitud, SolicitudEstado } from "@/lib/queries/solicitudes.queries";
+import { TZ_MX } from "@/lib/utils/dates";
 
 const ESTADO_STYLE: Record<SolicitudEstado, string> = {
   nuevo: "border-brand-green/30 bg-brand-green/10 text-brand-green",
@@ -33,6 +34,7 @@ const PLAN_LABEL: Record<string, string> = {
 
 function fecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     year: "numeric",

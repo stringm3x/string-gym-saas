@@ -5,12 +5,14 @@ import { LuPlus, LuMegaphone } from "react-icons/lu";
 import { AUDIENCIAS } from "@/lib/validations/campanas.schema";
 import type { Campana } from "@/lib/queries/campanas.queries";
 import { CampanaWizard, type AudienciaData } from "./CampanaWizard";
+import { TZ_MX } from "@/lib/utils/dates";
 
 const AUD_LABEL = new Map(AUDIENCIAS.map((a) => [a.value, a.label]));
 
 function fecha(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     year: "numeric",

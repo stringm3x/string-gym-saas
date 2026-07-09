@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { LuCopy, LuCheck, LuEye, LuEyeOff, LuRefreshCw, LuBookOpen } from "react-icons/lu";
 import { regenerarApiKeyAction } from "@/app/(tenant)/[slug]/configuracion/api/actions";
 import type { ApiLogRow } from "@/lib/queries/api-keys.queries";
+import { TZ_MX } from "@/lib/utils/dates";
 
 function mask(key: string): string {
   if (key.length < 18) return key;
@@ -15,6 +16,7 @@ function mask(key: string): string {
 function fechaHora(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     year: "numeric",

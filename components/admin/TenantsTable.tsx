@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { AdminTenantRow } from "@/lib/queries/admin.queries";
 import { PLAN_LABEL } from "@/lib/admin/pricing";
 import type { Plan } from "@/lib/features";
+import { TZ_MX } from "@/lib/utils/dates";
 
 const MXN = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -18,6 +19,7 @@ const ESTADO_STYLE: Record<string, string> = {
 
 function fechaCorta(iso: string): string {
   return new Date(iso).toLocaleDateString("es-MX", {
+    timeZone: TZ_MX,
     day: "2-digit",
     month: "short",
     year: "numeric",

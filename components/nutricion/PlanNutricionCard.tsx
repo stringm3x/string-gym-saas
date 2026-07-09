@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { LuPencil, LuArchive, LuFlame, LuTarget } from "react-icons/lu";
 import type { PlanNutricion } from "@/lib/queries/nutricion.queries";
+import { TZ_MX } from "@/lib/utils/dates";
 
 function fecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es-MX", {
+    timeZone: TZ_MX,
     day: "numeric",
     month: "long",
     year: "numeric",
