@@ -110,15 +110,18 @@ export async function registerPagoAction(
         });
       }
 
-      // Capa 3: WhatsApp automático (dormido hasta Fase 7.5; hoy no-op).
-      await dispararWhatsAppAutomatico({
-        gymId: tenant.id,
-        miembroNombre: miembro.nombre,
-        telefono: miembro.telefono,
-        monto: parsed.data.monto,
-        fechaVencimiento: parsed.data.periodo_fin || null,
-        reciboUrl,
-      });
+      // Capa 3: WhatsApp automático (feature de Escala; dormido hasta que se
+      // active la infra en Grupo 6). Solo dispara si el plan lo incluye.
+      if (hasFeature(tenant.plan, "whatsapp_automatico")) {
+        await dispararWhatsAppAutomatico({
+          gymId: tenant.id,
+          miembroNombre: miembro.nombre,
+          telefono: miembro.telefono,
+          monto: parsed.data.monto,
+          fechaVencimiento: parsed.data.periodo_fin || null,
+          reciboUrl,
+        });
+      }
     }
   }
 

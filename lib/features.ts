@@ -14,6 +14,9 @@
 export type Plan = "basico" | "pro" | "escala";
 
 export const planFeatures = {
+  // Tier baseline: capacidades base que TODOS los planes heredan. Son
+  // descriptivas del matrix — NO se enforcean con hasFeature (el gating real,
+  // cuando aplica, es por rol/permiso; p.ej. archivar → eliminar_archivar_miembros).
   basico: [
     "miembros",
     "checkins",
@@ -49,8 +52,6 @@ export const planFeatures = {
   escala: [
     "alertas_dueno",
     "whatsapp_automatico",
-    "reportes_avanzados",
-    "personalizacion_avanzada",
     "creditos",
     "portal_miembro",
   ],
