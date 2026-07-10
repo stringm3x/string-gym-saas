@@ -14,7 +14,6 @@ import { getGymFull } from "@/lib/queries/gyms.queries";
 import { getGymMarca } from "@/lib/queries/marca.queries";
 import { hasFeature } from "@/lib/features";
 import { sendRecibo } from "@/lib/email/send-recibo";
-import { dispararWhatsAppAutomatico } from "@/lib/integrations/whatsapp-automatico";
 import { pagoSchema } from "@/lib/validations/pago.schema";
 import { visitaRapidaSchema } from "@/lib/validations/visita-rapida.schema";
 
@@ -110,18 +109,8 @@ export async function registerPagoAction(
         });
       }
 
-      // Capa 3: WhatsApp automático (feature de Escala; dormido hasta que se
-      // active la infra en Grupo 6). Solo dispara si el plan lo incluye.
-      if (hasFeature(tenant.plan, "whatsapp_automatico")) {
-        await dispararWhatsAppAutomatico({
-          gymId: tenant.id,
-          miembroNombre: miembro.nombre,
-          telefono: miembro.telefono,
-          monto: parsed.data.monto,
-          fechaVencimiento: parsed.data.periodo_fin || null,
-          reciboUrl,
-        });
-      }
+      // WhatsApp automático (PAGO_REGISTRADO) se emite centralizado dentro de
+      // createPago (Bloque 2), cubriendo caja, kiosco, créditos e inscripción.
     }
   }
 
