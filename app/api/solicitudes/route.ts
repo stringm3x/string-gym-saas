@@ -7,6 +7,7 @@ import {
   sendAlertaSolicitud,
   sendBienvenidaSolicitud,
 } from "@/lib/email/solicitudes";
+import { notifyWhatsapp } from "@/lib/whatsapp/notify";
 
 export const runtime = "nodejs";
 
@@ -63,6 +64,22 @@ export async function POST(request: NextRequest) {
   });
   if (!created.ok) {
     return json({ error: "No se pudo registrar la solicitud." }, 500);
+  }
+
+  // WhatsApp a CARLOS (owner de STRING, no del gym). Fire-and-forget; no-op si
+  // CARLOS_WHATSAPP o N8N_WEBHOOK_URL no están configuradas.
+  if (process.env.CARLOS_WHATSAPP) {
+    void notifyWhatsapp({
+      tipo: "PROSPECTO_NUEVO",
+      gymId: "STRING",
+      gymSlug: "string",
+      gymNombre: "STRING GYM",
+      ownerTelefono: process.env.CARLOS_WHATSAPP,
+      prospectoNombre: v.nombre,
+      prospectoTelefono: v.telefono ?? null,
+      planInteres: v.plan_interes ?? null,
+      origen: "web",
+    });
   }
 
   // Emails (no bloquean la respuesta ante fallo).

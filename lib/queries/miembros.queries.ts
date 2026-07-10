@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { MiembroInput } from "@/lib/validations/miembro.schema";
 import type { Tag } from "@/lib/queries/tags.queries";
+import { emitBienvenidaMiembro } from "@/lib/whatsapp/emit";
 
 export interface Miembro {
   id: string;
@@ -178,6 +179,15 @@ export async function createMiembro(
       error: error?.message ?? "No se pudo crear el miembro",
     };
   }
+
+  // WhatsApp (Fase 7.5): BIENVENIDA_MIEMBRO. Fire-and-forget, gateado y no-op
+  // si la infra está dormida.
+  void emitBienvenidaMiembro({
+    tenantId,
+    miembroId: data.id,
+    planId: planId ?? null,
+    fechaVencimiento: input.fecha_vencimiento || null,
+  });
 
   return { ok: true, id: data.id };
 }

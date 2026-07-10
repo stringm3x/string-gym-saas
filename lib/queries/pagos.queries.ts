@@ -6,6 +6,7 @@ import { generarTokenRecibo } from "@/lib/utils/tokens";
 import { aplicarMovimiento } from "@/lib/queries/productos.queries";
 import { createNotification } from "@/lib/utils/notifications";
 import { hoyCDMX, hoyISO, inicioDeMesCDMX } from "@/lib/utils/dates";
+import { emitPagoRegistrado } from "@/lib/whatsapp/emit";
 
 export type CategoriaCaja =
   | "all"
@@ -153,6 +154,20 @@ export async function createPago(
     undefined,
     "caja"
   );
+
+  // WhatsApp (Fase 7.5): PAGO_REGISTRADO al miembro. Fire-and-forget, gateado
+  // y no-op si la infra está dormida. No aplica a visitas rápidas (sin miembro).
+  if (input.miembro_id) {
+    const domain = process.env.APP_DOMAIN ?? "app.gym.stringwebs.com";
+    void emitPagoRegistrado({
+      tenantId,
+      miembroId: input.miembro_id,
+      monto: input.monto,
+      planId: input.plan_id || null,
+      fechaVencimiento: input.periodo_fin || null,
+      reciboUrl: `https://${domain}/recibos/${token}`,
+    });
+  }
 
   return { ok: true, id: data.id, token };
 }

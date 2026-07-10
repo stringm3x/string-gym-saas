@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ProspectoEstado, ProspectoInput } from "@/lib/validations/prospecto.schema";
 import type { Tag } from "@/lib/queries/tags.queries";
+import { emitProspectoNuevo } from "@/lib/whatsapp/emit";
 
 export interface Prospecto {
   id: string;
@@ -112,6 +113,16 @@ export async function createProspecto(
       error: error?.message ?? "No se pudo crear el prospecto",
     };
   }
+
+  // WhatsApp (Fase 7.5): PROSPECTO_NUEVO al owner. Fire-and-forget, gateado y
+  // no-op si la infra está dormida. Los prospectos no tienen plan de interés.
+  void emitProspectoNuevo({
+    tenantId,
+    prospectoNombre: input.nombre,
+    prospectoTelefono: input.telefono ?? null,
+    planInteres: null,
+    origen: input.origen,
+  });
 
   return { ok: true, id: data.id };
 }
