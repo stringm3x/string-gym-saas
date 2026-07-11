@@ -35,25 +35,24 @@ function traducir(event: WhatsappEvent): SendWhatsappParams | null {
 
   switch (event.tipo) {
     case "MEMBRESIA_POR_VENCER":
-      // {{1}} nombre · {{2}} gym · {{3}} días · {{4}} vencimiento
+      // {{1}} nombre · {{2}} días · {{3}} gym  (mismo orden que el workflow n8n)
       return {
         to: event.miembroTelefono ?? "",
         templateName: TEMPLATE_RECORDATORIO_VENCIMIENTO,
         params: [
           event.miembroNombre,
-          event.gymNombre,
           String(event.diasRestantes),
-          event.fechaVencimiento,
+          event.gymNombre,
         ],
         apiKey: event.whatsappApiKey,
       };
 
     case "MEMBRESIA_VENCIDA":
-      // {{1}} nombre · {{2}} gym · {{3}} vencimiento
+      // {{1}} nombre · {{2}} gym
       return {
         to: event.miembroTelefono ?? "",
         templateName: TEMPLATE_MEMBRESIA_VENCIDA,
-        params: [event.miembroNombre, event.gymNombre, event.fechaVencimiento],
+        params: [event.miembroNombre, event.gymNombre],
         apiKey: event.whatsappApiKey,
       };
 
@@ -86,17 +85,15 @@ function traducir(event: WhatsappEvent): SendWhatsappParams | null {
       };
 
     case "MIEMBRO_SIN_ACTIVIDAD":
-      // Al OWNER, desde el número del gym. Incluye el tel del miembro para que
-      // el owner pueda contactarlo.
-      // {{1}} miembro · {{2}} tel miembro · {{3}} gym · {{4}} días sin venir
+      // Al OWNER, desde el número del gym.
+      // {{1}} miembro · {{2}} días sin venir · {{3}} gym
       return {
         to: event.ownerTelefono ?? "",
         templateName: TEMPLATE_MIEMBRO_INACTIVO,
         params: [
           event.miembroNombre,
-          event.miembroTelefono ?? "",
-          event.gymNombre,
           String(event.diasSinVenir),
+          event.gymNombre,
         ],
         apiKey: event.whatsappApiKey,
       };
@@ -104,7 +101,7 @@ function traducir(event: WhatsappEvent): SendWhatsappParams | null {
     case "PROSPECTO_NUEVO":
       // Al owner, desde el número del gym. Si es la alerta de STRING a Carlos
       // (sin credenciales de gym) cae a la cuenta de STRING (DIALOG360_API_KEY).
-      // {{1}} prospecto · {{2}} tel · {{3}} plan interés · {{4}} gym
+      // {{1}} prospecto · {{2}} tel · {{3}} plan interés
       return {
         to: event.ownerTelefono ?? "",
         templateName: TEMPLATE_PROSPECTO_NUEVO,
@@ -112,23 +109,21 @@ function traducir(event: WhatsappEvent): SendWhatsappParams | null {
           event.prospectoNombre,
           event.prospectoTelefono ?? "",
           event.planInteres ?? "",
-          event.gymNombre,
         ],
         apiKey: event.whatsappApiKey ?? stringKey,
       };
 
     case "RESUMEN_DIARIO":
       // Al owner, desde el número del gym.
-      // {{1}} gym · {{2}} check-ins · {{3}} ingresos · {{4}} vencen semana · {{5}} prospectos
+      // {{1}} gym · {{2}} check-ins · {{3}} ingresos · {{4}} vencen semana
       return {
         to: event.ownerTelefono ?? "",
         templateName: TEMPLATE_RESUMEN_DIARIO,
         params: [
           event.gymNombre,
           String(event.checkinshoy),
-          pesos(event.ingresosHoy),
+          String(event.ingresosHoy),
           String(event.vencimientosEstaSemana),
-          String(event.prospectosPendientes),
         ],
         apiKey: event.whatsappApiKey,
       };
