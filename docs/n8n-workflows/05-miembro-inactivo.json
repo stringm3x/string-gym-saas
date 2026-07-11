@@ -1,0 +1,60 @@
+{
+  "name": "WA 05 - Miembro inactivo (al owner)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wa-miembro-inactivo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-05",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "wa-miembro-inactivo"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://waba.360dialog.io/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "D360-API-KEY", "value": "={{ $json.body.whatsappApiKey }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.body.ownerTelefono, type: 'template', template: { name: 'miembro_inactivo_owner', language: { code: 'es_MX' }, components: [ { type: 'body', parameters: [ { type: 'text', text: String($json.body.miembroNombre) }, { type: 'text', text: String($json.body.diasSinVenir) }, { type: 'text', text: String($json.body.gymNombre) } ] } ] } }) }}",
+        "options": {}
+      },
+      "id": "http-05",
+      "name": "360dialog",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {}
+      },
+      "id": "respond-05",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "360dialog", "type": "main", "index": 0 }]] },
+    "360dialog": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

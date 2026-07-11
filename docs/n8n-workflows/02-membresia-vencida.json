@@ -1,0 +1,60 @@
+{
+  "name": "WA 02 - Membresía vencida",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wa-membresia-vencida",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-02",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "wa-membresia-vencida"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://waba.360dialog.io/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "D360-API-KEY", "value": "={{ $json.body.whatsappApiKey }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.body.miembroTelefono, type: 'template', template: { name: 'membresia_vencida', language: { code: 'es_MX' }, components: [ { type: 'body', parameters: [ { type: 'text', text: String($json.body.miembroNombre) }, { type: 'text', text: String($json.body.gymNombre) } ] } ] } }) }}",
+        "options": {}
+      },
+      "id": "http-02",
+      "name": "360dialog",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {}
+      },
+      "id": "respond-02",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "360dialog", "type": "main", "index": 0 }]] },
+    "360dialog": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
