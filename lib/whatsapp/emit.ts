@@ -153,6 +153,8 @@ export async function emitProspectoNuevo(p: {
       gymId: gym.id,
       gymSlug: gym.slug,
       gymNombre: gym.nombre,
+      whatsappNumero: gym.whatsappNumero,
+      whatsappApiKey: gym.whatsappApiKey,
       ownerTelefono: gym.telefono,
       prospectoNombre: p.prospectoNombre,
       prospectoTelefono: p.prospectoTelefono,

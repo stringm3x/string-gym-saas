@@ -74,6 +74,9 @@ export async function POST(request: NextRequest) {
       gymId: "STRING",
       gymSlug: "string",
       gymNombre: "STRING GYM",
+      // STRING no tiene subcuenta de gym: cae a DIALOG360_API_KEY (cuenta STRING).
+      whatsappNumero: null,
+      whatsappApiKey: null,
       ownerTelefono: process.env.CARLOS_WHATSAPP,
       prospectoNombre: v.nombre,
       prospectoTelefono: v.telefono ?? null,
