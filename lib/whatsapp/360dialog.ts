@@ -61,9 +61,9 @@ export async function sendWhatsappText(
   to: string,
   body: string,
   apiKey: string | null
-): Promise<void> {
-  if (!apiKey || !to || !body.trim()) return;
-  await postMessage(
+): Promise<boolean> {
+  if (!apiKey || !to || !body.trim()) return false;
+  return postMessage(
     {
       messaging_product: "whatsapp",
       to,
@@ -75,12 +75,15 @@ export async function sendWhatsappText(
   );
 }
 
-/** POST compartido a 360dialog con timeout y logging; nunca lanza. */
+/**
+ * POST compartido a 360dialog con timeout y logging; nunca lanza. Devuelve
+ * true si 360dialog respondió 2xx, false en cualquier otro caso.
+ */
 async function postMessage(
   body: unknown,
   apiKey: string,
   etiqueta: string
-): Promise<void> {
+): Promise<boolean> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -96,9 +99,12 @@ async function postMessage(
     if (!res.ok) {
       const detalle = await res.text().catch(() => "");
       console.error(`[360dialog] ${res.status} (${etiqueta}):`, detalle.slice(0, 300));
+      return false;
     }
+    return true;
   } catch (err) {
     console.error(`[360dialog] fallo al enviar ${etiqueta}:`, err);
+    return false;
   } finally {
     clearTimeout(timer);
   }
