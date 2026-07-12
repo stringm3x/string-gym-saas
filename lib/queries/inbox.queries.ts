@@ -7,6 +7,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { sendWhatsappText } from "@/lib/whatsapp/360dialog";
 import { registrarMensaje } from "@/lib/whatsapp/registro";
+import { hoyISO } from "@/lib/utils/dates";
 
 export interface ConversacionResumen {
   id: string;
@@ -82,6 +83,42 @@ export async function listConversaciones(
       ultimo_mensaje: preview.get(c.id as string) ?? null,
     };
   });
+}
+
+export interface MiembroResumenInbox {
+  nombre: string;
+  plan_nombre: string | null;
+  vigente: boolean;
+}
+
+/** Resumen del miembro vinculado para el encabezado del hilo. */
+export async function getMiembroResumenInbox(
+  tenantId: string,
+  miembroId: string
+): Promise<MiembroResumenInbox | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("miembros")
+    .select("nombre, fecha_vencimiento, planes_membresia(nombre)")
+    .eq("tenant_id", tenantId)
+    .eq("id", miembroId)
+    .maybeSingle();
+  if (!data) return null;
+
+  const plan = data.planes_membresia as
+    | { nombre: string }
+    | { nombre: string }[]
+    | null;
+  const planNombre = Array.isArray(plan)
+    ? plan[0]?.nombre ?? null
+    : plan?.nombre ?? null;
+  const venc = data.fecha_vencimiento as string | null;
+
+  return {
+    nombre: data.nombre as string,
+    plan_nombre: planNombre,
+    vigente: !!venc && venc >= hoyISO(),
+  };
 }
 
 /** Mensajes de una conversación en orden cronológico (más viejos primero). */

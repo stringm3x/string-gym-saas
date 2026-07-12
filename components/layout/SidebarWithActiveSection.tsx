@@ -16,6 +16,7 @@ interface SidebarWithActiveSectionProps {
     prospectos?: number;
     alertas?: number;
     caja?: number;
+    whatsapp?: number;
   };
 }
 
@@ -33,8 +34,13 @@ export function SidebarWithActiveSection({
 }: SidebarWithActiveSectionProps) {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
-  // segments[0] = slug, segments[1] = sección
-  const activeSection = segments[1] ?? "dashboard";
+  // segments[0] = slug, segments[1] = sección, segments[2] = subsección.
+  // Comunicaciones tiene dos hijos (campañas / whatsapp): incluimos la
+  // subsección para no resaltar ambos a la vez.
+  const activeSection =
+    segments[1] === "comunicaciones" && segments[2]
+      ? `comunicaciones/${segments[2]}`
+      : segments[1] ?? "dashboard";
 
   return (
     <Sidebar

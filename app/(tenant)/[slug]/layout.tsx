@@ -11,6 +11,7 @@ import { listGymAddons } from "@/lib/queries/addons.queries";
 import { getGymMarca } from "@/lib/queries/marca.queries";
 import { getActiveStaff } from "@/lib/queries/staff.queries";
 import { countCodigosPendientes } from "@/lib/queries/kiosco.queries";
+import { countNoLeidos } from "@/lib/queries/inbox.queries";
 import {
   getNotificaciones,
   countNotificacionesNoLeidas,
@@ -55,6 +56,7 @@ export default async function TenantLayout({
 
   const tieneAlertas = hasFeature(tenant.plan, "alertas_dueno");
   const tieneAutoservicio = hasFeature(tenant.plan, "kiosco_autoservicio");
+  const tieneWhatsapp = hasFeature(tenant.plan, "whatsapp_automatico");
 
   const [
     gym,
@@ -68,6 +70,7 @@ export default async function TenantLayout({
     notificaciones,
     notificacionesNoLeidas,
     codigosPendientes,
+    waNoLeidos,
   ] = await Promise.all([
     getGymInfo(tenant.id),
     countMiembrosVencenHoy(tenant.id),
@@ -82,6 +85,7 @@ export default async function TenantLayout({
     tieneAutoservicio
       ? countCodigosPendientes(tenant.id)
       : Promise.resolve(0),
+    tieneWhatsapp ? countNoLeidos(tenant.id) : Promise.resolve(0),
   ]);
 
   if (!gym) {
@@ -123,6 +127,7 @@ export default async function TenantLayout({
     prospectos: prospectosNuevos,
     alertas: alertasBadge,
     caja: codigosPendientes,
+    whatsapp: waNoLeidos,
   };
 
   // Gate de Términos (Fase 7.3): bloquea el app hasta que el gym acepte.

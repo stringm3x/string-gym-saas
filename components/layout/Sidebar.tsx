@@ -15,6 +15,7 @@ import {
   LuCalendarDays,
   LuHandCoins,
   LuMegaphone,
+  LuMessageCircle,
   LuStar,
   LuPanelLeftClose,
   LuPanelLeftOpen,
@@ -41,6 +42,7 @@ interface SidebarProps {
     prospectos?: number;
     alertas?: number;
     caja?: number;
+    whatsapp?: number;
   };
 }
 
@@ -95,6 +97,8 @@ export function Sidebar({
     prospectos: hasFeature(plan, "prospectos") && can("ver_prospectos"),
     alertas: hasFeature(plan, "alertas_dueno") && can("ver_alertas"),
     campanas: hasFeature(plan, "campanas") && isOwner,
+    // Inbox: owner y recepción (contestar es operación diaria de ambos).
+    whatsapp: hasFeature(plan, "whatsapp_automatico"),
     opiniones: hasFeature(plan, "opiniones") && isOwner,
   };
 
@@ -230,7 +234,11 @@ export function Sidebar({
           />
         )}
 
-        {(v.prospectos || v.alertas || v.campanas || v.opiniones) && (
+        {(v.prospectos ||
+          v.alertas ||
+          v.campanas ||
+          v.whatsapp ||
+          v.opiniones) && (
           <SectionLabel collapsed={collapsed}>CRM</SectionLabel>
         )}
         {v.prospectos && (
@@ -259,7 +267,18 @@ export function Sidebar({
             href={`${base}/comunicaciones/campanas`}
             label="Campañas"
             icon={<LuMegaphone size={18} />}
-            active={activeSection === "comunicaciones"}
+            active={activeSection === "comunicaciones/campanas"}
+            collapsed={collapsed}
+          />
+        )}
+        {v.whatsapp && (
+          <SidebarLink
+            href={`${base}/comunicaciones/whatsapp`}
+            label="WhatsApp"
+            icon={<LuMessageCircle size={18} />}
+            active={activeSection === "comunicaciones/whatsapp"}
+            badge={badges.whatsapp}
+            badgeVariant="danger"
             collapsed={collapsed}
           />
         )}
