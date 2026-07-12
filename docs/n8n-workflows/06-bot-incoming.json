@@ -1,0 +1,60 @@
+{
+  "name": "WA 06 - Bot entrante (por gym)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wa-bot-demo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-06",
+      "name": "Webhook 360dialog",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "wa-bot-demo"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.gym.stringwebs.com/api/whatsapp/incoming/demo",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Webhook-Secret", "value": "={{ $env.WHATSAPP_INCOMING_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "http-06",
+      "name": "SaaS /incoming",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {}
+      },
+      "id": "respond-06",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "Webhook 360dialog": { "main": [[{ "node": "SaaS /incoming", "type": "main", "index": 0 }]] },
+    "SaaS /incoming": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

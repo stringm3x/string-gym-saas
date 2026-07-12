@@ -49,6 +49,38 @@ export async function sendWhatsappMessage(
     },
   };
 
+  await postMessage(body, p.apiKey, p.templateName);
+}
+
+/**
+ * Envía un mensaje de TEXTO LIBRE (no plantilla). Válido dentro de la ventana
+ * de conversación de 24h — se usa para las respuestas del bot. No-op sin apiKey;
+ * nunca lanza.
+ */
+export async function sendWhatsappText(
+  to: string,
+  body: string,
+  apiKey: string | null
+): Promise<void> {
+  if (!apiKey || !to || !body.trim()) return;
+  await postMessage(
+    {
+      messaging_product: "whatsapp",
+      to,
+      type: "text",
+      text: { body },
+    },
+    apiKey,
+    "text"
+  );
+}
+
+/** POST compartido a 360dialog con timeout y logging; nunca lanza. */
+async function postMessage(
+  body: unknown,
+  apiKey: string,
+  etiqueta: string
+): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -56,20 +88,17 @@ export async function sendWhatsappMessage(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "D360-API-KEY": p.apiKey,
+        "D360-API-KEY": apiKey,
       },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
     if (!res.ok) {
       const detalle = await res.text().catch(() => "");
-      console.error(
-        `[360dialog] ${res.status} (${p.templateName}):`,
-        detalle.slice(0, 300)
-      );
+      console.error(`[360dialog] ${res.status} (${etiqueta}):`, detalle.slice(0, 300));
     }
   } catch (err) {
-    console.error(`[360dialog] fallo al enviar ${p.templateName}:`, err);
+    console.error(`[360dialog] fallo al enviar ${etiqueta}:`, err);
   } finally {
     clearTimeout(timer);
   }

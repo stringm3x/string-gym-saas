@@ -15,7 +15,21 @@ nada.
 | `04-resumen-diario.json` | `RESUMEN_DIARIO` | `resumen_diario_owner` | owner | gymNombre, checkinshoy, ingresosHoy, vencimientosEstaSemana |
 | `05-miembro-inactivo.json` | `MIEMBRO_SIN_ACTIVIDAD` | `miembro_inactivo_owner` | owner | miembroNombre, diasSinVenir, gymNombre |
 
-Cada workflow: **Webhook (POST)** → **HTTP Request a 360dialog** → **Respond 200**.
+### Bot entrante (Fase 7.5B)
+
+| Archivo | Qué hace |
+|---|---|
+| `06-bot-incoming.json` | Recibe el WhatsApp entrante de 360dialog y lo reenvía a `POST /api/whatsapp/incoming/{slug}` con el header `X-Webhook-Secret`. El SaaS corre el bot IA y responde por 360dialog. |
+
+**Opción (a) — un workflow por gym (para arrancar):** duplica `06-bot-incoming.json` por cada gym Escala y edita 2 cosas: el `path` del webhook (ej. `wa-bot-<slug>`) y el `slug` en la URL (`/api/whatsapp/incoming/<slug>`). Apunta el webhook entrante de esa subcuenta de 360dialog a este workflow. Cuando haya 5+ gyms, migrar a un solo workflow con mapeo número→slug.
+
+**Env vars adicionales:**
+- App (Vercel): `WHATSAPP_INCOMING_SECRET` — secreto compartido que valida el endpoint entrante. `ANTHROPIC_API_KEY` — para el bot IA (Claude Haiku 4.5).
+- n8n: `WHATSAPP_INCOMING_SECRET` — el mismo valor, se envía como header `X-Webhook-Secret`.
+
+---
+
+Cada workflow de recordatorio/alerta: **Webhook (POST)** → **HTTP Request a 360dialog** → **Respond 200**.
 La `D360-API-KEY` se toma del **propio evento** (`body.whatsappApiKey`, la subcuenta
 del gym), así que un mismo workflow sirve para todos los gyms.
 
