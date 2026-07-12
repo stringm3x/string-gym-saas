@@ -17,6 +17,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFeature, type Plan } from "@/lib/features";
 import { hoyISO, isoMasDias, hoyCDMX } from "@/lib/utils/dates";
 import { notifyWhatsapp } from "./notify";
+import { registrarMensaje } from "./registro";
 
 interface GymRow {
   id: string;
@@ -201,6 +202,14 @@ export async function runWhatsappCron(): Promise<{
           diasRestantes: 7,
           fechaVencimiento: en7,
         });
+        await registrarMensaje({
+          tenantId: gym.id,
+          telefono: m.telefono ?? "",
+          direccion: "saliente",
+          tipo: "template",
+          contenido: `Recordatorio: tu membresía vence el ${en7} (en 7 días).`,
+          nombreContacto: m.nombre,
+        });
         eventos++;
       }
 
@@ -212,6 +221,14 @@ export async function runWhatsappCron(): Promise<{
           miembroNombre: m.nombre,
           miembroTelefono: m.telefono,
           fechaVencimiento: hoy,
+        });
+        await registrarMensaje({
+          tenantId: gym.id,
+          telefono: m.telefono ?? "",
+          direccion: "saliente",
+          tipo: "template",
+          contenido: `Tu membresía venció hoy (${hoy}). Renueva para seguir entrenando.`,
+          nombreContacto: m.nombre,
         });
         eventos++;
       }

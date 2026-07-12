@@ -12,6 +12,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFeature, type Plan } from "@/lib/features";
 import { notifyWhatsapp } from "./notify";
+import { registrarMensaje } from "./registro";
 
 interface GymCtx {
   id: string;
@@ -101,6 +102,16 @@ export async function emitPagoRegistrado(p: {
       fechaVencimiento: p.fechaVencimiento,
       reciboUrl: p.reciboUrl,
     });
+    // Reflejar el envío en el inbox (historial completo de la conversación).
+    await registrarMensaje({
+      tenantId: gym.id,
+      telefono: miembro.telefono ?? "",
+      direccion: "saliente",
+      tipo: "template",
+      contenido: `Pago registrado por $${p.monto.toLocaleString("es-MX")}. ¡Gracias!`,
+      miembroId: p.miembroId,
+      nombreContacto: miembro.nombre,
+    });
   } catch (err) {
     console.error("[whatsapp] emitPagoRegistrado:", err);
   }
@@ -130,6 +141,16 @@ export async function emitBienvenidaMiembro(p: {
       miembroTelefono: miembro.telefono,
       planNombre: await nombrePlan(p.tenantId, p.planId),
       fechaVencimiento: p.fechaVencimiento ?? "",
+    });
+    // Reflejar el envío en el inbox.
+    await registrarMensaje({
+      tenantId: gym.id,
+      telefono: miembro.telefono ?? "",
+      direccion: "saliente",
+      tipo: "template",
+      contenido: `¡Bienvenido a ${gym.nombre}! Tu membresía ya está activa.`,
+      miembroId: p.miembroId,
+      nombreContacto: miembro.nombre,
     });
   } catch (err) {
     console.error("[whatsapp] emitBienvenidaMiembro:", err);

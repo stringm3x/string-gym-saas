@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { procesarMensajeBot } from "@/lib/whatsapp/bot";
 import { sendWhatsappText } from "@/lib/whatsapp/360dialog";
 import { dentroDeLimite } from "@/lib/whatsapp/rate-limit";
+import { registrarMensaje, botActivoDe } from "@/lib/whatsapp/registro";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,14 +59,25 @@ export async function POST(
   const msg = extraerMensaje(body);
   if (!msg) return NextResponse.json({ ok: true }); // no es texto → nada que hacer
 
-  // Credencial del gym para responder (si falta → no-op, dormido).
+  // Gym: tenant + credencial para responder (si falta → no-op, dormido).
   const admin = createAdminClient();
   const { data: gym } = await admin
     .from("gyms")
-    .select("whatsapp_api_key")
+    .select("id, whatsapp_api_key")
     .eq("slug", slug)
     .maybeSingle();
-  const apiKey = (gym?.whatsapp_api_key as string | null) ?? null;
+  if (!gym) return NextResponse.json({ ok: true });
+  const tenantId = gym.id as string;
+  const apiKey = (gym.whatsapp_api_key as string | null) ?? null;
+
+  // Registrar el mensaje entrante en el inbox (siempre, aunque el bot no corra).
+  await registrarMensaje({
+    tenantId,
+    telefono: msg.from,
+    direccion: "entrante",
+    tipo: "texto",
+    contenido: msg.texto,
+  });
 
   // Rate limit: 10 mensajes por número por hora.
   if (!dentroDeLimite(msg.from)) {
@@ -77,9 +89,22 @@ export async function POST(
     return NextResponse.json({ ok: true });
   }
 
+  // Si el dueño apagó el bot para esta conversación → solo se registró el
+  // entrante; el dueño responde manual desde el inbox.
+  if (!(await botActivoDe(tenantId, msg.from))) {
+    return NextResponse.json({ ok: true });
+  }
+
   // Bot + respuesta (fire dentro del request; Haiku es rápido).
   const respuesta = await procesarMensajeBot(msg.texto, msg.from, slug);
   await sendWhatsappText(msg.from, respuesta, apiKey);
+  await registrarMensaje({
+    tenantId,
+    telefono: msg.from,
+    direccion: "saliente",
+    tipo: "bot",
+    contenido: respuesta,
+  });
 
   return NextResponse.json({ ok: true });
 }
