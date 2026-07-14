@@ -2,10 +2,11 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LuCheck, LuX } from "react-icons/lu";
+import { LuCheck, LuX, LuUserX } from "react-icons/lu";
 import {
   checkInReservaAction,
   cancelarReservaAction,
+  marcarNoShowAction,
 } from "@/app/(tenant)/[slug]/clases/[sesionId]/actions";
 import type { ClaseReserva } from "@/lib/types/clases";
 
@@ -95,6 +96,17 @@ export function ReservasList({
                     className="rounded-lg border border-brand-green/40 p-1.5 text-brand-green hover:bg-brand-green/10 disabled:opacity-50"
                   >
                     <LuCheck className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      run(() => marcarNoShowAction(sesionId, r.id))
+                    }
+                    title="No llegó"
+                    className="rounded-lg border border-border p-1.5 text-text-secondary hover:text-warning disabled:opacity-50"
+                  >
+                    <LuUserX className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"

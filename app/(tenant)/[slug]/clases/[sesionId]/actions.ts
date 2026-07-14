@@ -9,6 +9,7 @@ import {
   getSesionById,
   cancelarReserva,
   checkInReserva,
+  marcarNoShow,
   cancelarSesion,
 } from "@/lib/queries/clases.queries";
 import { searchMiembrosForCheckin } from "@/lib/queries/miembros.queries";
@@ -128,6 +129,20 @@ export async function checkInReservaAction(
   if (!user) return { ok: false, error: "Sesión expirada." };
 
   const { ok, error } = await checkInReserva(t.id, reservaId, user.id);
+  if (!ok) return { ok: false, error };
+
+  revalidate(t.slug, sesionId);
+  return { ok: true };
+}
+
+export async function marcarNoShowAction(
+  sesionId: string,
+  reservaId: string
+): Promise<SesionActionResult> {
+  const t = await gateOperar();
+  if (!t) return { ok: false, error: "No autorizado." };
+
+  const { ok, error } = await marcarNoShow(t.id, reservaId);
   if (!ok) return { ok: false, error };
 
   revalidate(t.slug, sesionId);

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isoMasDias } from "@/lib/utils/dates";
 import type {
   Clase,
   ClaseInput,
@@ -294,6 +295,38 @@ export async function getReservasByMiembro(
  * La creación de prospecto para clases 'gratis' y la promoción de lista de
  * espera viven en utils del Bloque 2 que envuelven a esta query.
  */
+/**
+ * Bloqueo por no-shows (C1): si el gym configuró un máximo y el miembro lo
+ * alcanzó en los últimos 30 días, devuelve el motivo del bloqueo; si no, null.
+ */
+async function noShowBloqueo(
+  supabase: Db,
+  tenantId: string,
+  miembroId: string
+): Promise<string | null> {
+  const { data: gym } = await supabase
+    .from("gyms")
+    .select("clases_max_noshows")
+    .eq("id", tenantId)
+    .maybeSingle();
+  const max = Number(gym?.clases_max_noshows ?? 0);
+  if (max <= 0) return null;
+
+  const { data } = await supabase
+    .from("clases_reservas")
+    .select("id, clases_sesiones!inner(fecha)")
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .eq("estado", "no_asistio")
+    .gte("clases_sesiones.fecha", isoMasDias(-30));
+
+  const count = (data ?? []).length;
+  if (count >= max) {
+    return `Reservas bloqueadas: ${count} inasistencia${count === 1 ? "" : "s"} en los últimos 30 días (máximo ${max}).`;
+  }
+  return null;
+}
+
 export async function createReserva(
   tenantId: string,
   sesionId: string,
@@ -313,6 +346,12 @@ export async function createReserva(
   }
   if (sesion.estado === "cancelada") {
     return { reserva: null, enListaEspera: false, error: "La sesión está cancelada." };
+  }
+
+  // Penalización por no-shows (C1). Solo aplica a miembros.
+  if (input.miembroId) {
+    const bloqueo = await noShowBloqueo(supabase, tenantId, input.miembroId);
+    if (bloqueo) return { reserva: null, enListaEspera: false, error: bloqueo };
   }
 
   const enListaEspera = sesion.cupo_disponible <= 0;
@@ -406,6 +445,72 @@ export async function checkInReserva(
     })
     .eq("tenant_id", tenantId)
     .eq("id", reservaId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export interface NoShowPorClase {
+  clase_id: string;
+  nombre: string;
+  resueltas: number;
+  noShows: number;
+  tasa: number; // % de inasistencia
+}
+
+/** Tasa de no-show por clase (últimos `dias` días). Resueltas = asistió + no. */
+export async function getNoShowStats(
+  tenantId: string,
+  dias = 30
+): Promise<NoShowPorClase[]> {
+  const supabase = await createClient();
+  const desde = isoMasDias(-dias);
+
+  const { data } = await supabase
+    .from("clases_reservas")
+    .select("estado, clases_sesiones!inner(fecha, clases!inner(id, nombre))")
+    .eq("tenant_id", tenantId)
+    .in("estado", ["asistio", "no_asistio"])
+    .gte("clases_sesiones.fecha", desde);
+
+  const pick = <T,>(v: T | T[] | null | undefined): T | null =>
+    Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
+
+  const map = new Map<string, { nombre: string; resueltas: number; noShows: number }>();
+  for (const r of data ?? []) {
+    const ses = pick(r.clases_sesiones as unknown) as
+      | { clases?: unknown }
+      | null;
+    const clase = pick(ses?.clases) as { id: string; nombre: string } | null;
+    if (!clase) continue;
+    const e = map.get(clase.id) ?? { nombre: clase.nombre, resueltas: 0, noShows: 0 };
+    e.resueltas += 1;
+    if (r.estado === "no_asistio") e.noShows += 1;
+    map.set(clase.id, e);
+  }
+
+  return [...map.entries()]
+    .map(([clase_id, v]) => ({
+      clase_id,
+      nombre: v.nombre,
+      resueltas: v.resueltas,
+      noShows: v.noShows,
+      tasa: v.resueltas > 0 ? Math.round((v.noShows / v.resueltas) * 100) : 0,
+    }))
+    .sort((a, b) => b.tasa - a.tasa);
+}
+
+/** Marca una reserva confirmada como no-show (C1). */
+export async function marcarNoShow(
+  tenantId: string,
+  reservaId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("clases_reservas")
+    .update({ estado: "no_asistio" })
+    .eq("tenant_id", tenantId)
+    .eq("id", reservaId)
+    .eq("estado", "confirmada");
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }

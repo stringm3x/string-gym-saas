@@ -2,8 +2,10 @@ import { getTenant } from "@/lib/tenant";
 import { hasFeature } from "@/lib/features";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { getClases } from "@/lib/queries/clases.queries";
+import { getClasesMaxNoshows } from "@/lib/queries/gyms.queries";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import { ClasesList } from "@/components/clases/ClasesList";
+import { NoShowPenaltyForm } from "@/components/clases/NoShowPenaltyForm";
 
 export default async function ClasesConfigPage() {
   const tenant = await getTenant();
@@ -29,11 +31,15 @@ export default async function ClasesConfigPage() {
     );
   }
 
-  const clases = await getClases(tenant.id, true);
+  const [clases, maxNoshows] = await Promise.all([
+    getClases(tenant.id, true),
+    getClasesMaxNoshows(tenant.id),
+  ]);
 
   return (
-    <div className="pt-2">
+    <div className="space-y-5 pt-2">
       <ClasesList clases={clases} slug={tenant.slug} />
+      <NoShowPenaltyForm inicial={maxNoshows} />
     </div>
   );
 }

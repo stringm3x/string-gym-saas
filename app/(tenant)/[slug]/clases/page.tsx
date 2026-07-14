@@ -1,7 +1,10 @@
 import { getTenant } from "@/lib/tenant";
 import { hasFeature } from "@/lib/features";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
-import { getSesionesByRango } from "@/lib/queries/clases.queries";
+import {
+  getSesionesByRango,
+  getNoShowStats,
+} from "@/lib/queries/clases.queries";
 import { inicioSemana, sumarDiasYMD, hoyYMD } from "@/lib/utils/clases-format";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import { CalendarioSemanal } from "@/components/clases/CalendarioSemanal";
@@ -36,7 +39,12 @@ export default async function ClasesCalendarioPage({
   const lunes = inicioSemana(semana ?? hoyYMD());
   const domingo = sumarDiasYMD(lunes, 6);
 
-  const sesiones = await getSesionesByRango(tenant.id, lunes, domingo);
+  const [sesiones, noShowStats] = await Promise.all([
+    getSesionesByRango(tenant.id, lunes, domingo),
+    getNoShowStats(tenant.id, 30),
+  ]);
+
+  const conNoShow = noShowStats.filter((s) => s.noShows > 0);
 
   return (
     <div className="space-y-5">
@@ -50,6 +58,37 @@ export default async function ClasesCalendarioPage({
       </div>
 
       <CalendarioSemanal sesiones={sesiones} lunes={lunes} slug={tenant.slug} />
+
+      {conNoShow.length > 0 && (
+        <div className="rounded-xl border border-border bg-surface p-5">
+          <h2 className="text-sm font-semibold text-text-primary">
+            No-shows por clase
+          </h2>
+          <p className="mt-0.5 text-xs text-text-muted">
+            Inasistencia de los últimos 30 días (asistió vs. no asistió).
+          </p>
+          <ul className="mt-3 space-y-2">
+            {conNoShow.map((s) => (
+              <li
+                key={s.clase_id}
+                className="flex items-center justify-between gap-3 text-sm"
+              >
+                <span className="truncate text-text-primary">{s.nombre}</span>
+                <span className="shrink-0 text-text-secondary">
+                  <span
+                    className={
+                      s.tasa >= 30 ? "text-warning" : "text-text-primary"
+                    }
+                  >
+                    {s.tasa}%
+                  </span>{" "}
+                  ({s.noShows}/{s.resueltas})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

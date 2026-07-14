@@ -123,6 +123,30 @@ export async function updateWhatsappConfig(
   return { ok: true };
 }
 
+/** Máximo de no-shows (30 días) antes de bloquear reservas. 0 = desactivado. */
+export async function getClasesMaxNoshows(tenantId: string): Promise<number> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("gyms")
+    .select("clases_max_noshows")
+    .eq("id", tenantId)
+    .maybeSingle();
+  return Number(data?.clases_max_noshows ?? 0);
+}
+
+export async function updateClasesMaxNoshows(
+  tenantId: string,
+  max: number
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("gyms")
+    .update({ clases_max_noshows: max })
+    .eq("id", tenantId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 /**
  * Marca la aceptación de Términos del gym (Fase 7.3). Idempotente: solo
  * escribe si aún no había aceptado, para conservar el timestamp original.

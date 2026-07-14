@@ -43,6 +43,9 @@ export function MiembroClasesHistorial({
   const hoy = hoyYMD();
   const relevantes = reservas.filter((r) => r.estado !== "cancelada");
   const asistio = reservas.filter((r) => r.estado === "asistio").length;
+  const noShows = reservas.filter((r) => r.estado === "no_asistio").length;
+  // Base de no-show: reservas ya resueltas (asistió o no asistió).
+  const resueltas = asistio + noShows;
   const tasa =
     relevantes.length > 0
       ? Math.round((asistio / relevantes.length) * 100)
@@ -62,12 +65,21 @@ export function MiembroClasesHistorial({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-text-primary">Clases</h3>
-        {tasa !== null && (
-          <span className="text-xs text-text-secondary">
-            Asistencia: <span className="text-text-primary">{tasa}%</span> (
-            {asistio}/{relevantes.length})
-          </span>
-        )}
+        <div className="flex items-center gap-3 text-xs text-text-secondary">
+          {tasa !== null && (
+            <span>
+              Asistencia: <span className="text-text-primary">{tasa}%</span> (
+              {asistio}/{relevantes.length})
+            </span>
+          )}
+          {noShows > 0 && (
+            <span className="text-warning">
+              No-shows: {noShows}
+              {resueltas > 0 &&
+                ` (${Math.round((noShows / resueltas) * 100)}%)`}
+            </span>
+          )}
+        </div>
       </div>
 
       {reservas.length === 0 ? (

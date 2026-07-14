@@ -12,6 +12,7 @@ import {
   getClaseById,
   insertSesiones,
 } from "@/lib/queries/clases.queries";
+import { updateClasesMaxNoshows } from "@/lib/queries/gyms.queries";
 import { generarSesionesPara } from "@/lib/utils/clases-generador";
 import { claseInputSchema } from "@/lib/validations/clases.schema";
 import type { ClaseInput } from "@/lib/types/clases";
@@ -25,6 +26,21 @@ export interface ClaseActionResult {
 }
 
 const DENIED: ClaseActionResult = { ok: false, error: "No autorizado." };
+
+/** Guarda el máximo de no-shows antes de bloquear reservas (C1). */
+export async function updateNoShowPenaltyAction(
+  max: number
+): Promise<{ ok: boolean; error?: string }> {
+  const tenant = await gate();
+  if (!tenant) return { ok: false, error: "No autorizado." };
+
+  const n = Number.isFinite(max) && max > 0 ? Math.floor(max) : 0;
+  const r = await updateClasesMaxNoshows(tenant.id, n);
+  if (!r.ok) return { ok: false, error: r.error };
+
+  revalidatePath(`/${tenant.slug}/configuracion/clases`);
+  return { ok: true };
+}
 
 /** Owner + feature 'clases' (Pro+). */
 async function gate() {
