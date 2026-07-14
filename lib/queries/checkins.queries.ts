@@ -14,6 +14,24 @@ export interface CheckinConMiembro extends Checkin {
 }
 
 /**
+ * ¿El gym bloquea el acceso a miembros con membresía vencida? (Fase Bug#7).
+ * Default true (bloquear) si falta el dato o la columna. Acepta un client
+ * opcional para reusar el admin en flujos públicos (kiosco).
+ */
+export async function bloqueaVencidos(
+  tenantId: string,
+  client?: SupabaseClient
+): Promise<boolean> {
+  const supabase = client ?? (await createClient());
+  const { data } = await supabase
+    .from("gyms")
+    .select("checkin_bloquea_vencidos")
+    .eq("id", tenantId)
+    .maybeSingle();
+  return data ? (data.checkin_bloquea_vencidos as boolean) : true;
+}
+
+/**
  * Registra un check-in del miembro. Retorna { ok, id } o error.
  */
 export async function createCheckin(

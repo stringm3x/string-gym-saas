@@ -52,7 +52,7 @@ export async function checkInKioscoAction(
 
   const { data: gym } = await admin
     .from("gyms")
-    .select("id, plan")
+    .select("id, plan, checkin_bloquea_vencidos")
     .eq("slug", slug)
     .maybeSingle();
   if (!gym) return { success: false, error: "QR_NO_ENCONTRADO" };
@@ -68,7 +68,11 @@ export async function checkInKioscoAction(
   if (miembro.archivado) {
     return { success: false, error: "MIEMBRO_ARCHIVADO", nombre: miembro.nombre };
   }
-  if (miembro.fecha_vencimiento && miembro.fecha_vencimiento < hoyISO()) {
+  if (
+    miembro.fecha_vencimiento &&
+    miembro.fecha_vencimiento < hoyISO() &&
+    gym.checkin_bloquea_vencidos !== false
+  ) {
     return { success: false, error: "MEMBRESIA_VENCIDA", nombre: miembro.nombre };
   }
 

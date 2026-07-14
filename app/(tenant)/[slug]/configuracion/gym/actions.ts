@@ -28,6 +28,8 @@ export async function updateGymConfigAction(
     telefono: String(formData.get("telefono") ?? ""),
     direccion: String(formData.get("direccion") ?? ""),
     rfc: String(formData.get("rfc") ?? ""),
+    // Checkbox: ausente (desmarcado) → false.
+    checkin_bloquea_vencidos: formData.get("checkin_bloquea_vencidos") === "true",
   };
 
   const parsed = gymConfigSchema.safeParse(raw);

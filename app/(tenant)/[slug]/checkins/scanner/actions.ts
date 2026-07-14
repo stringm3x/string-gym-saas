@@ -2,7 +2,7 @@
 
 import { getTenant } from "@/lib/tenant";
 import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
-import { createCheckin } from "@/lib/queries/checkins.queries";
+import { createCheckin, bloqueaVencidos } from "@/lib/queries/checkins.queries";
 import { hoyISO } from "@/lib/utils/dates";
 
 export type CheckInQrError =
@@ -32,7 +32,11 @@ export async function checkInPorQrAction(
   if (miembro.archivado) {
     return { success: false, error: "MIEMBRO_ARCHIVADO", nombre: miembro.nombre };
   }
-  if (miembro.fecha_vencimiento && miembro.fecha_vencimiento < hoyISO()) {
+  if (
+    miembro.fecha_vencimiento &&
+    miembro.fecha_vencimiento < hoyISO() &&
+    (await bloqueaVencidos(tenant.id))
+  ) {
     return { success: false, error: "MEMBRESIA_VENCIDA", nombre: miembro.nombre };
   }
 

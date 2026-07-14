@@ -81,6 +81,25 @@ export function GymConfigManager({ gym }: GymConfigManagerProps) {
         error={state.fieldErrors.rfc}
       />
 
+      <label className="flex items-start gap-3 rounded-lg border border-border p-3">
+        <input
+          type="checkbox"
+          name="checkin_bloquea_vencidos"
+          value="true"
+          defaultChecked={gym.checkin_bloquea_vencidos}
+          className="mt-0.5 h-4 w-4 accent-brand-green"
+        />
+        <span>
+          <span className="block text-sm font-medium text-text-primary">
+            Bloquear acceso a miembros con membresía vencida
+          </span>
+          <span className="mt-0.5 block text-xs text-text-secondary">
+            Aplica al check-in por búsqueda, escáner QR y kiosco. Si lo
+            desactivas, los deja pasar y solo muestra una advertencia.
+          </span>
+        </span>
+      </label>
+
       {state.error && Object.keys(state.fieldErrors).length === 0 && (
         <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {state.error}

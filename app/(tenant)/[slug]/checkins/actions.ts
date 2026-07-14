@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
-import { createCheckin } from "@/lib/queries/checkins.queries";
+import { createCheckin, bloqueaVencidos } from "@/lib/queries/checkins.queries";
 import {
   searchMiembrosForCheckin,
   getMiembro,
@@ -12,6 +12,8 @@ import { getEstadoMembresia } from "@/lib/utils/estado-membresia";
 export interface CheckinResult {
   ok: boolean;
   error: string | null;
+  /** true si NO se registró porque la política bloquea vencidos. */
+  bloqueado?: boolean;
   miembro?: {
     id: string;
     nombre: string;
@@ -30,6 +32,22 @@ export async function registerCheckinAction(
     return { ok: false, error: "Miembro no encontrado" };
   }
 
+  const estado = getEstadoMembresia(miembro.fecha_vencimiento);
+
+  // Política de vencidos: si el gym bloquea, no se registra el check-in.
+  if (estado === "vencido" && (await bloqueaVencidos(tenant.id))) {
+    return {
+      ok: false,
+      error: "Membresía vencida",
+      bloqueado: true,
+      miembro: {
+        id: miembro.id,
+        nombre: miembro.nombre,
+        estadoMembresia: estado,
+      },
+    };
+  }
+
   const result = await createCheckin(tenant.id, miembroId);
   if (!result.ok) {
     return { ok: false, error: result.error };
@@ -44,7 +62,7 @@ export async function registerCheckinAction(
     miembro: {
       id: miembro.id,
       nombre: miembro.nombre,
-      estadoMembresia: getEstadoMembresia(miembro.fecha_vencimiento),
+      estadoMembresia: estado,
     },
   };
 }
