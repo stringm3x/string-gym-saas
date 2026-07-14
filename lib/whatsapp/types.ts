@@ -74,4 +74,19 @@ export type WhatsappEvent =
       tipo: "CAMPANA";
       miembroTelefono: string | null;
       mensaje: string;
+    })
+  | (GymWa & {
+      // Promoción de lista de espera (C2): al miembro que subió a confirmado.
+      tipo: "LISTA_ESPERA";
+      miembroTelefono: string | null;
+      miembroNombre: string;
+      claseNombre: string;
+      fecha: string;
+      hora: string;
+    })
+  | (GymWa & {
+      // OTP del portal por WhatsApp (C3): código de acceso al miembro.
+      tipo: "OTP";
+      miembroTelefono: string | null;
+      codigo: string;
     });

@@ -14,15 +14,18 @@ import {
 export function PortalLoginForm({
   slug,
   gymNombre,
+  puedeWhatsapp = false,
 }: {
   slug: string;
   gymNombre: string;
+  puedeWhatsapp?: boolean;
 }) {
   const router = useRouter();
   const [paso, setPaso] = useState<"id" | "codigo">("id");
   const [identificador, setIdentificador] = useState("");
   const [codigo, setCodigo] = useState("");
-  const [emailMask, setEmailMask] = useState("");
+  const [canal, setCanal] = useState<"email" | "whatsapp">("email");
+  const [destinoMask, setDestinoMask] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [reenvioEn, setReenvioEn] = useState(0);
   const [pending, start] = useTransition();
@@ -39,12 +42,12 @@ export function PortalLoginForm({
   function solicitar() {
     setError(null);
     start(async () => {
-      const r = await solicitarCodigoAction(slug, identificador);
+      const r = await solicitarCodigoAction(slug, identificador, canal);
       if (!r.ok) {
         setError(r.error ?? "Error");
         return;
       }
-      setEmailMask(r.emailMask ?? "");
+      setDestinoMask(r.destinoMask ?? "");
       setReenvioEn(REENVIO_SEG);
       setPaso("codigo");
     });
@@ -54,7 +57,7 @@ export function PortalLoginForm({
     if (reenvioEn > 0) return;
     setError(null);
     start(async () => {
-      const r = await solicitarCodigoAction(slug, identificador);
+      const r = await solicitarCodigoAction(slug, identificador, canal);
       if (!r.ok) {
         setError(r.error ?? "No se pudo reenviar. Intenta de nuevo.");
         return;
@@ -104,6 +107,29 @@ export function PortalLoginForm({
               autoFocus
             />
           </div>
+          {puedeWhatsapp && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-text-secondary">
+                Recibir código por
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(["email", "whatsapp"] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCanal(c)}
+                    className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
+                      canal === c
+                        ? "border-brand-green bg-brand-green/10 text-brand-green"
+                        : "border-border bg-bg text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    {c === "email" ? "Correo" : "WhatsApp"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {error && <p className="text-xs text-danger">{error}</p>}
           <button
             type="button"
@@ -118,8 +144,9 @@ export function PortalLoginForm({
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-text-secondary">
-            Enviamos un código a <b className="text-text-primary">{emailMask}</b>.
-            Vence en 10 minutos.
+            Enviamos un código a{" "}
+            <b className="text-text-primary">{destinoMask}</b>. Vence en 10
+            minutos.
           </p>
           <input
             type="text"

@@ -20,6 +20,8 @@ import {
   TEMPLATE_PROSPECTO_NUEVO,
   TEMPLATE_MIEMBRO_INACTIVO,
   TEMPLATE_CAMPANA,
+  TEMPLATE_LISTA_ESPERA,
+  TEMPLATE_OTP,
 } from "./360dialog";
 
 function pesos(n: number): string {
@@ -135,6 +137,29 @@ function traducir(event: WhatsappEvent): SendWhatsappParams | null {
         to: event.miembroTelefono ?? "",
         templateName: TEMPLATE_CAMPANA,
         params: [event.mensaje],
+        apiKey: event.whatsappApiKey,
+      };
+
+    case "LISTA_ESPERA":
+      // Al miembro. {{1}} nombre · {{2}} clase · {{3}} fecha · {{4}} hora
+      return {
+        to: event.miembroTelefono ?? "",
+        templateName: TEMPLATE_LISTA_ESPERA,
+        params: [
+          event.miembroNombre,
+          event.claseNombre,
+          event.fecha,
+          event.hora,
+        ],
+        apiKey: event.whatsappApiKey,
+      };
+
+    case "OTP":
+      // Al miembro. {{1}} código.
+      return {
+        to: event.miembroTelefono ?? "",
+        templateName: TEMPLATE_OTP,
+        params: [event.codigo],
         apiKey: event.whatsappApiKey,
       };
   }

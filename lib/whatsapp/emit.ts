@@ -221,3 +221,99 @@ export async function enviarCampanaWhatsapp(
   await Promise.allSettled(envios);
   return { activo: true, enviados: envios.length };
 }
+
+/** ¿El gym puede enviar por WhatsApp? (feature + activo + infra). Para el portal. */
+export async function gymPuedeWhatsapp(tenantId: string): Promise<boolean> {
+  const infra =
+    !!process.env.N8N_WEBHOOK_URL || !!process.env.DIALOG360_API_KEY;
+  if (!infra) return false;
+  return (await gymCtx(tenantId)) !== null;
+}
+
+/**
+ * OTP del portal por WhatsApp (C3). Envía el código como plantilla. Devuelve
+ * true si el gym pudo enviarlo (activo + infra), false si está dormido.
+ */
+export async function emitOtpWhatsapp(
+  tenantId: string,
+  telefono: string,
+  codigo: string
+): Promise<boolean> {
+  const infra =
+    !!process.env.N8N_WEBHOOK_URL || !!process.env.DIALOG360_API_KEY;
+  if (!infra) return false;
+  const gym = await gymCtx(tenantId);
+  if (!gym || !telefono) return false;
+
+  await notifyWhatsapp({
+    tipo: "OTP",
+    gymId: gym.id,
+    gymSlug: gym.slug,
+    gymNombre: gym.nombre,
+    whatsappNumero: gym.whatsappNumero,
+    whatsappApiKey: gym.whatsappApiKey,
+    miembroTelefono: telefono,
+    codigo,
+  });
+  return true;
+}
+
+/**
+ * LISTA_ESPERA (C2): avisa al miembro que subió de lista de espera a confirmado.
+ * Fire-and-forget, gateado y no-op si la infra está dormida.
+ */
+export async function emitListaEspera(
+  tenantId: string,
+  sesionId: string,
+  miembroId: string
+): Promise<void> {
+  const infra =
+    !!process.env.N8N_WEBHOOK_URL || !!process.env.DIALOG360_API_KEY;
+  if (!infra) return;
+  try {
+    const gym = await gymCtx(tenantId);
+    if (!gym) return;
+
+    const admin = createAdminClient();
+    const [miembroRes, sesionRes] = await Promise.all([
+      admin
+        .from("miembros")
+        .select("nombre, telefono")
+        .eq("tenant_id", tenantId)
+        .eq("id", miembroId)
+        .maybeSingle(),
+      admin
+        .from("clases_sesiones")
+        .select("fecha, hora_inicio, clases(nombre)")
+        .eq("tenant_id", tenantId)
+        .eq("id", sesionId)
+        .maybeSingle(),
+    ]);
+    const miembro = miembroRes.data;
+    if (!miembro?.telefono) return;
+
+    const claseRaw = sesionRes.data?.clases as
+      | { nombre: string }
+      | { nombre: string }[]
+      | null;
+    const claseNombre = Array.isArray(claseRaw)
+      ? claseRaw[0]?.nombre ?? "tu clase"
+      : claseRaw?.nombre ?? "tu clase";
+
+    await notifyWhatsapp({
+      tipo: "LISTA_ESPERA",
+      gymId: gym.id,
+      gymSlug: gym.slug,
+      gymNombre: gym.nombre,
+      whatsappNumero: gym.whatsappNumero,
+      whatsappApiKey: gym.whatsappApiKey,
+      miembroTelefono: miembro.telefono as string,
+      miembroNombre: (miembro.nombre as string) ?? "",
+      claseNombre,
+      fecha: (sesionRes.data?.fecha as string) ?? "",
+      hora: (sesionRes.data?.hora_inicio as string) ?? "",
+    });
+  } catch (err) {
+    console.error("[whatsapp] emitListaEspera:", err);
+  }
+}

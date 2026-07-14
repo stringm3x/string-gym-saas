@@ -9,6 +9,7 @@ import type {
   ReservaEstado,
   ReservaInput,
 } from "@/lib/types/clases";
+import { emitListaEspera } from "@/lib/whatsapp/emit";
 
 /** Regla pura: con cupo libre se confirma; sin cupo, va a lista de espera. */
 export function decideEstadoReserva(cupoDisponible: number): ReservaEstado {
@@ -45,7 +46,7 @@ export async function reservarConCupo(
  * Promueve la primera reserva en lista de espera de una sesión a 'confirmada'.
  * Devuelve la reserva promovida, o null si la lista está vacía.
  *
- * Hook dormido (Fase 7.5): notificar por WhatsApp al promovido.
+ * C2: avisa por WhatsApp al promovido (fire-and-forget, dormido sin infra).
  */
 export async function promoverListaEspera(
   tenantId: string,
@@ -57,5 +58,10 @@ export async function promoverListaEspera(
   if (!primera) return null;
 
   const { reserva } = await confirmarReserva(tenantId, primera.id, client);
-  return reserva ?? { ...primera, estado: "confirmada" };
+  const promovida = reserva ?? { ...primera, estado: "confirmada" };
+
+  if (promovida.miembro_id) {
+    void emitListaEspera(tenantId, sesionId, promovida.miembro_id);
+  }
+  return promovida;
 }

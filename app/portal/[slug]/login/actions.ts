@@ -9,6 +9,7 @@ import {
   crearSession,
 } from "@/lib/queries/portal.queries";
 import { sendCodigoPortal } from "@/lib/email/portal";
+import { emitOtpWhatsapp } from "@/lib/whatsapp/emit";
 import { setPortalCookie } from "@/lib/portal/session";
 
 function maskEmail(email: string): string {
@@ -16,6 +17,11 @@ function maskEmail(email: string): string {
   if (!dom) return email;
   const visible = user.slice(0, 1);
   return `${visible}${"*".repeat(Math.max(1, user.length - 1))}@${dom}`;
+}
+
+function maskTel(tel: string): string {
+  const d = tel.replace(/\D/g, "");
+  return d.length >= 4 ? `••••${d.slice(-4)}` : tel;
 }
 
 async function resolver(slug: string, identificador: string) {
@@ -39,11 +45,32 @@ async function resolver(slug: string, identificador: string) {
 
 export async function solicitarCodigoAction(
   slug: string,
-  identificador: string
-): Promise<{ ok: boolean; error?: string; emailMask?: string }> {
+  identificador: string,
+  canal: "email" | "whatsapp" = "email"
+): Promise<{ ok: boolean; error?: string; destinoMask?: string }> {
   const r = await resolver(slug, identificador);
   if ("error" in r) return { ok: false, error: r.error };
   const { gym, miembro } = r;
+
+  if (canal === "whatsapp") {
+    if (!miembro.telefono) {
+      return {
+        ok: false,
+        error: "No tienes un teléfono registrado. Pídele a tu gym que lo agregue.",
+      };
+    }
+    const gen = await crearVerificacion(gym.id, miembro.id, "whatsapp");
+    if (!gen.ok) return { ok: false, error: gen.error };
+
+    const enviado = await emitOtpWhatsapp(gym.id, miembro.telefono, gen.codigo);
+    if (!enviado) {
+      return {
+        ok: false,
+        error: "WhatsApp no está disponible ahora. Usa tu correo.",
+      };
+    }
+    return { ok: true, destinoMask: maskTel(miembro.telefono) };
+  }
 
   if (!miembro.email) {
     return {
@@ -66,7 +93,7 @@ export async function solicitarCodigoAction(
     return { ok: false, error: "No se pudo enviar el código. Intenta de nuevo." };
   }
 
-  return { ok: true, emailMask: maskEmail(miembro.email) };
+  return { ok: true, destinoMask: maskEmail(miembro.email) };
 }
 
 export async function verificarCodigoAction(

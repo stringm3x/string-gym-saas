@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { hasFeature } from "@/lib/features";
 import { getPortalGym } from "@/lib/queries/portal.queries";
+import { gymPuedeWhatsapp } from "@/lib/whatsapp/emit";
 import { getPortalSession } from "@/lib/portal/session";
 import { PortalLoginForm } from "@/components/portal/PortalLoginForm";
 
@@ -30,9 +31,15 @@ export default async function PortalLoginPage({ params }: PageProps) {
     redirect(`/portal/${slug}`);
   }
 
+  const puedeWhatsapp = await gymPuedeWhatsapp(gym.id);
+
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <PortalLoginForm slug={slug} gymNombre={gym.nombre} />
+      <PortalLoginForm
+        slug={slug}
+        gymNombre={gym.nombre}
+        puedeWhatsapp={puedeWhatsapp}
+      />
     </div>
   );
 }
