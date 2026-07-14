@@ -179,6 +179,40 @@ export async function anularPago(
     .eq("id", pagoId);
 
   if (error) return { ok: false, error: error.message };
+
+  // Si el pago cubría una cuota de crédito, desmarcarla (Bug #6): de lo
+  // contrario Cuentas por Cobrar la seguiría mostrando pagada aunque el dinero
+  // se revirtió.
+  const { data: cuota } = await supabase
+    .from("cuotas_pago")
+    .select("id, plan_id")
+    .eq("tenant_id", tenantId)
+    .eq("pago_id", pagoId)
+    .maybeSingle();
+
+  if (cuota) {
+    const { error: cuotaErr } = await supabase
+      .from("cuotas_pago")
+      .update({ pagado_at: null, pago_id: null })
+      .eq("tenant_id", tenantId)
+      .eq("id", cuota.id as string);
+    if (cuotaErr) {
+      return {
+        ok: false,
+        error:
+          "El pago se anuló, pero no se pudo revertir la cuota de crédito. Reinténtalo.",
+      };
+    }
+
+    // Si el plan estaba completado, vuelve a tener una cuota pendiente.
+    await supabase
+      .from("planes_pago")
+      .update({ estado: "activo" })
+      .eq("tenant_id", tenantId)
+      .eq("id", cuota.plan_id as string)
+      .eq("estado", "completado");
+  }
+
   return { ok: true };
 }
 
