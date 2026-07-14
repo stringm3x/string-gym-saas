@@ -109,10 +109,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Extender el vencimiento del miembro (paridad con el cobro manual).
+    // Incluye el plan cobrado para que la ficha y futuras renovaciones lo usen.
     if (miembroId && periodoFin) {
+      const updatePayload: Record<string, string> = {
+        fecha_vencimiento: periodoFin,
+      };
+      if (planId) updatePayload.plan_id = planId;
       await admin
         .from("miembros")
-        .update({ fecha_vencimiento: periodoFin })
+        .update(updatePayload)
         .eq("tenant_id", result.tenantId)
         .eq("id", miembroId);
     }

@@ -89,14 +89,19 @@ export async function createMiembroAction(
 
   const data = parsed.data;
 
-  // 1. Crear miembro (solo campos base).
-  const result = await dbCreateMiembro(tenant.id, {
-    nombre: data.nombre,
-    telefono: data.telefono,
-    email: data.email,
-    fecha_inscripcion: data.fecha_inscripcion,
-    fecha_vencimiento: data.fecha_vencimiento,
-  });
+  // 1. Crear miembro. Persistimos el plan elegido aunque no se cobre ahora,
+  //    para que las renovaciones futuras sepan "el mismo plan".
+  const result = await dbCreateMiembro(
+    tenant.id,
+    {
+      nombre: data.nombre,
+      telefono: data.telefono,
+      email: data.email,
+      fecha_inscripcion: data.fecha_inscripcion,
+      fecha_vencimiento: data.fecha_vencimiento,
+    },
+    data.plan_id || null
+  );
   if (!result.ok) {
     return { ...emptyState, error: result.error };
   }

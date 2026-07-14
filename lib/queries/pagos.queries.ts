@@ -116,14 +116,19 @@ export async function createPago(
     }
   }
 
-  // Si es pago de membresía, actualizar fecha_vencimiento del miembro.
+  // Si es pago de membresía, actualizar fecha_vencimiento del miembro (y su
+  // plan, para que la ficha refleje el plan vigente y las renovaciones lo
+  // reutilicen). Solo pisamos plan_id si el cobro trae uno.
   if (input.concepto === "membresia" && input.miembro_id && input.periodo_fin) {
+    const updatePayload: Record<string, string> = {
+      fecha_vencimiento: input.periodo_fin,
+      estado: "activo",
+    };
+    if (input.plan_id) updatePayload.plan_id = input.plan_id;
+
     const { error: updError } = await supabase
       .from("miembros")
-      .update({
-        fecha_vencimiento: input.periodo_fin,
-        estado: "activo",
-      })
+      .update(updatePayload)
       .eq("tenant_id", tenantId)
       .eq("id", input.miembro_id);
 
