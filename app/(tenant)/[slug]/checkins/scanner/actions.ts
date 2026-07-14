@@ -3,6 +3,7 @@
 import { getTenant } from "@/lib/tenant";
 import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
 import { createCheckin } from "@/lib/queries/checkins.queries";
+import { hoyISO } from "@/lib/utils/dates";
 
 export type CheckInQrError =
   | "QR_NO_ENCONTRADO"
@@ -13,11 +14,6 @@ export type CheckInQrError =
 export type CheckInQrResult =
   | { success: true; nombre: string; fechaVencimiento: string | null }
   | { success: false; error: CheckInQrError; nombre?: string };
-
-function hoyYMD(): string {
-  const n = new Date();
-  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
-}
 
 /**
  * Check-in por token de QR. Lo usan owner y recepcionista (operación diaria),
@@ -36,7 +32,7 @@ export async function checkInPorQrAction(
   if (miembro.archivado) {
     return { success: false, error: "MIEMBRO_ARCHIVADO", nombre: miembro.nombre };
   }
-  if (miembro.fecha_vencimiento && miembro.fecha_vencimiento < hoyYMD()) {
+  if (miembro.fecha_vencimiento && miembro.fecha_vencimiento < hoyISO()) {
     return { success: false, error: "MEMBRESIA_VENCIDA", nombre: miembro.nombre };
   }
 
