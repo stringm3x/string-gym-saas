@@ -3,12 +3,14 @@
 import { getTenant } from "@/lib/tenant";
 import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
 import { createCheckin, bloqueaVencidos } from "@/lib/queries/checkins.queries";
+import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
 import { hoyISO } from "@/lib/utils/dates";
 
 export type CheckInQrError =
   | "QR_NO_ENCONTRADO"
   | "MIEMBRO_ARCHIVADO"
   | "MEMBRESIA_VENCIDA"
+  | "MEMBRESIA_CONGELADA"
   | "ERROR";
 
 export type CheckInQrResult =
@@ -31,6 +33,13 @@ export async function checkInPorQrAction(
   if (!miembro) return { success: false, error: "QR_NO_ENCONTRADO" };
   if (miembro.archivado) {
     return { success: false, error: "MIEMBRO_ARCHIVADO", nombre: miembro.nombre };
+  }
+  if (await congelacionActiva(tenant.id, miembro.id)) {
+    return {
+      success: false,
+      error: "MEMBRESIA_CONGELADA",
+      nombre: miembro.nombre,
+    };
   }
   if (
     miembro.fecha_vencimiento &&

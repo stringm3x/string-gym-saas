@@ -74,11 +74,11 @@ export function CheckinKiosk() {
       startTransition(async () => {
         const result = await registerCheckinAction(miembroId);
 
-        // Acceso bloqueado por política de vencidos: aviso claro, no se registró.
+        // Acceso bloqueado (vencido o congelado): aviso claro, no se registró.
         if (result.bloqueado) {
           toastError(
             "Acceso bloqueado",
-            `${result.miembro?.nombre ?? "Miembro"}: membresía vencida — invita a renovar.`
+            `${result.miembro?.nombre ?? "Miembro"}: ${result.error ?? "membresía no vigente"}.`
           );
           setQuery("");
           setResults([]);

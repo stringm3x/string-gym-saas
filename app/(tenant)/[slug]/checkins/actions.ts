@@ -7,6 +7,7 @@ import {
   searchMiembrosForCheckin,
   getMiembro,
 } from "@/lib/queries/miembros.queries";
+import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
 import { getEstadoMembresia } from "@/lib/utils/estado-membresia";
 
 export interface CheckinResult {
@@ -33,6 +34,16 @@ export async function registerCheckinAction(
   }
 
   const estado = getEstadoMembresia(miembro.fecha_vencimiento);
+
+  // Congelación (D1): bloqueo duro durante la pausa, sin importar la política.
+  if (await congelacionActiva(tenant.id, miembroId)) {
+    return {
+      ok: false,
+      error: "Membresía congelada",
+      bloqueado: true,
+      miembro: { id: miembro.id, nombre: miembro.nombre, estadoMembresia: estado },
+    };
+  }
 
   // Política de vencidos: si el gym bloquea, no se registra el check-in.
   if (estado === "vencido" && (await bloqueaVencidos(tenant.id))) {

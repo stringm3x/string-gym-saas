@@ -17,6 +17,9 @@ import { AccionesRapidas } from "@/components/ui/AccionesRapidas";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
 import { MiembroArchivarButton } from "@/components/miembros/MiembroArchivarButton";
 import { RenovarButton } from "@/components/miembros/RenovarButton";
+import { MembresiaAcciones } from "@/components/miembros/MembresiaAcciones";
+import { EventosTimeline } from "@/components/miembros/EventosTimeline";
+import { getEventosMiembro } from "@/lib/queries/miembro-eventos.queries";
 import { MiembroArchivadoBanner } from "@/components/miembros/MiembroArchivadoBanner";
 import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
 import { CheckinsHistory } from "@/components/checkins/CheckinsHistory";
@@ -64,6 +67,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     planesMembresia,
     productosStock,
     planesNutricion,
+    eventosMembresia,
   ] = await Promise.all([
     getMiembro(tenant.id, id),
     listCheckinsByMiembro(tenant.id, id, 20),
@@ -88,6 +92,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     canNutricion
       ? getPlanesNutricion(tenant.id, id)
       : Promise.resolve([] as PlanNutricion[]),
+    getEventosMiembro(tenant.id, id),
   ]);
 
   if (!miembro) {
@@ -134,6 +139,13 @@ export default async function MiembroDetailPage({ params }: PageProps) {
                 planes={planesMembresia}
               />
             )}
+            {!miembro.archivado &&
+              hasPermission(tenant.role, "editar_miembros") && (
+                <MembresiaAcciones
+                  miembroId={miembro.id}
+                  planes={planesMembresia}
+                />
+              )}
             <AccionesRapidas
               nombre={miembro.nombre}
               telefono={miembro.telefono}
@@ -176,6 +188,10 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           disabled={miembro.archivado}
         />
       </div>
+
+      {eventosMembresia.length > 0 && (
+        <EventosTimeline eventos={eventosMembresia} />
+      )}
 
       <div className="rounded-xl border border-border bg-surface p-6">
         {canTimeline ? (

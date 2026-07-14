@@ -19,6 +19,7 @@ const ERROR_MSG: Record<KioscoError, string> = {
   QR_NO_ENCONTRADO: "QR no válido",
   MIEMBRO_ARCHIVADO: "Cuenta inactiva",
   MEMBRESIA_VENCIDA: "Membresía vencida",
+  MEMBRESIA_CONGELADA: "Membresía congelada",
   NO_DISPONIBLE: "No disponible",
   ERROR: "No se pudo registrar",
 };
