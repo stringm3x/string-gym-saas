@@ -193,12 +193,23 @@ export async function getSesionById(
  * del Bloque 2). Ignora colisiones con el unique (clase_id, fecha, hora_inicio)
  * para que regenerar sea idempotente. Devuelve cuántas se insertaron.
  */
+/** Clases recurrentes activas de TODOS los tenants (para el cron). Admin. */
+export async function getClasesRecurrentesActivas(client: Db): Promise<Clase[]> {
+  const { data } = await client
+    .from("clases")
+    .select(CLASE_COLS)
+    .eq("activa", true)
+    .eq("es_recurrente", true);
+  return (data ?? []) as Clase[];
+}
+
 export async function insertSesiones(
   tenantId: string,
-  sesiones: SesionToCreate[]
+  sesiones: SesionToCreate[],
+  client?: Db
 ): Promise<{ insertadas: number; error?: string }> {
   if (sesiones.length === 0) return { insertadas: 0 };
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const rows = sesiones.map((s) => ({
     tenant_id: tenantId,
     clase_id: s.clase_id,
