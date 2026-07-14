@@ -68,4 +68,10 @@ export type WhatsappEvent =
       ingresosHoy: number;
       vencimientosEstaSemana: number;
       prospectosPendientes: number;
+    })
+  | (GymWa & {
+      // Campaña masiva (B6): un envío por destinatario, mensaje ya compuesto.
+      tipo: "CAMPANA";
+      miembroTelefono: string | null;
+      mensaje: string;
     });

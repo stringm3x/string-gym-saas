@@ -52,6 +52,9 @@ export function CampanaWizard({
   const [nombre, setNombre] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [enviada, setEnviada] = useState(false);
+  // true si se envió por la API de WhatsApp (vs modo wa.me manual).
+  const [apiSent, setApiSent] = useState(false);
+  const [enviadosApi, setEnviadosApi] = useState(0);
 
   const audData = useMemo(
     () => audiencias.find((a) => a.value === audiencia) ?? null,
@@ -68,16 +71,23 @@ export function CampanaWizard({
         return;
       }
       setEnviada(true);
-      if (destinatarios[0]) {
-        window.open(
-          buildWhatsAppUrl(
-            destinatarios[0].telefono,
-            renderMensaje(mensaje, destinatarios[0])
-          ),
-          "_blank"
-        );
+      if (r.enviadoPorApi) {
+        // Enviada por la API: no abrimos wa.me.
+        setApiSent(true);
+        setEnviadosApi(r.enviados ?? 0);
+        success(`Campaña enviada por WhatsApp · ${r.enviados} mensajes`);
+      } else {
+        if (destinatarios[0]) {
+          window.open(
+            buildWhatsAppUrl(
+              destinatarios[0].telefono,
+              renderMensaje(mensaje, destinatarios[0])
+            ),
+            "_blank"
+          );
+        }
+        success(`Campaña registrada · ${r.total} destinatarios`);
       }
-      success(`Campaña registrada · ${r.total} destinatarios`);
       router.refresh();
     });
   }
@@ -309,7 +319,23 @@ export function CampanaWizard({
                   className="inline-flex items-center gap-2 rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   <FaWhatsapp className="h-4 w-4" />
-                  {pending ? "Registrando…" : "Abrir WhatsApp para cada contacto"}
+                  {pending ? "Enviando…" : "Enviar campaña"}
+                </button>
+              </div>
+            </>
+          ) : apiSent ? (
+            <>
+              <div className="rounded-lg border border-brand-green/30 bg-brand-green/5 px-4 py-3 text-sm text-text-primary">
+                ✅ Campaña enviada por WhatsApp a {enviadosApi}{" "}
+                {enviadosApi === 1 ? "contacto" : "contactos"}.
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={onDone}
+                  className="rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90"
+                >
+                  Terminar
                 </button>
               </div>
             </>

@@ -19,6 +19,7 @@ import {
   TEMPLATE_RESUMEN_DIARIO,
   TEMPLATE_PROSPECTO_NUEVO,
   TEMPLATE_MIEMBRO_INACTIVO,
+  TEMPLATE_CAMPANA,
 } from "./360dialog";
 
 function pesos(n: number): string {
@@ -125,6 +126,15 @@ function traducir(event: WhatsappEvent): SendWhatsappParams | null {
           String(event.ingresosHoy),
           String(event.vencimientosEstaSemana),
         ],
+        apiKey: event.whatsappApiKey,
+      };
+
+    case "CAMPANA":
+      // Al miembro, desde el número del gym. {{1}} = mensaje ya compuesto.
+      return {
+        to: event.miembroTelefono ?? "",
+        templateName: TEMPLATE_CAMPANA,
+        params: [event.mensaje],
         apiKey: event.whatsappApiKey,
       };
   }

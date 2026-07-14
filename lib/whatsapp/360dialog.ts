@@ -13,6 +13,9 @@ export const TEMPLATE_BIENVENIDA = "bienvenida_miembro";
 export const TEMPLATE_RESUMEN_DIARIO = "resumen_diario_owner";
 export const TEMPLATE_PROSPECTO_NUEVO = "prospecto_nuevo_owner";
 export const TEMPLATE_MIEMBRO_INACTIVO = "miembro_inactivo_owner";
+// Plantilla de marketing para campañas (B6): un solo parámetro con el mensaje
+// ya compuesto ({{1}}). Debe existir aprobada en Meta.
+export const TEMPLATE_CAMPANA = "campana";
 
 const ENDPOINT = "https://waba.360dialog.io/v1/messages";
 const TIMEOUT_MS = 10_000;

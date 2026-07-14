@@ -186,3 +186,38 @@ export async function emitProspectoNuevo(p: {
     console.error("[whatsapp] emitProspectoNuevo:", err);
   }
 }
+
+/**
+ * Campaña masiva (B6): envía un mensaje ya compuesto por destinatario vía el
+ * motor (plantilla 'campana'). Aplica el gate del gym UNA vez y hace un envío
+ * por cada teléfono. Devuelve si el envío por API está activo y cuántos salieron.
+ */
+export async function enviarCampanaWhatsapp(
+  tenantId: string,
+  destinatarios: { telefono: string; mensaje: string }[]
+): Promise<{ activo: boolean; enviados: number }> {
+  // Infra presente (Modo A n8n o Modo B 360dialog). Sin ella, dormido.
+  const infra =
+    !!process.env.N8N_WEBHOOK_URL || !!process.env.DIALOG360_API_KEY;
+  if (!infra) return { activo: false, enviados: 0 };
+
+  const gym = await gymCtx(tenantId);
+  if (!gym) return { activo: false, enviados: 0 };
+
+  const envios = destinatarios
+    .filter((d) => d.telefono && d.mensaje.trim())
+    .map((d) =>
+      notifyWhatsapp({
+        tipo: "CAMPANA",
+        gymId: gym.id,
+        gymSlug: gym.slug,
+        gymNombre: gym.nombre,
+        whatsappNumero: gym.whatsappNumero,
+        whatsappApiKey: gym.whatsappApiKey,
+        miembroTelefono: d.telefono,
+        mensaje: d.mensaje,
+      })
+    );
+  await Promise.allSettled(envios);
+  return { activo: true, enviados: envios.length };
+}
