@@ -3,12 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getTenant } from "@/lib/tenant";
+import { createClient } from "@/lib/supabase/server";
 import {
   createPago,
   createVisitaRapida,
   anularPago,
 } from "@/lib/queries/pagos.queries";
+import {
+  crearReembolso,
+  type TipoDevolucion,
+} from "@/lib/queries/reembolsos.queries";
 import { hasPermission } from "@/lib/permissions";
+import { getActiveStaff } from "@/lib/queries/staff.queries";
 import { getMiembro } from "@/lib/queries/miembros.queries";
 import { getGymFull } from "@/lib/queries/gyms.queries";
 import { getGymMarca } from "@/lib/queries/marca.queries";
@@ -165,5 +171,35 @@ export async function anularPagoAction(
   if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath(`/${tenant.slug}/caja`);
+  return { ok: true };
+}
+
+export async function reembolsarPagoAction(
+  pagoId: string,
+  tipo: TipoDevolucion,
+  motivo: string
+): Promise<{ ok: boolean; error?: string }> {
+  const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "cancelar_pagos")) {
+    return { ok: false, error: "No tienes permiso para reembolsar." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const staff = user ? await getActiveStaff(tenant.id, user.id) : null;
+
+  const r = await crearReembolso(tenant.id, {
+    pagoId,
+    tipo,
+    motivo: motivo.trim() || null,
+    userId: user?.id ?? null,
+    nombre: staff?.nombre ?? null,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+
+  revalidatePath(`/${tenant.slug}/caja`);
+  revalidatePath(`/${tenant.slug}/recibos/${pagoId}`);
   return { ok: true };
 }

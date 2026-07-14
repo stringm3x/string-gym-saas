@@ -33,6 +33,8 @@ export interface Pago {
   telefono_visitante: string | null;
   token_publico: string | null;
   anulado_at: string | null;
+  reembolsado_at: string | null;
+  reembolsado_motivo: string | null;
   created_at: string;
 }
 
@@ -293,6 +295,8 @@ export async function listPagosDelDia(
     telefono_visitante: row.telefono_visitante ?? null,
     token_publico: row.token_publico ?? null,
     anulado_at: row.anulado_at ?? null,
+    reembolsado_at: row.reembolsado_at ?? null,
+    reembolsado_motivo: row.reembolsado_motivo ?? null,
     created_at: row.created_at,
     miembro_nombre: row.miembros?.nombre ?? null,
   }));
@@ -334,6 +338,7 @@ export async function getResumenCaja(
     .select("monto, fecha_pago, concepto")
     .eq("tenant_id", tenantId)
     .is("anulado_at", null) // los pagos anulados no cuentan en totales
+    .is("reembolsado_at", null) // ni los reembolsados
     .gte("fecha_pago", inicioMes.toISOString());
 
   if (categoria === "visitas") {

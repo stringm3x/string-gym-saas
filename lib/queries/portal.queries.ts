@@ -349,6 +349,7 @@ export async function getRecibosPortal(
     .eq("tenant_id", tenantId)
     .eq("miembro_id", miembroId)
     .is("anulado_at", null)
+    .is("reembolsado_at", null)
     .order("fecha_pago", { ascending: false });
 
   return ((data ?? []) as Array<{

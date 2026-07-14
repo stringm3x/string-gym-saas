@@ -41,7 +41,8 @@ export async function getDashboardSparklines(
     .select("fecha_pago, monto, anulado_at, es_visita_rapida")
     .eq("tenant_id", tenantId)
     .gte("fecha_pago", inicio.toISOString())
-    .is("anulado_at", null);
+    .is("anulado_at", null)
+    .is("reembolsado_at", null);
 
   const ingresosDiarios = [0, 0, 0, 0, 0, 0, 0];
   const visitasDiarias = [0, 0, 0, 0, 0, 0, 0];
@@ -86,7 +87,8 @@ export async function getIngresosPorSemana(
     .select("fecha_pago, monto, anulado_at")
     .eq("tenant_id", tenantId)
     .gte("fecha_pago", inicio.toISOString())
-    .is("anulado_at", null);
+    .is("anulado_at", null)
+    .is("reembolsado_at", null);
 
   const buckets = [0, 0, 0, 0];
   for (const p of data ?? []) {
@@ -166,6 +168,7 @@ export async function getRetencion(tenantId: string): Promise<Retencion> {
       .eq("tenant_id", tenantId)
       .eq("concepto", "membresia")
       .is("anulado_at", null)
+      .is("reembolsado_at", null)
       .gte("fecha_pago", inicioM2.toISOString()),
     supabase
       .from("miembros")

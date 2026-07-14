@@ -20,6 +20,8 @@ export interface CorteTotales {
   transferencia: number;
   total: number;
   cantidad: number;
+  /** Reembolsos en efectivo del turno (salen del cajón). */
+  reembolsosEfectivo: number;
 }
 
 export interface CorteHistorial {
@@ -80,6 +82,7 @@ async function totalesEnRango(
     transferencia: 0,
     total: 0,
     cantidad: 0,
+    reembolsosEfectivo: 0,
   };
   for (const p of data ?? []) {
     const m = Number(p.monto);
@@ -89,6 +92,17 @@ async function totalesEnRango(
     else if (p.metodo_pago === "tarjeta") t.tarjeta += m;
     else if (p.metodo_pago === "transferencia") t.transferencia += m;
   }
+
+  // Reembolsos en efectivo del turno: salen del cajón.
+  const { data: reemb } = await supabase
+    .from("reembolsos")
+    .select("monto")
+    .eq("tenant_id", tenantId)
+    .eq("tipo", "efectivo")
+    .gte("created_at", desde)
+    .lt("created_at", hasta);
+  t.reembolsosEfectivo = (reemb ?? []).reduce((s, r) => s + Number(r.monto), 0);
+
   return t;
 }
 
@@ -159,7 +173,7 @@ export async function cerrarCorte(
     hasta
   );
   const fondo = Number(corte.fondo_inicial);
-  const esperado = fondo + t.efectivo;
+  const esperado = fondo + t.efectivo - t.reembolsosEfectivo;
   const diferencia = input.efectivoContado - esperado;
 
   const { error } = await supabase

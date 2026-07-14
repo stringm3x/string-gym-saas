@@ -127,8 +127,9 @@ function CorteAbiertoView({
     transferencia: 0,
     total: 0,
     cantidad: 0,
+    reembolsosEfectivo: 0,
   };
-  const esperado = corte.fondo_inicial + t.efectivo;
+  const esperado = corte.fondo_inicial + t.efectivo - t.reembolsosEfectivo;
   const contadoNum = contado.trim() === "" ? null : Number(contado);
   const diferencia = contadoNum === null ? null : contadoNum - esperado;
 
@@ -174,6 +175,14 @@ function CorteAbiertoView({
 
       {/* Cierre */}
       <div className="space-y-3 border-t border-border pt-4">
+        {t.reembolsosEfectivo > 0 && (
+          <div className="flex items-center justify-between text-sm text-text-secondary">
+            <span>Reembolsos en efectivo</span>
+            <span className="font-mono text-danger">
+              −{formatMoneda(t.reembolsosEfectivo)}
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-between text-sm">
           <span className="text-text-secondary">Esperado en cajón</span>
           <span className="font-mono font-semibold text-text-primary">

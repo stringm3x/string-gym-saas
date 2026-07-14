@@ -262,6 +262,7 @@ export async function getTenantMetrics(
         .select("monto")
         .eq("tenant_id", tenantId)
         .is("anulado_at", null)
+        .is("reembolsado_at", null)
         .gte("fecha_pago", desde.toISOString());
     })(),
     admin

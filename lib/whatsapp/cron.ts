@@ -144,6 +144,7 @@ async function resumenGym(
       .select("monto")
       .eq("tenant_id", tenantId)
       .is("anulado_at", null)
+      .is("reembolsado_at", null)
       .gte("fecha_pago", inicioHoy),
     admin
       .from("miembros")
