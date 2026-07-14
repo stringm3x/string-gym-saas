@@ -15,12 +15,17 @@ import {
   getCodigosPendientes,
   limpiarExpirados,
 } from "@/lib/queries/kiosco.queries";
+import {
+  getCorteAbierto,
+  resumenCorteEnVivo,
+} from "@/lib/queries/cortes.queries";
 import { PagoForm } from "@/components/caja/PagoForm";
 import { PagosFeed } from "@/components/caja/PagosFeed";
 import { CajaFilters } from "@/components/caja/CajaFilters";
 import { VisitaRapidaButton } from "@/components/caja/VisitaRapidaButton";
 import { CobroMpButton } from "@/components/caja/CobroMpButton";
 import { AutorizacionesPendientes } from "@/components/caja/AutorizacionesPendientes";
+import { CortePanel } from "@/components/caja/CortePanel";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -78,6 +83,11 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     ? await getCodigosPendientes(tenant.id)
     : [];
 
+  const corte = await getCorteAbierto(tenant.id);
+  const corteTotales = corte
+    ? await resumenCorteEnVivo(tenant.id, corte.abierto_at)
+    : null;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -95,6 +105,8 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
       {canAutoservicio && (
         <AutorizacionesPendientes codigos={codigosPendientes} />
       )}
+
+      <CortePanel slug={slug} corte={corte} totales={corteTotales} />
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         {/* ── Acción: registrar cobro ─────────────────────── */}

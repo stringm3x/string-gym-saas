@@ -116,6 +116,8 @@ export function PagoForm({
 
   const [concepto, setConcepto] = useState<Concepto>("membresia");
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
+  // "Paga con" para calcular el cambio en efectivo (solo display, no se envía).
+  const [pagaCon, setPagaCon] = useState("");
   const [miembro, setMiembro] = useState<MiembroLite | null>(null);
 
   // Por defecto se selecciona el primer plan (panel de personalización
@@ -277,6 +279,7 @@ export function PagoForm({
       setMiembro(null);
       setConcepto("membresia");
       setMetodo("efectivo");
+      setPagaCon("");
       setSelMem(defaultSelMem);
       setSelProd({ kind: "custom" });
       setCustomPreset("1_mes");
@@ -516,6 +519,39 @@ export function PagoForm({
         </div>
         <input type="hidden" name="metodo_pago" value={metodo} />
       </div>
+
+      {/* Paga con / cambio (solo efectivo) */}
+      {metodo === "efectivo" && montoFinal > 0 && (
+        <div className="space-y-1.5">
+          <Label>Paga con (opcional)</Label>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={pagaCon}
+            onChange={(e) => setPagaCon(e.target.value)}
+            placeholder="0.00"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+          />
+          {pagaCon.trim() !== "" && Number(pagaCon) >= montoFinal && (
+            <p className="flex items-center justify-between rounded-lg bg-brand-green/10 px-3 py-2 text-sm text-brand-green">
+              <span>Cambio</span>
+              <span className="font-mono font-semibold">
+                ${(Number(pagaCon) - montoFinal).toLocaleString("es-MX")}
+              </span>
+            </p>
+          )}
+          {pagaCon.trim() !== "" && Number(pagaCon) < montoFinal && (
+            <p className="flex items-center justify-between rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+              <span>Falta</span>
+              <span className="font-mono font-semibold">
+                ${(montoFinal - Number(pagaCon)).toLocaleString("es-MX")}
+              </span>
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Hidden fields */}
       <input type="hidden" name="monto" value={montoFinal} />
