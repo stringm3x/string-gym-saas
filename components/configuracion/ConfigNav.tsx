@@ -43,6 +43,12 @@ export function ConfigNav({ slug, plan, role }: ConfigNavProps) {
         { label: "Clases", href: `${base}/clases`, ownerOnly: true, feature: "clases" },
         { label: "API", href: `${base}/api`, ownerOnly: true, feature: "api" },
         { label: "Pagos", href: `${base}/pagos`, ownerOnly: true, feature: "mercadopago" },
+        {
+          label: "WhatsApp",
+          href: `${base}/whatsapp`,
+          ownerOnly: true,
+          feature: "whatsapp_automatico",
+        },
       ],
     },
     {
