@@ -45,7 +45,11 @@ export default async function ReciboPage({ params }: PageProps) {
       ) : (
         puedeGestionar && (
           <div className="flex justify-end gap-2 print:hidden">
-            <ReembolsarPagoButton pagoId={pago.id} monto={pago.monto} />
+            <ReembolsarPagoButton
+              pagoId={pago.id}
+              monto={pago.monto}
+              tieneMiembro={!!pago.miembro_id}
+            />
             <AnularPagoButton pagoId={pago.id} />
           </div>
         )
