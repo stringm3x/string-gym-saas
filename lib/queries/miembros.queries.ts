@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { MiembroInput } from "@/lib/validations/miembro.schema";
 import type { Tag } from "@/lib/queries/tags.queries";
 import { emitBienvenidaMiembro } from "@/lib/whatsapp/emit";
+import { hoyISO, isoMasDias } from "@/lib/utils/dates";
 
 export interface Miembro {
   id: string;
@@ -96,19 +97,21 @@ export async function listMiembros({
     );
   }
 
+  // Fuente de verdad del estado: fecha_vencimiento (CDMX), igual que el
+  // dashboard y el badge. La columna `estado` quedó vestigial y no se
+  // sincroniza al vencer, así que NO se usa aquí.
   if (filter === "activos") {
-    query = query.eq("estado", "activo");
+    // Vigente: vence hoy o después.
+    query = query.gte("fecha_vencimiento", hoyISO());
   } else if (filter === "inactivos") {
-    query = query.eq("estado", "inactivo");
+    // Vencido o sin membresía registrada.
+    query = query.or(
+      `fecha_vencimiento.lt.${hoyISO()},fecha_vencimiento.is.null`
+    );
   } else if (filter === "por_vencer") {
-    const hoy = new Date();
-    const en7 = new Date(hoy);
-    en7.setDate(hoy.getDate() + 7);
-    const isoHoy = hoy.toISOString().slice(0, 10);
-    const iso7 = en7.toISOString().slice(0, 10);
     query = query
-      .gte("fecha_vencimiento", isoHoy)
-      .lte("fecha_vencimiento", iso7);
+      .gte("fecha_vencimiento", hoyISO())
+      .lte("fecha_vencimiento", isoMasDias(7));
   } else if (filter === "sin_telefono") {
     // Sin teléfono usable: null, vacío o placeholder '0000000000'.
     query = query.or(

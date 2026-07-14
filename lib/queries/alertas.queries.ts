@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { countStockBajo } from "./productos.queries";
 import { countProspectosSinContactar } from "./prospectos.queries";
+import { hoyISO } from "@/lib/utils/dates";
 
 export type AlertaTipo =
   | "vencimiento_hoy"
@@ -63,7 +64,8 @@ async function countMiembrosInactivos(tenantId: string): Promise<number> {
     .select("id")
     .eq("tenant_id", tenantId)
     .eq("archivado", false)
-    .eq("estado", "activo");
+    // Vigente = fecha de vencimiento hoy o futura (fuente de verdad: la fecha).
+    .gte("fecha_vencimiento", hoyISO());
 
   if (errActivos || !activos || activos.length === 0) return 0;
 
