@@ -30,6 +30,8 @@ export async function updateGymConfigAction(
     rfc: String(formData.get("rfc") ?? ""),
     // Checkbox: ausente (desmarcado) → false.
     checkin_bloquea_vencidos: formData.get("checkin_bloquea_vencidos") === "true",
+    congelacion_auto_aprobar:
+      formData.get("congelacion_auto_aprobar") === "true",
   };
 
   const parsed = gymConfigSchema.safeParse(raw);

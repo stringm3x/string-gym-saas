@@ -26,6 +26,31 @@ function diasEntre(inicio: string, fin: string): number {
   return Math.round((b - a) / 86_400_000) + 1; // inclusivo
 }
 
+/** Recorre el vencimiento +N días por una congelación (los días no se pierden). */
+async function extenderVencimiento(
+  supabase: SupabaseClient,
+  tenantId: string,
+  miembroId: string,
+  fechaInicio: string,
+  fechaFin: string
+): Promise<number> {
+  const dias = diasEntre(fechaInicio, fechaFin);
+  const { data: m } = await supabase
+    .from("miembros")
+    .select("fecha_vencimiento")
+    .eq("tenant_id", tenantId)
+    .eq("id", miembroId)
+    .maybeSingle();
+  if (m?.fecha_vencimiento) {
+    await supabase
+      .from("miembros")
+      .update({ fecha_vencimiento: isoMasDias(dias, m.fecha_vencimiento as string) })
+      .eq("tenant_id", tenantId)
+      .eq("id", miembroId);
+  }
+  return dias;
+}
+
 /** Congela la membresía: extiende el vencimiento y registra el evento (D1). */
 export async function congelarMembresia(
   tenantId: string,
@@ -42,25 +67,13 @@ export async function congelarMembresia(
   }
 
   const supabase = await createClient();
-  const { data: m } = await supabase
-    .from("miembros")
-    .select("fecha_vencimiento")
-    .eq("tenant_id", tenantId)
-    .eq("id", miembroId)
-    .maybeSingle();
-  if (!m) return { ok: false, error: "Miembro no encontrado." };
-
-  const dias = diasEntre(input.fechaInicio, input.fechaFin);
-
-  // Recorre el vencimiento +dias (si tiene). Los días congelados no se pierden.
-  if (m.fecha_vencimiento) {
-    const nuevoVenc = isoMasDias(dias, m.fecha_vencimiento as string);
-    await supabase
-      .from("miembros")
-      .update({ fecha_vencimiento: nuevoVenc })
-      .eq("tenant_id", tenantId)
-      .eq("id", miembroId);
-  }
+  const dias = await extenderVencimiento(
+    supabase,
+    tenantId,
+    miembroId,
+    input.fechaInicio,
+    input.fechaFin
+  );
 
   const { error } = await supabase.from("miembro_eventos").insert({
     tenant_id: tenantId,
@@ -75,6 +88,160 @@ export async function congelarMembresia(
   });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+/** ¿El gym auto-aprueba las solicitudes de congelación del portal? (D7). */
+export async function congelacionAutoAprobar(
+  tenantId: string,
+  client: SupabaseClient
+): Promise<boolean> {
+  const { data } = await client
+    .from("gyms")
+    .select("congelacion_auto_aprobar")
+    .eq("id", tenantId)
+    .maybeSingle();
+  return !!data?.congelacion_auto_aprobar;
+}
+
+/**
+ * Solicitud de congelación desde el portal (D7). Si el gym auto-aprueba, aplica
+ * la congelación de inmediato; si no, la deja 'solicitada' para que el dueño la
+ * apruebe. Usa el client dado (admin en el portal).
+ */
+export async function solicitarCongelacionPortal(
+  tenantId: string,
+  miembroId: string,
+  input: { fechaInicio: string; fechaFin: string },
+  client: SupabaseClient
+): Promise<{ ok: boolean; error?: string; aplicada: boolean }> {
+  if (input.fechaFin < input.fechaInicio) {
+    return {
+      ok: false,
+      error: "El fin debe ser igual o posterior al inicio.",
+      aplicada: false,
+    };
+  }
+  // Una sola solicitud/congelación pendiente a la vez.
+  const { data: existente } = await client
+    .from("miembro_eventos")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .eq("tipo", "congelacion")
+    .eq("estado", "solicitada")
+    .limit(1);
+  if ((existente ?? []).length > 0) {
+    return { ok: false, error: "Ya tienes una solicitud pendiente.", aplicada: false };
+  }
+
+  const auto = await congelacionAutoAprobar(tenantId, client);
+  const dias = diasEntre(input.fechaInicio, input.fechaFin);
+
+  if (auto) {
+    await extenderVencimiento(client, tenantId, miembroId, input.fechaInicio, input.fechaFin);
+  }
+
+  const { error } = await client.from("miembro_eventos").insert({
+    tenant_id: tenantId,
+    miembro_id: miembroId,
+    tipo: "congelacion",
+    fecha_inicio: input.fechaInicio,
+    fecha_fin: input.fechaFin,
+    estado: auto ? "activa" : "solicitada",
+    creado_por_nombre: "Socio (portal)",
+    descripcion: `${auto ? "Congelación" : "Solicitud de congelación"} de ${dias} día${dias === 1 ? "" : "s"}`,
+  });
+  if (error) return { ok: false, error: error.message, aplicada: false };
+  return { ok: true, aplicada: auto };
+}
+
+/** Aprueba una solicitud de congelación (D7): aplica la pausa. */
+export async function aprobarCongelacion(
+  tenantId: string,
+  eventoId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: ev } = await supabase
+    .from("miembro_eventos")
+    .select("miembro_id, fecha_inicio, fecha_fin, estado")
+    .eq("tenant_id", tenantId)
+    .eq("id", eventoId)
+    .eq("tipo", "congelacion")
+    .maybeSingle();
+  if (!ev || ev.estado !== "solicitada") {
+    return { ok: false, error: "Solicitud no encontrada." };
+  }
+
+  await extenderVencimiento(
+    supabase,
+    tenantId,
+    ev.miembro_id as string,
+    ev.fecha_inicio as string,
+    ev.fecha_fin as string
+  );
+  const { error } = await supabase
+    .from("miembro_eventos")
+    .update({ estado: "activa" })
+    .eq("tenant_id", tenantId)
+    .eq("id", eventoId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/** Rechaza una solicitud de congelación (D7). */
+export async function rechazarCongelacion(
+  tenantId: string,
+  eventoId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("miembro_eventos")
+    .update({ estado: "cancelada" })
+    .eq("tenant_id", tenantId)
+    .eq("id", eventoId)
+    .eq("tipo", "congelacion")
+    .eq("estado", "solicitada");
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/** ¿El socio tiene una solicitud de congelación pendiente? (portal, admin). */
+export async function tieneSolicitudCongelacion(
+  tenantId: string,
+  miembroId: string,
+  client: SupabaseClient
+): Promise<boolean> {
+  const { data } = await client
+    .from("miembro_eventos")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .eq("tipo", "congelacion")
+    .eq("estado", "solicitada")
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+
+/** Solicitudes de congelación pendientes de un socio (para la ficha). */
+export async function getCongelacionesSolicitadas(
+  tenantId: string,
+  miembroId: string
+): Promise<{ id: string; fecha_inicio: string; fecha_fin: string; descripcion: string | null }[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("miembro_eventos")
+    .select("id, fecha_inicio, fecha_fin, descripcion")
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .eq("tipo", "congelacion")
+    .eq("estado", "solicitada")
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((e) => ({
+    id: e.id as string,
+    fecha_inicio: e.fecha_inicio as string,
+    fecha_fin: e.fecha_fin as string,
+    descripcion: (e.descripcion as string | null) ?? null,
+  }));
 }
 
 /** ¿El socio tiene una congelación activa que cubre hoy? (bloqueo de check-in). */

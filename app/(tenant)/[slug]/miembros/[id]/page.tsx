@@ -19,7 +19,11 @@ import { MiembroArchivarButton } from "@/components/miembros/MiembroArchivarButt
 import { RenovarButton } from "@/components/miembros/RenovarButton";
 import { MembresiaAcciones } from "@/components/miembros/MembresiaAcciones";
 import { EventosTimeline } from "@/components/miembros/EventosTimeline";
-import { getEventosMiembro } from "@/lib/queries/miembro-eventos.queries";
+import { CongelacionSolicitudes } from "@/components/miembros/CongelacionSolicitudes";
+import {
+  getEventosMiembro,
+  getCongelacionesSolicitadas,
+} from "@/lib/queries/miembro-eventos.queries";
 import { MiembroArchivadoBanner } from "@/components/miembros/MiembroArchivadoBanner";
 import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
 import { CheckinsHistory } from "@/components/checkins/CheckinsHistory";
@@ -70,6 +74,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     productosStock,
     planesNutricion,
     eventosMembresia,
+    congelacionesPendientes,
   ] = await Promise.all([
     getMiembro(tenant.id, id),
     listCheckinsByMiembro(tenant.id, id, 20),
@@ -95,6 +100,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
       ? getPlanesNutricion(tenant.id, id)
       : Promise.resolve([] as PlanNutricion[]),
     getEventosMiembro(tenant.id, id),
+    getCongelacionesSolicitadas(tenant.id, id),
   ]);
 
   if (!miembro) {
@@ -193,6 +199,14 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           disabled={miembro.archivado}
         />
       </div>
+
+      {hasPermission(tenant.role, "editar_miembros") &&
+        congelacionesPendientes.length > 0 && (
+          <CongelacionSolicitudes
+            miembroId={miembro.id}
+            solicitudes={congelacionesPendientes}
+          />
+        )}
 
       {eventosMembresia.length > 0 && (
         <EventosTimeline eventos={eventosMembresia} />

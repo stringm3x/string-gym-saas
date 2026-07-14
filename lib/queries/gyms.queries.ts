@@ -17,6 +17,7 @@ export interface GymFull extends GymInfo {
   direccion: string | null;
   rfc: string | null;
   checkin_bloquea_vencidos: boolean;
+  congelacion_auto_aprobar: boolean;
 }
 
 /**
@@ -45,7 +46,7 @@ export async function getGymFull(tenantId: string): Promise<GymFull | null> {
   const { data, error } = await supabase
     .from("gyms")
     .select(
-      "id, slug, nombre, logo_url, telefono, direccion, rfc, checkin_bloquea_vencidos"
+      "id, slug, nombre, logo_url, telefono, direccion, rfc, checkin_bloquea_vencidos, congelacion_auto_aprobar"
     )
     .eq("id", tenantId)
     .single();
@@ -68,6 +69,7 @@ export async function updateGymConfig(
       direccion: input.direccion ?? null,
       rfc: input.rfc ?? null,
       checkin_bloquea_vencidos: input.checkin_bloquea_vencidos,
+      congelacion_auto_aprobar: input.congelacion_auto_aprobar,
     })
     .eq("id", tenantId);
 

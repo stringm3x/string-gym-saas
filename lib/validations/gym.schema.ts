@@ -10,6 +10,7 @@ export const gymConfigSchema = z.object({
   direccion: z.string().trim().max(200, { error: "Dirección demasiado larga" }).optional(),
   rfc: z.string().trim().max(13, { error: "RFC inválido" }).optional(),
   checkin_bloquea_vencidos: z.boolean(),
+  congelacion_auto_aprobar: z.boolean(),
 });
 
 export type GymConfigInput = z.infer<typeof gymConfigSchema>;

@@ -16,6 +16,9 @@ import {
   getQrTokenPortal,
 } from "@/lib/queries/portal.queries";
 import { generarQRDataUrl } from "@/lib/utils/qr-generator";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { tieneSolicitudCongelacion } from "@/lib/queries/miembro-eventos.queries";
+import { PortalCongelar } from "@/components/portal/PortalCongelar";
 import { hasFeature } from "@/lib/features";
 import { yaOpinoEsteMes, getGooglePlaceId } from "@/lib/queries/opiniones.queries";
 import { getPlanNutricionActivoPortal } from "@/lib/queries/nutricion.queries";
@@ -79,6 +82,15 @@ export default async function PortalHomePage({ params }: PageProps) {
   const vigente = porVisitas
     ? (miembro.visitas_restantes as number) > 0
     : diasRestantes !== null && diasRestantes >= 0;
+
+  // Congelación (D7): solo aplica a planes por tiempo.
+  const congelacionPendiente =
+    !porVisitas &&
+    (await tieneSolicitudCongelacion(
+      session.tenantId,
+      session.miembroId,
+      createAdminClient()
+    ));
 
   return (
     <div className="min-h-screen">
@@ -185,6 +197,11 @@ export default async function PortalHomePage({ params }: PageProps) {
               </a>
             </div>
           </section>
+        )}
+
+        {/* Congelar membresía (D7) — solo planes por tiempo */}
+        {!porVisitas && (
+          <PortalCongelar slug={slug} pendiente={congelacionPendiente} />
         )}
 
         {/* Opinión del miembro (Fase P.4) */}

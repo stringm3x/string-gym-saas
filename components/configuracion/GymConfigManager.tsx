@@ -100,6 +100,25 @@ export function GymConfigManager({ gym }: GymConfigManagerProps) {
         </span>
       </label>
 
+      <label className="flex items-start gap-3 rounded-lg border border-border p-3">
+        <input
+          type="checkbox"
+          name="congelacion_auto_aprobar"
+          value="true"
+          defaultChecked={gym.congelacion_auto_aprobar}
+          className="mt-0.5 h-4 w-4 accent-brand-green"
+        />
+        <span>
+          <span className="block text-sm font-medium text-text-primary">
+            Auto-aprobar congelaciones del portal
+          </span>
+          <span className="mt-0.5 block text-xs text-text-secondary">
+            Si se activa, cuando un socio solicita congelar desde el portal se
+            aplica de inmediato; si no, queda pendiente de tu aprobación.
+          </span>
+        </span>
+      </label>
+
       {state.error && Object.keys(state.fieldErrors).length === 0 && (
         <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {state.error}
