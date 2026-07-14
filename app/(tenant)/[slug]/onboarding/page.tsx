@@ -7,6 +7,7 @@ import {
 } from "react-icons/lu";
 import { LuExternalLink, LuQrCode } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
+import { hasFeature } from "@/lib/features";
 import {
   getOnboardingEstado,
   getDemoMiembro,
@@ -15,6 +16,7 @@ import { completarOnboardingAction } from "./actions";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ error?: string }>;
 }
 
 function EstadoBadge({ hecho }: { hecho: boolean }) {
@@ -29,13 +31,24 @@ function EstadoBadge({ hecho }: { hecho: boolean }) {
   );
 }
 
-export default async function OnboardingPage({ params }: PageProps) {
+export default async function OnboardingPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { slug } = await params;
+  const { error } = await searchParams;
   const tenant = await getTenant();
   const [estado, demo] = await Promise.all([
     getOnboardingEstado(tenant.id),
     getDemoMiembro(tenant.id),
   ]);
+
+  // El inventario solo aplica a planes con la feature (Pro/Escala).
+  const requiereProducto = hasFeature(tenant.plan, "inventario");
+  const puedeCompletar =
+    estado.tienePlanes &&
+    estado.tieneMiembros &&
+    (!requiereProducto || estado.tieneProductos);
 
   const btnPrimary =
     "inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90";
@@ -160,13 +173,31 @@ export default async function OnboardingPage({ params }: PageProps) {
         </section>
       )}
 
+      {error === "incompleto" && (
+        <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+          Completa los pasos antes de finalizar: crea un plan, registra al menos
+          un miembro
+          {requiereProducto ? " y carga un producto." : "."}
+        </p>
+      )}
+
       <form action={completarOnboardingAction} className="pt-2">
         <button
           type="submit"
-          className="w-full rounded-lg border border-border px-4 py-3 text-sm font-medium text-text-primary transition-colors hover:border-brand-green hover:text-brand-green"
+          disabled={!puedeCompletar}
+          className="w-full rounded-lg border border-border px-4 py-3 text-sm font-medium text-text-primary transition-colors hover:border-brand-green hover:text-brand-green disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-text-primary"
         >
           Marcar como completado
         </button>
+        {!puedeCompletar && (
+          <p className="mt-2 text-center text-xs text-text-muted">
+            Termina{" "}
+            {requiereProducto
+              ? "los 3 pasos (planes, miembros e inventario)"
+              : "los pasos (planes y miembros)"}{" "}
+            para finalizar.
+          </p>
+        )}
       </form>
     </div>
   );
