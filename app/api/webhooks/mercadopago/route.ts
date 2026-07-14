@@ -21,6 +21,67 @@ interface ExtMetadata {
   descripcion?: string;
 }
 
+type Admin = ReturnType<typeof createAdminClient>;
+
+/**
+ * Revierte un pago de MercadoPago tras un reembolso o contracargo (B2c): marca
+ * el pago reembolsado (deja de contar como ingreso), regresa la vigencia del
+ * miembro a la fecha previa (periodo_inicio del pago) y refleja el estado.
+ * Idempotente: si el pago ya está reembolsado, solo actualiza el estado.
+ */
+async function revertirPagoMp(
+  admin: Admin,
+  tenantId: string,
+  ext: { id: string; pago_id: string | null },
+  mpStatus: string
+): Promise<void> {
+  const motivo =
+    mpStatus === "charged_back"
+      ? "Contracargo MercadoPago"
+      : "Reembolso MercadoPago";
+
+  await admin
+    .from("pagos_externos")
+    .update({ status: mpStatus })
+    .eq("id", ext.id);
+
+  if (!ext.pago_id) return;
+
+  const { data: pago } = await admin
+    .from("pagos")
+    .select("id, miembro_id, periodo_inicio, monto, reembolsado_at")
+    .eq("tenant_id", tenantId)
+    .eq("id", ext.pago_id)
+    .maybeSingle();
+  if (!pago || pago.reembolsado_at) return; // ya revertido
+
+  await admin
+    .from("pagos")
+    .update({
+      reembolsado_at: new Date().toISOString(),
+      reembolsado_motivo: motivo,
+    })
+    .eq("tenant_id", tenantId)
+    .eq("id", pago.id);
+
+  // Revertir la vigencia a la fecha previa a este pago.
+  if (pago.miembro_id && pago.periodo_inicio) {
+    await admin
+      .from("miembros")
+      .update({ fecha_vencimiento: pago.periodo_inicio })
+      .eq("tenant_id", tenantId)
+      .eq("id", pago.miembro_id);
+  }
+
+  await createNotification(
+    tenantId,
+    "pago",
+    `${motivo}: se revirtió un pago de $${Number(pago.monto).toLocaleString("es-MX")}`,
+    undefined,
+    "caja"
+  );
+}
+
 /**
  * Webhook público de MercadoPago. Verifica la firma, obtiene el pago y
  * confirma/actualiza la fila de pagos_externos. Siempre responde 200 salvo
@@ -47,13 +108,24 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: ext } = await admin
     .from("pagos_externos")
-    .select("id, status, monto, metadata")
+    .select("id, status, monto, metadata, pago_id")
     .eq("tenant_id", result.tenantId)
     .eq("external_id", result.externalReference ?? "")
     .maybeSingle();
 
   // Fila no encontrada (race) → 200.
   if (!ext) return new NextResponse(null, { status: 200 });
+
+  // Reversión post-aprobación (B2c): reembolso o contracargo de MP. Debe correr
+  // ANTES del guard de idempotencia (ext ya está 'approved').
+  if (
+    ext.status === "approved" &&
+    (result.status === "refunded" || result.status === "charged_back")
+  ) {
+    await revertirPagoMp(admin, result.tenantId, ext, result.status);
+    return new NextResponse(null, { status: 200 });
+  }
+
   // Idempotencia: ya aprobada → no re-procesar.
   if (ext.status === "approved") return new NextResponse(null, { status: 200 });
 
