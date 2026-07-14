@@ -80,6 +80,8 @@ export interface WhatsappConfig {
   numero: string | null;
   /** true si hay API key guardada. Nunca se re-expone la key en sí. */
   apiKeySet: boolean;
+  /** Umbral de alerta de visitas bajas (D8). 0 = desactivado. */
+  alertaVisitasUmbral: number;
 }
 
 /** Estado de la config de WhatsApp del gym (sin exponer la API key). */
@@ -89,13 +91,16 @@ export async function getWhatsappConfig(
   const supabase = await createClient();
   const { data } = await supabase
     .from("gyms")
-    .select("whatsapp_activo, whatsapp_numero, whatsapp_api_key")
+    .select(
+      "whatsapp_activo, whatsapp_numero, whatsapp_api_key, alerta_visitas_umbral"
+    )
     .eq("id", tenantId)
     .single();
   return {
     activo: !!data?.whatsapp_activo,
     numero: (data?.whatsapp_numero as string | null) ?? null,
     apiKeySet: !!data?.whatsapp_api_key,
+    alertaVisitasUmbral: Number(data?.alerta_visitas_umbral ?? 0),
   };
 }
 
@@ -105,7 +110,12 @@ export async function getWhatsappConfig(
  */
 export async function updateWhatsappConfig(
   tenantId: string,
-  input: { activo: boolean; numero: string | null; apiKey?: string | null }
+  input: {
+    activo: boolean;
+    numero: string | null;
+    apiKey?: string | null;
+    alertaVisitasUmbral?: number;
+  }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
   const payload: Record<string, unknown> = {
@@ -113,6 +123,9 @@ export async function updateWhatsappConfig(
     whatsapp_numero: input.numero,
   };
   if (input.apiKey) payload.whatsapp_api_key = input.apiKey;
+  if (input.alertaVisitasUmbral !== undefined) {
+    payload.alerta_visitas_umbral = input.alertaVisitasUmbral;
+  }
 
   const { error } = await supabase
     .from("gyms")

@@ -74,7 +74,11 @@ export default async function PortalHomePage({ params }: PageProps) {
   const diasRestantes = venc
     ? Math.round((venc.getTime() - hoy.getTime()) / 86400000)
     : null;
-  const vigente = diasRestantes !== null && diasRestantes >= 0;
+  // Plan por visitas (D8): la vigencia la manda el saldo de visitas.
+  const porVisitas = miembro.visitas_restantes != null;
+  const vigente = porVisitas
+    ? (miembro.visitas_restantes as number) > 0
+    : diasRestantes !== null && diasRestantes >= 0;
 
   return (
     <div className="min-h-screen">
@@ -100,21 +104,31 @@ export default async function PortalHomePage({ params }: PageProps) {
             </span>
           </div>
 
-          {venc && (
+          {porVisitas ? (
             <p className="mt-2 text-sm text-text-secondary">
-              Vence el{" "}
+              Te quedan{" "}
               <span className="text-text-primary">
-                {venc.toLocaleDateString("es-MX", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })}
+                {miembro.visitas_restantes}{" "}
+                {miembro.visitas_restantes === 1 ? "visita" : "visitas"}
               </span>
-              {diasRestantes !== null &&
-                (diasRestantes >= 0
-                  ? ` · ${diasRestantes} día${diasRestantes === 1 ? "" : "s"} restante${diasRestantes === 1 ? "" : "s"}`
-                  : ` · venció hace ${Math.abs(diasRestantes)} día${Math.abs(diasRestantes) === 1 ? "" : "s"}`)}
             </p>
+          ) : (
+            venc && (
+              <p className="mt-2 text-sm text-text-secondary">
+                Vence el{" "}
+                <span className="text-text-primary">
+                  {venc.toLocaleDateString("es-MX", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+                {diasRestantes !== null &&
+                  (diasRestantes >= 0
+                    ? ` · ${diasRestantes} día${diasRestantes === 1 ? "" : "s"} restante${diasRestantes === 1 ? "" : "s"}`
+                    : ` · venció hace ${Math.abs(diasRestantes)} día${Math.abs(diasRestantes) === 1 ? "" : "s"}`)}
+              </p>
+            )
           )}
 
           <div className="mt-5 grid grid-cols-2 gap-2">

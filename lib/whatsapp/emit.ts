@@ -222,6 +222,46 @@ export async function enviarCampanaWhatsapp(
   return { activo: true, enviados: envios.length };
 }
 
+/**
+ * VISITAS_BAJAS (D8): avisa al socio que le quedan pocas visitas. Fire-and-forget,
+ * gateado y no-op si la infra está dormida.
+ */
+export async function emitVisitasBajas(
+  tenantId: string,
+  miembroId: string,
+  visitasRestantes: number
+): Promise<void> {
+  const infra =
+    !!process.env.N8N_WEBHOOK_URL || !!process.env.DIALOG360_API_KEY;
+  if (!infra) return;
+  try {
+    const gym = await gymCtx(tenantId);
+    if (!gym) return;
+    const admin = createAdminClient();
+    const { data: m } = await admin
+      .from("miembros")
+      .select("nombre, telefono")
+      .eq("tenant_id", tenantId)
+      .eq("id", miembroId)
+      .maybeSingle();
+    if (!m?.telefono) return;
+
+    await notifyWhatsapp({
+      tipo: "VISITAS_BAJAS",
+      gymId: gym.id,
+      gymSlug: gym.slug,
+      gymNombre: gym.nombre,
+      whatsappNumero: gym.whatsappNumero,
+      whatsappApiKey: gym.whatsappApiKey,
+      miembroTelefono: m.telefono as string,
+      miembroNombre: (m.nombre as string) ?? "",
+      visitasRestantes,
+    });
+  } catch (err) {
+    console.error("[whatsapp] emitVisitasBajas:", err);
+  }
+}
+
 /** ¿El gym puede enviar por WhatsApp? (feature + activo + infra). Para el portal. */
 export async function gymPuedeWhatsapp(tenantId: string): Promise<boolean> {
   const infra =

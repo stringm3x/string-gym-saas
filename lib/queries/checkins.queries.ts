@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { hoyCDMX } from "@/lib/utils/dates";
+import { emitVisitasBajas } from "@/lib/whatsapp/emit";
 
 export interface Checkin {
   id: string;
@@ -86,11 +87,23 @@ export async function createCheckin(
     .maybeSingle();
   const restantes = m?.visitas_restantes as number | null | undefined;
   if (restantes !== null && restantes !== undefined && restantes > 0) {
+    const nuevoSaldo = restantes - 1;
     await supabase
       .from("miembros")
-      .update({ visitas_restantes: restantes - 1 })
+      .update({ visitas_restantes: nuevoSaldo })
       .eq("tenant_id", tenantId)
       .eq("id", miembroId);
+
+    // Alerta de visitas bajas (D8): al llegar exactamente al umbral del gym.
+    const { data: g } = await supabase
+      .from("gyms")
+      .select("alerta_visitas_umbral")
+      .eq("id", tenantId)
+      .maybeSingle();
+    const umbral = Number(g?.alerta_visitas_umbral ?? 0);
+    if (umbral > 0 && nuevoSaldo === umbral) {
+      void emitVisitasBajas(tenantId, miembroId, nuevoSaldo);
+    }
   }
 
   return { ok: true, id: data.id, fecha_hora: data.fecha_hora };

@@ -239,6 +239,7 @@ export interface MiembroPortal {
   telefono: string | null;
   fecha_vencimiento: string | null;
   estado: string;
+  visitas_restantes: number | null;
 }
 
 /** Datos del miembro para el portal (scoped por tenant + id de la sesión). */
@@ -249,7 +250,9 @@ export async function getMiembroPortal(
   const admin = createAdminClient();
   const { data } = await admin
     .from("miembros")
-    .select("id, nombre, email, telefono, fecha_vencimiento, estado")
+    .select(
+      "id, nombre, email, telefono, fecha_vencimiento, estado, visitas_restantes"
+    )
     .eq("tenant_id", tenantId)
     .eq("id", miembroId)
     .maybeSingle();

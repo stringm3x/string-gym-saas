@@ -30,10 +30,13 @@ export async function updateWhatsappConfigAction(
     return { ...empty, error: "No tienes permiso para esta acción." };
   }
 
+  const umbralRaw = formData.get("alerta_visitas_umbral");
   const parsed = whatsappConfigSchema.safeParse({
     activo: formData.get("activo") === "true",
     numero: String(formData.get("numero") ?? ""),
     api_key: String(formData.get("api_key") ?? ""),
+    alerta_visitas_umbral:
+      umbralRaw && String(umbralRaw).trim() ? Number(umbralRaw) : 0,
   });
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -71,6 +74,7 @@ export async function updateWhatsappConfigAction(
     activo: parsed.data.activo,
     numero: numero || null,
     apiKey: apiKey || undefined,
+    alertaVisitasUmbral: parsed.data.alerta_visitas_umbral ?? 0,
   });
   if (!result.ok) return { ...empty, error: result.error };
 

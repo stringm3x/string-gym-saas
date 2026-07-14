@@ -74,6 +74,24 @@ export function WhatsappConfigManager({ config }: WhatsappConfigManagerProps) {
         error={state.fieldErrors.api_key}
       />
 
+      <div className="space-y-1.5">
+        <label className="block text-xs font-mono uppercase tracking-widest text-text-muted">
+          Alerta de visitas bajas
+        </label>
+        <input
+          type="number"
+          name="alerta_visitas_umbral"
+          min="0"
+          step="1"
+          defaultValue={config.alertaVisitasUmbral}
+          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+        />
+        <p className="text-[11px] text-text-secondary">
+          Avisa al socio por WhatsApp cuando sus visitas restantes lleguen a
+          este número (planes por visitas). 0 = desactivado.
+        </p>
+      </div>
+
       <label className="flex items-start gap-3 rounded-lg border border-border p-3">
         <input
           type="checkbox"

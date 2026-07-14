@@ -15,6 +15,13 @@ export const whatsappConfigSchema = z.object({
     .max(300, { error: "API key demasiado larga" })
     .optional()
     .or(z.literal("")),
+  // Umbral de alerta de visitas bajas (D8). 0 = desactivado.
+  alerta_visitas_umbral: z
+    .number()
+    .int()
+    .min(0)
+    .max(1000)
+    .optional(),
 });
 
 export type WhatsappConfigInput = z.infer<typeof whatsappConfigSchema>;

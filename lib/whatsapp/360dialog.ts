@@ -20,6 +20,8 @@ export const TEMPLATE_CAMPANA = "campana";
 export const TEMPLATE_LISTA_ESPERA = "lista_espera";
 // OTP del portal (C3): {{1}} código de acceso.
 export const TEMPLATE_OTP = "otp_portal";
+// Visitas bajas (D8): {{1}} nombre · {{2}} visitas restantes.
+export const TEMPLATE_VISITAS_BAJAS = "visitas_bajas";
 
 const ENDPOINT = "https://waba.360dialog.io/v1/messages";
 const TIMEOUT_MS = 10_000;

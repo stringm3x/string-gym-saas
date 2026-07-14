@@ -22,6 +22,7 @@ import {
   TEMPLATE_CAMPANA,
   TEMPLATE_LISTA_ESPERA,
   TEMPLATE_OTP,
+  TEMPLATE_VISITAS_BAJAS,
 } from "./360dialog";
 
 function pesos(n: number): string {
@@ -160,6 +161,15 @@ function traducir(event: WhatsappEvent): SendWhatsappParams | null {
         to: event.miembroTelefono ?? "",
         templateName: TEMPLATE_OTP,
         params: [event.codigo],
+        apiKey: event.whatsappApiKey,
+      };
+
+    case "VISITAS_BAJAS":
+      // Al miembro. {{1}} nombre · {{2}} visitas restantes.
+      return {
+        to: event.miembroTelefono ?? "",
+        templateName: TEMPLATE_VISITAS_BAJAS,
+        params: [event.miembroNombre, String(event.visitasRestantes)],
         apiKey: event.whatsappApiKey,
       };
   }

@@ -89,4 +89,11 @@ export type WhatsappEvent =
       tipo: "OTP";
       miembroTelefono: string | null;
       codigo: string;
+    })
+  | (GymWa & {
+      // Visitas bajas (D8): al socio cuando su saldo llega al umbral.
+      tipo: "VISITAS_BAJAS";
+      miembroTelefono: string | null;
+      miembroNombre: string;
+      visitasRestantes: number;
     });
