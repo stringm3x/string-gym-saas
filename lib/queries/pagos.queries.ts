@@ -35,6 +35,7 @@ export interface Pago {
   anulado_at: string | null;
   reembolsado_at: string | null;
   reembolsado_motivo: string | null;
+  ticket_id: string | null;
   created_at: string;
 }
 
@@ -130,6 +131,124 @@ export async function createPago(
   }
 
   return { ok: true, id: data.id, token };
+}
+
+export interface TicketLinea {
+  id: string;
+  concepto: string;
+  monto: number;
+  producto_nombre: string | null;
+  plan_nombre: string | null;
+}
+
+export interface TicketCompleto {
+  ticket_id: string;
+  fecha_pago: string;
+  metodo_pago: string | null;
+  miembro_nombre: string | null;
+  total: number;
+  lineas: TicketLinea[];
+  gym_nombre: string;
+  gym_logo_url: string | null;
+}
+
+/** Todas las líneas de un ticket agrupadas, para el recibo. */
+export async function getTicketCompleto(
+  tenantId: string,
+  ticketId: string
+): Promise<TicketCompleto | null> {
+  const supabase = await createClient();
+  const [pagosRes, gymRes] = await Promise.all([
+    supabase
+      .from("pagos")
+      .select(
+        "id, concepto, monto, metodo_pago, fecha_pago, miembros(nombre), productos(nombre), planes_membresia(nombre)"
+      )
+      .eq("tenant_id", tenantId)
+      .eq("ticket_id", ticketId)
+      .order("created_at", { ascending: true }),
+    supabase.from("gyms").select("nombre, logo_url").eq("id", tenantId).single(),
+  ]);
+
+  const rows = pagosRes.data ?? [];
+  if (rows.length === 0) return null;
+
+  const embedNombre = (v: unknown): string | null => {
+    if (!v) return null;
+    const o = Array.isArray(v) ? v[0] : v;
+    return (o as { nombre?: string })?.nombre ?? null;
+  };
+
+  const lineas: TicketLinea[] = rows.map((r) => ({
+    id: r.id as string,
+    concepto: r.concepto as string,
+    monto: Number(r.monto),
+    producto_nombre: embedNombre(r.productos),
+    plan_nombre: embedNombre(r.planes_membresia),
+  }));
+
+  const first = rows[0];
+  const gym = gymRes.data as { nombre?: string; logo_url?: string | null } | null;
+
+  return {
+    ticket_id: ticketId,
+    fecha_pago: first.fecha_pago as string,
+    metodo_pago: (first.metodo_pago as string | null) ?? null,
+    miembro_nombre: embedNombre(first.miembros),
+    total: lineas.reduce((s, l) => s + l.monto, 0),
+    lineas,
+    gym_nombre: gym?.nombre ?? "",
+    gym_logo_url: gym?.logo_url ?? null,
+  };
+}
+
+export interface TicketItemInput {
+  tipo: "producto" | "membresia";
+  producto_id?: string;
+  cantidad?: number;
+  plan_id?: string;
+  monto: number;
+  periodo_inicio?: string;
+  periodo_fin?: string;
+}
+
+/**
+ * Registra un ticket multi-línea (B4) de forma atómica vía RPC. Cada línea es
+ * un pago con el mismo ticket_id; el token público va en la primera línea. Los
+ * montos/periodos ya vienen calculados y validados server-side por el action.
+ */
+export async function registrarTicket(
+  tenantId: string,
+  input: {
+    metodo: "efectivo" | "tarjeta" | "transferencia";
+    miembroId: string | null;
+    items: TicketItemInput[];
+  }
+): Promise<
+  { ok: true; ticketId: string; token: string } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const token = generarTokenRecibo();
+
+  const { data, error } = await supabase.rpc("registrar_ticket", {
+    p_tenant_id: tenantId,
+    p_metodo_pago: input.metodo,
+    p_token: token,
+    p_miembro_id: input.miembroId,
+    p_items: input.items,
+  });
+
+  if (error || !data) {
+    const msg = error?.message ?? "";
+    if (msg.includes("STOCK_INSUFICIENTE")) {
+      return { ok: false, error: "Stock insuficiente para completar el ticket." };
+    }
+    if (msg.includes("INVENTARIO_NO_ENCONTRADO")) {
+      return { ok: false, error: "No se encontró el inventario de un producto." };
+    }
+    return { ok: false, error: msg || "No se pudo registrar el ticket." };
+  }
+  return { ok: true, ticketId: data as string, token };
 }
 
 /**
@@ -259,7 +378,7 @@ export async function listPagosDelDia(
   let q = supabase
     .from("pagos")
     .select(
-      "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, plan_id, promocion_id, producto_id, folio, es_visita_rapida, nombre_visitante, telefono_visitante, token_publico, anulado_at, created_at, miembros(nombre)"
+      "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, plan_id, promocion_id, producto_id, folio, es_visita_rapida, nombre_visitante, telefono_visitante, token_publico, anulado_at, reembolsado_at, reembolsado_motivo, ticket_id, created_at, miembros(nombre)"
     )
     .eq("tenant_id", tenantId)
     .gte("fecha_pago", inicioHoy.toISOString())
@@ -297,6 +416,7 @@ export async function listPagosDelDia(
     anulado_at: row.anulado_at ?? null,
     reembolsado_at: row.reembolsado_at ?? null,
     reembolsado_motivo: row.reembolsado_motivo ?? null,
+    ticket_id: row.ticket_id ?? null,
     created_at: row.created_at,
     miembro_nombre: row.miembros?.nombre ?? null,
   }));

@@ -8,7 +8,11 @@ import {
   createPago,
   createVisitaRapida,
   anularPago,
+  registrarTicket,
+  type TicketItemInput,
 } from "@/lib/queries/pagos.queries";
+import { getPlan } from "@/lib/queries/planes.queries";
+import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
 import {
   crearReembolso,
   type TipoDevolucion,
@@ -236,6 +240,91 @@ export async function reembolsarPagoAction(
   revalidatePath(`/${tenant.slug}/caja`);
   revalidatePath(`/${tenant.slug}/recibos/${pagoId}`);
   return { ok: true };
+}
+
+/**
+ * Cobra un ticket multi-línea (B4). Recalcula precios y periodos server-side
+ * (no confía en los montos del cliente) y registra todo de forma atómica.
+ */
+export async function registrarTicketAction(input: {
+  metodo: "efectivo" | "tarjeta" | "transferencia";
+  miembroId: string | null;
+  productos: { producto_id: string; cantidad: number }[];
+  membresia: { plan_id: string } | null;
+}): Promise<{ ok: boolean; error?: string; ticketId?: string }> {
+  const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "registrar_pagos")) {
+    return { ok: false, error: "No tienes permiso para cobrar." };
+  }
+  if (input.productos.length === 0 && !input.membresia) {
+    return { ok: false, error: "El ticket está vacío." };
+  }
+
+  const supabase = await createClient();
+  const items: TicketItemInput[] = [];
+
+  // Productos: precio desde la BD (server-autoritativo).
+  if (input.productos.length > 0) {
+    const ids = input.productos.map((p) => p.producto_id);
+    const { data: prods } = await supabase
+      .from("productos")
+      .select("id, precio")
+      .eq("tenant_id", tenant.id)
+      .in("id", ids);
+    const precioDe = new Map(
+      (prods ?? []).map((p) => [p.id as string, Number(p.precio)])
+    );
+    for (const p of input.productos) {
+      const precio = precioDe.get(p.producto_id);
+      if (precio == null) return { ok: false, error: "Producto no encontrado." };
+      const cantidad = Math.max(1, Math.floor(p.cantidad));
+      items.push({
+        tipo: "producto",
+        producto_id: p.producto_id,
+        cantidad,
+        monto: precio * cantidad,
+      });
+    }
+  }
+
+  // Membresía: precio + periodo desde la BD.
+  if (input.membresia) {
+    if (!input.miembroId) {
+      return { ok: false, error: "La membresía requiere un miembro." };
+    }
+    const [miembro, plan] = await Promise.all([
+      getMiembro(tenant.id, input.miembroId),
+      getPlan(tenant.id, input.membresia.plan_id),
+    ]);
+    if (!miembro) return { ok: false, error: "Miembro no encontrado." };
+    if (!plan) return { ok: false, error: "Plan no encontrado." };
+    const rango = calcularRangoPorDias(
+      plan.dias_duracion,
+      miembro.fecha_vencimiento
+    );
+    items.push({
+      tipo: "membresia",
+      plan_id: plan.id,
+      monto: plan.precio,
+      periodo_inicio: rango.periodo_inicio,
+      periodo_fin: rango.periodo_fin,
+    });
+  }
+
+  const r = await registrarTicket(tenant.id, {
+    metodo: input.metodo,
+    miembroId: input.miembroId,
+    items,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+
+  revalidatePath(`/${tenant.slug}/caja`);
+  revalidatePath(`/${tenant.slug}/inventario/productos`);
+  revalidatePath(`/${tenant.slug}/inventario/movimientos`);
+  if (input.miembroId) {
+    revalidatePath(`/${tenant.slug}/miembros/${input.miembroId}`);
+  }
+  return { ok: true, ticketId: r.ticketId };
 }
 
 /** Crédito disponible de un miembro, para el PagoForm. */

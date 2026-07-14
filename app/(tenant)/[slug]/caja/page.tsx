@@ -19,7 +19,7 @@ import {
   getCorteAbierto,
   resumenCorteEnVivo,
 } from "@/lib/queries/cortes.queries";
-import { PagoForm } from "@/components/caja/PagoForm";
+import { CobroSwitcher } from "@/components/caja/CobroSwitcher";
 import { PagosFeed } from "@/components/caja/PagosFeed";
 import { CajaFilters } from "@/components/caja/CajaFilters";
 import { VisitaRapidaButton } from "@/components/caja/VisitaRapidaButton";
@@ -117,15 +117,13 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
             subtitle="Cobra membresías, productos o visitas."
             accent
           />
-          <div className="rounded-xl border border-brand-green/20 bg-surface p-6">
-            <PagoForm
-              slug={slug}
-              planes={planes}
-              promocionesMembresia={promocionesMembresia}
-              promocionesProducto={promocionesProducto}
-              productos={productos}
-            />
-          </div>
+          <CobroSwitcher
+            slug={slug}
+            planes={planes}
+            promocionesMembresia={promocionesMembresia}
+            promocionesProducto={promocionesProducto}
+            productos={productos}
+          />
 
           {canMp && (
             <CobroMpButton planes={planes} gymNombre={gym?.nombre ?? ""} />
