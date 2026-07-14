@@ -26,7 +26,9 @@ import {
   getMembresiasBreakdown,
   getDashboardSparklines,
 } from "@/lib/queries/dashboard-charts.queries";
+import { getMetricasNegocio } from "@/lib/queries/negocio.queries";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { SaludNegocio } from "@/components/dashboard/SaludNegocio";
 import { CheckinsChart } from "@/components/dashboard/CheckinsChart";
 import { PorVencerList } from "@/components/dashboard/PorVencerList";
 import { IngresosSemanaChart } from "@/components/dashboard/IngresosSemanaChart";
@@ -60,6 +62,7 @@ export default async function DashboardPage({ params }: PageProps) {
     retencion,
     membresias,
     sparklines,
+    metricas,
   ] = await Promise.all([
     getMiembrosStats(tenant.id),
     getIngresosStats(tenant.id),
@@ -72,7 +75,10 @@ export default async function DashboardPage({ params }: PageProps) {
     getRetencion(tenant.id),
     getMembresiasBreakdown(tenant.id),
     getDashboardSparklines(tenant.id),
+    getMetricasNegocio(tenant.id),
   ]);
+
+  const canNegocio = hasPermission(tenant.role, "ver_dashboard_ingresos");
 
   const colorAcento = marca?.color_acento ?? COLOR_ACENTO_DEFAULT;
 
@@ -102,6 +108,8 @@ export default async function DashboardPage({ params }: PageProps) {
           Estado del gimnasio en tiempo real.
         </p>
       </div>
+
+      {canNegocio && <SaludNegocio metricas={metricas} slug={slug} />}
 
       {/* Métricas de miembros */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
