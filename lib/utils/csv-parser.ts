@@ -14,6 +14,10 @@ export function parseCSV(text: string): ParsedCSV {
   const result = Papa.parse<Record<string, string>>(text, {
     header: true,
     skipEmptyLines: "greedy",
+    // La plantilla incluye una línea de instrucciones que empieza con "#";
+    // sin esto, PapaParse la tomaría como la fila de encabezados y rompería
+    // toda la importación.
+    comments: "#",
     transformHeader: (h) => h.trim().toLowerCase(),
     transform: (value) => value.trim(),
   });
