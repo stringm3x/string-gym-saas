@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
 import {
   createPlanNutricion,
   updatePlanNutricion,
@@ -19,6 +20,9 @@ export async function crearPlanNutricionAction(
   const tenant = await getTenant();
   if (!hasFeature(tenant.plan, "nutricion")) {
     return { ok: false, error: "Tu plan no incluye Nutrición." };
+  }
+  if (!hasPermission(tenant.role, "gestionar_nutricion")) {
+    return { ok: false, error: "No tienes permiso para gestionar nutrición." };
   }
 
   const parsed = planNutricionInputSchema.safeParse(input);
@@ -45,6 +49,9 @@ export async function editarPlanNutricionAction(
   if (!hasFeature(tenant.plan, "nutricion")) {
     return { ok: false, error: "Tu plan no incluye Nutrición." };
   }
+  if (!hasPermission(tenant.role, "gestionar_nutricion")) {
+    return { ok: false, error: "No tienes permiso para gestionar nutrición." };
+  }
 
   const parsed = planNutricionInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -68,6 +75,9 @@ export async function archivarPlanNutricionAction(
   const tenant = await getTenant();
   if (!hasFeature(tenant.plan, "nutricion")) {
     return { ok: false, error: "Tu plan no incluye Nutrición." };
+  }
+  if (!hasPermission(tenant.role, "gestionar_nutricion")) {
+    return { ok: false, error: "No tienes permiso para gestionar nutrición." };
   }
 
   const r = await archivarPlanNutricion(tenant.id, planId);

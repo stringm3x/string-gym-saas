@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getTenant } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStaffById } from "@/lib/queries/staff.queries";
@@ -21,12 +22,16 @@ interface SimpleResult {
 
 const empty: StaffActionState = { ok: false, error: null, fieldErrors: {} };
 
-/** Gate compartido: solo el owner del gym puede gestionar staff. */
+/** Gate compartido: owner o gerente pueden gestionar staff (D6). */
 async function requireOwner() {
   const tenant = await getTenant();
-  if (tenant.role !== "owner") return { tenant, allowed: false as const };
+  if (!hasPermission(tenant.role, "gestionar_staff")) {
+    return { tenant, allowed: false as const };
+  }
   return { tenant, allowed: true as const };
 }
+
+const ROLES_INVITABLES = ["receptionist", "entrenador", "gerente"] as const;
 
 async function getOrigin(): Promise<string> {
   const h = await headers();
@@ -59,6 +64,10 @@ export async function inviteStaffAction(
   }
 
   const { email, nombre } = parsed.data;
+  const rolRaw = String(formData.get("rol") ?? "receptionist");
+  const rol = (ROLES_INVITABLES as readonly string[]).includes(rolRaw)
+    ? rolRaw
+    : "receptionist";
   const supabase = await createClient();
 
   // Email único por gym.
@@ -83,7 +92,7 @@ export async function inviteStaffAction(
       gym_id: tenant.id,
       email,
       nombre,
-      rol: "receptionist",
+      rol,
       estado: "invitado",
     })
     .select("id")

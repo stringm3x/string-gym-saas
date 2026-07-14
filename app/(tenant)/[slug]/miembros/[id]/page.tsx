@@ -51,7 +51,9 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const canClases = hasFeature(tenant.plan, "clases");
   const canQr = hasFeature(tenant.plan, "qr_access");
   const canCreditos = hasFeature(tenant.plan, "creditos");
-  const canNutricion = hasFeature(tenant.plan, "nutricion");
+  const canNutricion =
+    hasFeature(tenant.plan, "nutricion") &&
+    hasPermission(tenant.role, "ver_nutricion");
 
   const [
     miembro,

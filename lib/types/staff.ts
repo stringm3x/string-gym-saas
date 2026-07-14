@@ -1,4 +1,4 @@
-export type StaffRol = "owner" | "receptionist";
+export type StaffRol = "owner" | "receptionist" | "entrenador" | "gerente";
 export type StaffEstado = "invitado" | "activo" | "desactivado";
 
 export interface Staff {
@@ -37,4 +37,6 @@ export type Permission =
   | "ver_dashboard_completo"
   | "ver_pantalla_hoy"
   | "ver_clases"
-  | "gestionar_clases";
+  | "gestionar_clases"
+  | "ver_nutricion"
+  | "gestionar_nutricion";

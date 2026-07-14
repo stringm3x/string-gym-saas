@@ -73,7 +73,7 @@ export function Sidebar({
   badges = {},
 }: SidebarProps) {
   const base = `/${slug}`;
-  const { can, isOwner } = useStaff();
+  const { can } = useStaff();
   const [collapsed, setCollapsed] = useState(initialCollapsed);
 
   function toggle() {
@@ -96,10 +96,11 @@ export function Sidebar({
     inventario: hasFeature(plan, "inventario") && can("ver_inventario_stock"),
     prospectos: hasFeature(plan, "prospectos") && can("ver_prospectos"),
     alertas: hasFeature(plan, "alertas_dueno") && can("ver_alertas"),
-    campanas: hasFeature(plan, "campanas") && isOwner,
+    // Campañas/opiniones: nivel administración (owner + gerente).
+    campanas: hasFeature(plan, "campanas") && can("ver_dashboard_ingresos"),
     // Inbox: owner y recepción (contestar es operación diaria de ambos).
     whatsapp: hasFeature(plan, "whatsapp_automatico"),
-    opiniones: hasFeature(plan, "opiniones") && isOwner,
+    opiniones: hasFeature(plan, "opiniones") && can("ver_dashboard_ingresos"),
   };
 
   return (

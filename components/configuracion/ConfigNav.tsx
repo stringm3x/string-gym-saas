@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import { hasFeature, type Feature, type Plan } from "@/lib/features";
-import type { StaffRol } from "@/lib/types/staff";
+import { hasPermission } from "@/lib/permissions";
+import type { StaffRol, Permission } from "@/lib/types/staff";
 
 interface ConfigNavProps {
   slug: string;
@@ -16,7 +17,10 @@ interface Item {
   label: string;
   href: string;
   feature?: Feature;
+  /** ownerOnly = requiere nivel de administración (owner o gerente). */
   ownerOnly?: boolean;
+  /** Permiso específico (además del acceso general a Configuración). */
+  permiso?: Permission;
 }
 
 export function ConfigNav({ slug, plan, role }: ConfigNavProps) {
@@ -29,8 +33,17 @@ export function ConfigNav({ slug, plan, role }: ConfigNavProps) {
       items: [
         { label: "Datos del gym", href: `${base}/gym` },
         { label: "Marca", href: `${base}/marca` },
-        { label: "Planes", href: `${base}/planes` },
-        { label: "Promociones", href: `${base}/promociones`, feature: "promociones" },
+        {
+          label: "Planes",
+          href: `${base}/planes`,
+          permiso: "configurar_planes_promociones",
+        },
+        {
+          label: "Promociones",
+          href: `${base}/promociones`,
+          feature: "promociones",
+          permiso: "configurar_planes_promociones",
+        },
       ],
     },
     {
@@ -67,7 +80,8 @@ export function ConfigNav({ slug, plan, role }: ConfigNavProps) {
 
   const visible = (i: Item) =>
     (!i.feature || hasFeature(plan, i.feature)) &&
-    (!i.ownerOnly || role === "owner");
+    (!i.ownerOnly || hasPermission(role, "configurar_general")) &&
+    (!i.permiso || hasPermission(role, i.permiso));
 
   return (
     <nav className="flex flex-col gap-5">

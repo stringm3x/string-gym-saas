@@ -12,12 +12,19 @@ import {
   reactivateStaffAction,
   deleteStaffAction,
 } from "@/app/(tenant)/[slug]/configuracion/staff/actions";
-import type { Staff, StaffEstado } from "@/lib/types/staff";
+import type { Staff, StaffEstado, StaffRol } from "@/lib/types/staff";
 
 const estadoBadge: Record<StaffEstado, { variant: BadgeVariant; label: string }> = {
   invitado: { variant: "warning", label: "Invitado" },
   activo: { variant: "success", label: "Activo" },
   desactivado: { variant: "neutral", label: "Desactivado" },
+};
+
+const ROL_LABEL: Record<StaffRol, string> = {
+  owner: "Dueño",
+  gerente: "Gerente",
+  entrenador: "Entrenador",
+  receptionist: "Recepcionista",
 };
 
 interface StaffCardProps {
@@ -71,7 +78,7 @@ export function StaffCard({ staff }: StaffCardProps) {
             {staff.nombre}
           </span>
           <Badge variant={isOwner ? "info" : "neutral"}>
-            {isOwner ? "Dueño" : "Recepcionista"}
+            {ROL_LABEL[staff.rol] ?? "Recepcionista"}
           </Badge>
           {!isOwner && <Badge variant={badge.variant}>{badge.label}</Badge>}
         </div>

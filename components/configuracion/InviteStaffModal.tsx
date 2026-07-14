@@ -42,7 +42,7 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
   }, [state]);
 
   return (
-    <Modal open={open} onClose={onClose} title="Invitar recepcionista">
+    <Modal open={open} onClose={onClose} title="Invitar al equipo">
       <form action={formAction} className="space-y-4">
         <Input
           label="Correo"
@@ -64,9 +64,21 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
 
         <div className="space-y-1.5">
           <Label>Rol</Label>
-          <div className="rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-secondary">
-            Recepcionista
-          </div>
+          <select
+            name="rol"
+            defaultValue="receptionist"
+            className="w-full cursor-pointer rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+          >
+            <option value="receptionist">
+              Recepcionista — caja, socios, check-in
+            </option>
+            <option value="entrenador">
+              Entrenador — clases, socios y nutrición (sin caja)
+            </option>
+            <option value="gerente">
+              Gerente — todo excepto configurar planes
+            </option>
+          </select>
         </div>
 
         <p className="rounded-lg border border-border/60 bg-surface-hover px-3 py-2 text-xs text-text-muted">
