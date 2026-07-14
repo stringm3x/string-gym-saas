@@ -56,11 +56,12 @@ export function ReservaQuickForm({ sesionId }: { sesionId: string }) {
         setMsg({ ok: false, text: r.error ?? "Error" });
         return;
       }
+      const base = r.enListaEspera
+        ? "Agregado a lista de espera (sin cupo)."
+        : "Reserva confirmada.";
       setMsg({
         ok: true,
-        text: r.enListaEspera
-          ? "Agregado a lista de espera (sin cupo)."
-          : "Reserva confirmada.",
+        text: r.advertencia ? `${base} ⚠️ ${r.advertencia}` : base,
       });
       setQuery("");
       setResultados([]);

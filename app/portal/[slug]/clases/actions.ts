@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePortal } from "@/lib/portal/session";
 import { cancelarReserva } from "@/lib/queries/clases.queries";
 import { reservarConCupo, promoverListaEspera } from "@/lib/utils/clases-cupo";
+import { hoyISO } from "@/lib/utils/dates";
 
 export async function reservarClasePortalAction(
   slug: string,
@@ -12,6 +13,21 @@ export async function reservarClasePortalAction(
 ): Promise<{ ok: boolean; error?: string; enListaEspera?: boolean }> {
   const { gym, session } = await requirePortal(slug);
   const admin = createAdminClient();
+
+  // C4: bloquear si la membresía no está vigente (portal = bloqueo duro).
+  const { data: m } = await admin
+    .from("miembros")
+    .select("fecha_vencimiento")
+    .eq("tenant_id", gym.id)
+    .eq("id", session.miembroId)
+    .maybeSingle();
+  const venc = m?.fecha_vencimiento as string | null | undefined;
+  if (!venc || venc < hoyISO()) {
+    return {
+      ok: false,
+      error: "Tu membresía está vencida. Renuévala para reservar clases.",
+    };
+  }
 
   const { reserva, enListaEspera, error } = await reservarConCupo(
     gym.id,

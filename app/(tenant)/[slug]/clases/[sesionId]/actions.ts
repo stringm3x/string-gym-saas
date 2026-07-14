@@ -12,7 +12,11 @@ import {
   marcarNoShow,
   cancelarSesion,
 } from "@/lib/queries/clases.queries";
-import { searchMiembrosForCheckin } from "@/lib/queries/miembros.queries";
+import {
+  searchMiembrosForCheckin,
+  getMiembro,
+} from "@/lib/queries/miembros.queries";
+import { hoyISO } from "@/lib/utils/dates";
 import { reservarConCupo, promoverListaEspera } from "@/lib/utils/clases-cupo";
 import { crearProspectoDesdeClaseGratis } from "@/lib/utils/clases-prospecto";
 import type { StaffRol } from "@/lib/types/staff";
@@ -22,6 +26,8 @@ export interface SesionActionResult {
   ok: boolean;
   error?: string;
   enListaEspera?: boolean;
+  /** C4: aviso no bloqueante (ej. socio con membresía vencida). */
+  advertencia?: string;
 }
 
 interface Ctx {
@@ -94,8 +100,18 @@ export async function createReservaAction(
     );
   }
 
+  // C4: staff puede reservar a un socio vencido, pero se avisa (no bloquea).
+  let advertencia: string | undefined;
+  if (input.miembroId) {
+    const miembro = await getMiembro(t.id, input.miembroId);
+    const venc = miembro?.fecha_vencimiento;
+    if (!venc || venc < hoyISO()) {
+      advertencia = "Este socio tiene la membresía vencida.";
+    }
+  }
+
   revalidate(t.slug, sesionId);
-  return { ok: true, enListaEspera };
+  return { ok: true, enListaEspera, advertencia };
 }
 
 export async function cancelarReservaAction(
