@@ -16,6 +16,7 @@ import { NotasLegacy } from "@/components/miembros/NotasLegacy";
 import { AccionesRapidas } from "@/components/ui/AccionesRapidas";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
 import { MiembroArchivarButton } from "@/components/miembros/MiembroArchivarButton";
+import { RenovarButton } from "@/components/miembros/RenovarButton";
 import { MiembroArchivadoBanner } from "@/components/miembros/MiembroArchivadoBanner";
 import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
 import { CheckinsHistory } from "@/components/checkins/CheckinsHistory";
@@ -80,9 +81,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     canCreditos
       ? getPlanesPagoByMiembro(tenant.id, id)
       : Promise.resolve([] as PlanPagoConCuotas[]),
-    canCreditos
-      ? listPlanes(tenant.id, { soloActivos: true })
-      : Promise.resolve([]),
+    listPlanes(tenant.id, { soloActivos: true }),
     canCreditos
       ? listProductosConStock(tenant.id)
       : Promise.resolve([]),
@@ -102,6 +101,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const canTimeline = hasFeature(tenant.plan, "timeline_notas");
   const canPlantillas = hasFeature(tenant.plan, "plantillas_mensaje");
   const canArchivar = hasPermission(tenant.role, "eliminar_archivar_miembros");
+  const canCobrar = hasPermission(tenant.role, "registrar_pagos");
 
   const miembroConTags = { ...miembro, tags: miembroTags };
 
@@ -125,6 +125,15 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {!miembro.archivado && canCobrar && (
+              <RenovarButton
+                slug={slug}
+                miembroId={miembro.id}
+                planActualId={miembro.plan_id}
+                fechaVencimiento={miembro.fecha_vencimiento}
+                planes={planesMembresia}
+              />
+            )}
             <AccionesRapidas
               nombre={miembro.nombre}
               telefono={miembro.telefono}
