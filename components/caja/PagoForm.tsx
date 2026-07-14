@@ -31,6 +31,7 @@ import {
 import { searchMiembrosAction } from "@/app/(tenant)/[slug]/checkins/actions";
 import {
   registerPagoAction,
+  getCreditoDisponibleAction,
   type PagoResult,
 } from "@/app/(tenant)/[slug]/caja/actions";
 import type { PlanMembresia } from "@/lib/queries/planes.queries";
@@ -119,6 +120,21 @@ export function PagoForm({
   // "Paga con" para calcular el cambio en efectivo (solo display, no se envía).
   const [pagaCon, setPagaCon] = useState("");
   const [miembro, setMiembro] = useState<MiembroLite | null>(null);
+  // Nota de crédito del miembro (B2b): saldo disponible + monto a aplicar.
+  const [creditoDisponible, setCreditoDisponible] = useState(0);
+  const [creditoAplicar, setCreditoAplicar] = useState("");
+
+  useEffect(() => {
+    const id = miembro?.id;
+    if (!id) return;
+    let cancelado = false;
+    getCreditoDisponibleAction(id).then((c) => {
+      if (!cancelado) setCreditoDisponible(c);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [miembro?.id]);
 
   // Por defecto se selecciona el primer plan (panel de personalización
   // colapsado). "Personalizar precio y duración" lo expande on-demand.
@@ -208,6 +224,13 @@ export function PagoForm({
     };
   })();
 
+  // Crédito aplicable (B2b): acotado al saldo y al total.
+  const creditoAplicado = Math.max(
+    0,
+    Math.min(Number(creditoAplicar) || 0, creditoDisponible, montoFinal)
+  );
+  const montoNeto = montoFinal - creditoAplicado;
+
   // Recalcular rango cuando cambia selección/miembro
   useEffect(() => {
     if (!requierePeriodo) {
@@ -280,6 +303,7 @@ export function PagoForm({
       setConcepto("membresia");
       setMetodo("efectivo");
       setPagaCon("");
+      setCreditoAplicar("");
       setSelMem(defaultSelMem);
       setSelProd({ kind: "custom" });
       setCustomPreset("1_mes");
@@ -376,10 +400,19 @@ export function PagoForm({
           {miembro ? (
             <SelectedMiembroChip
               miembro={miembro}
-              onClear={() => setMiembro(null)}
+              onClear={() => {
+                setMiembro(null);
+                setCreditoDisponible(0);
+                setCreditoAplicar("");
+              }}
             />
           ) : (
-            <MiembroAutocomplete onSelect={setMiembro} />
+            <MiembroAutocomplete
+              onSelect={(m) => {
+                setMiembro(m);
+                setCreditoAplicar("");
+              }}
+            />
           )}
           <input type="hidden" name="miembro_id" value={miembro?.id ?? ""} />
           {state.fieldErrors.miembro_id && (
@@ -553,8 +586,43 @@ export function PagoForm({
         </div>
       )}
 
+      {/* Nota de crédito del miembro (B2b) */}
+      {miembro && creditoDisponible > 0 && montoFinal > 0 && (
+        <div className="space-y-1.5 rounded-lg border border-brand-green/20 bg-brand-green/5 p-3">
+          <div className="flex items-center justify-between">
+            <Label>Crédito disponible</Label>
+            <span className="font-mono text-sm font-semibold text-brand-green">
+              {formatMoneda(creditoDisponible)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={creditoAplicar}
+              onChange={(e) => setCreditoAplicar(e.target.value)}
+              placeholder="0.00"
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setCreditoAplicar(String(Math.min(creditoDisponible, montoFinal)))
+              }
+            >
+              Aplicar todo
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Hidden fields */}
       <input type="hidden" name="monto" value={montoFinal} />
+      <input type="hidden" name="credito_aplicado" value={creditoAplicado} />
       <input type="hidden" name="periodo_inicio" value={periodoInicio} />
       <input type="hidden" name="periodo_fin" value={periodoFin} />
       <input type="hidden" name="plan_id" value={planId} />
@@ -570,11 +638,17 @@ export function PagoForm({
       <div className="flex items-center justify-between border-t border-border pt-4">
         <div>
           <p className="text-xs uppercase tracking-wider text-text-muted">
-            Total a cobrar
+            {creditoAplicado > 0 ? "A cobrar (menos crédito)" : "Total a cobrar"}
           </p>
           <p className="font-mono text-2xl font-bold tabular-nums text-brand-green">
-            ${montoFinal.toLocaleString("es-MX")}
+            ${montoNeto.toLocaleString("es-MX")}
           </p>
+          {creditoAplicado > 0 && (
+            <p className="text-[11px] text-text-secondary">
+              Total ${montoFinal.toLocaleString("es-MX")} − crédito $
+              {creditoAplicado.toLocaleString("es-MX")}
+            </p>
+          )}
         </div>
         <Button type="submit" loading={isPending} size="lg">
           Registrar pago

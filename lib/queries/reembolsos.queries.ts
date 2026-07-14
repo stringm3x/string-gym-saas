@@ -6,8 +6,13 @@
  */
 import { createClient } from "@/lib/supabase/server";
 import { aplicarMovimiento } from "@/lib/queries/productos.queries";
+import { crearNotaCredito } from "@/lib/queries/notas-credito.queries";
 
-export type TipoDevolucion = "efectivo" | "tarjeta" | "transferencia";
+export type TipoDevolucion =
+  | "efectivo"
+  | "tarjeta"
+  | "transferencia"
+  | "nota_credito";
 
 export interface ReembolsoInput {
   pagoId: string;
@@ -46,6 +51,12 @@ export async function crearReembolso(
   }
   if (pago.reembolsado_at) {
     return { ok: false, error: "Este pago ya fue reembolsado." };
+  }
+  if (input.tipo === "nota_credito" && !pago.miembro_id) {
+    return {
+      ok: false,
+      error: "La nota de crédito requiere un miembro asociado al pago.",
+    };
   }
 
   const monto = Number(pago.monto);
@@ -88,7 +99,22 @@ export async function crearReembolso(
     };
   }
 
-  // 3. Restaurar stock si era venta de producto (cantidad del movimiento).
+  // 3. Si la devolución es nota de crédito, emitir el saldo a favor.
+  if (input.tipo === "nota_credito" && pago.miembro_id) {
+    const nota = await crearNotaCredito(supabase, tenantId, {
+      miembroId: pago.miembro_id as string,
+      monto,
+      origenReembolsoId: reemb.id as string,
+    });
+    if (!nota.ok) {
+      return {
+        ok: false,
+        error: "El reembolso se registró, pero no se pudo emitir la nota de crédito.",
+      };
+    }
+  }
+
+  // 4. Restaurar stock si era venta de producto (cantidad del movimiento).
   if (pago.concepto === "producto" && pago.producto_id) {
     const { data: mov } = await supabase
       .from("movimientos_inventario")

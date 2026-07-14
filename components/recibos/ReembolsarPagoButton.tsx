@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils/cn";
 import { reembolsarPagoAction } from "@/app/(tenant)/[slug]/caja/actions";
 import type { TipoDevolucion } from "@/lib/queries/reembolsos.queries";
 
-const TIPOS: { value: TipoDevolucion; label: string }[] = [
+const TIPOS_BASE: { value: TipoDevolucion; label: string }[] = [
   { value: "efectivo", label: "Efectivo" },
   { value: "tarjeta", label: "Tarjeta" },
   { value: "transferencia", label: "Transferencia" },
@@ -20,12 +20,21 @@ const TIPOS: { value: TipoDevolucion; label: string }[] = [
 interface ReembolsarPagoButtonProps {
   pagoId: string;
   monto: number;
+  /** La nota de crédito solo aplica si el pago tiene miembro. */
+  tieneMiembro: boolean;
 }
 
 export function ReembolsarPagoButton({
   pagoId,
   monto,
+  tieneMiembro,
 }: ReembolsarPagoButtonProps) {
+  const TIPOS = tieneMiembro
+    ? [
+        ...TIPOS_BASE,
+        { value: "nota_credito" as TipoDevolucion, label: "Nota de crédito" },
+      ]
+    : TIPOS_BASE;
   const router = useRouter();
   const { success, error: toastError } = useToast();
   const [open, setOpen] = useState(false);
@@ -65,11 +74,14 @@ export function ReembolsarPagoButton({
       >
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">
-            Se devolverá{" "}
+            {tipo === "nota_credito" ? "Se emitirá " : "Se devolverá "}
             <span className="font-semibold text-text-primary">
               {formatMoneda(monto)}
             </span>
-            . El pago dejará de contar como ingreso y, si era un producto, se
+            {tipo === "nota_credito"
+              ? " como saldo a favor del miembro."
+              : "."}{" "}
+            El pago dejará de contar como ingreso y, si era un producto, se
             restaura el stock. La vigencia de membresía no se ajusta
             automáticamente.
           </p>
@@ -78,7 +90,7 @@ export function ReembolsarPagoButton({
             <span className="block text-xs font-mono uppercase tracking-widest text-text-muted">
               Método de devolución
             </span>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {TIPOS.map((op) => (
                 <button
                   key={op.value}

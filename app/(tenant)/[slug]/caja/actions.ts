@@ -13,6 +13,10 @@ import {
   crearReembolso,
   type TipoDevolucion,
 } from "@/lib/queries/reembolsos.queries";
+import {
+  getCreditoDisponible,
+  aplicarCredito,
+} from "@/lib/queries/notas-credito.queries";
 import { hasPermission } from "@/lib/permissions";
 import { getActiveStaff } from "@/lib/queries/staff.queries";
 import { getMiembro } from "@/lib/queries/miembros.queries";
@@ -69,10 +73,40 @@ export async function registerPagoAction(
     return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
   }
 
-  const result = await createPago(tenant.id, parsed.data);
+  // Nota de crédito aplicada (B2b): el server valida contra el saldo real y
+  // cobra solo el neto. El crédito no se recuenta como ingreso.
+  const creditoPedido = Number(formData.get("credito_aplicado") ?? 0);
+  let creditoAplicado = 0;
+  if (creditoPedido > 0 && parsed.data.miembro_id) {
+    const disponible = await getCreditoDisponible(
+      tenant.id,
+      parsed.data.miembro_id
+    );
+    creditoAplicado = Math.max(
+      0,
+      Math.min(creditoPedido, disponible, parsed.data.monto)
+    );
+  }
+  const montoNeto = parsed.data.monto - creditoAplicado;
+
+  const result = await createPago(tenant.id, {
+    ...parsed.data,
+    monto: montoNeto,
+  });
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: {} };
+  }
+
+  // Consumir el crédito y registrar cuánto se aplicó al pago.
+  if (creditoAplicado > 0 && parsed.data.miembro_id) {
+    await aplicarCredito(tenant.id, parsed.data.miembro_id, creditoAplicado);
+    const supabase = await createClient();
+    await supabase
+      .from("pagos")
+      .update({ credito_aplicado: creditoAplicado })
+      .eq("tenant_id", tenant.id)
+      .eq("id", result.id);
   }
 
   revalidatePath(`/${tenant.slug}/caja`);
@@ -202,4 +236,13 @@ export async function reembolsarPagoAction(
   revalidatePath(`/${tenant.slug}/caja`);
   revalidatePath(`/${tenant.slug}/recibos/${pagoId}`);
   return { ok: true };
+}
+
+/** Crédito disponible de un miembro, para el PagoForm. */
+export async function getCreditoDisponibleAction(
+  miembroId: string
+): Promise<number> {
+  const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "registrar_pagos") || !miembroId) return 0;
+  return getCreditoDisponible(tenant.id, miembroId);
 }
