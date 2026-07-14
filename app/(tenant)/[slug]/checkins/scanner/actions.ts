@@ -2,7 +2,11 @@
 
 import { getTenant } from "@/lib/tenant";
 import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
-import { createCheckin, bloqueaVencidos } from "@/lib/queries/checkins.queries";
+import {
+  createCheckin,
+  bloqueaVencidos,
+  visitasAgotadas,
+} from "@/lib/queries/checkins.queries";
 import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
 import { hoyISO } from "@/lib/utils/dates";
 
@@ -11,6 +15,7 @@ export type CheckInQrError =
   | "MIEMBRO_ARCHIVADO"
   | "MEMBRESIA_VENCIDA"
   | "MEMBRESIA_CONGELADA"
+  | "SIN_VISITAS"
   | "ERROR";
 
 export type CheckInQrResult =
@@ -40,6 +45,9 @@ export async function checkInPorQrAction(
       error: "MEMBRESIA_CONGELADA",
       nombre: miembro.nombre,
     };
+  }
+  if (await visitasAgotadas(tenant.id, miembro.id)) {
+    return { success: false, error: "SIN_VISITAS", nombre: miembro.nombre };
   }
   if (
     miembro.fecha_vencimiento &&

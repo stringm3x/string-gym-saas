@@ -24,10 +24,20 @@ const MS_POR_DIA = 1000 * 60 * 60 * 24;
  * - por_vencer: dentro de los próximos 7 días
  * - activo: más de 7 días en el futuro
  */
+const VISITAS_AVISO = 2; // "por vencer" cuando quedan estas o menos
+
 export function getEstadoMembresia(
   fechaVencimiento: string | null | undefined,
-  hoy: Date = new Date(hoyISO() + "T00:00:00")
+  hoy: Date = new Date(hoyISO() + "T00:00:00"),
+  visitasRestantes?: number | null
 ): EstadoMembresia {
+  // Plan por visitas (D3): la vigencia la manda el saldo de visitas.
+  if (visitasRestantes !== null && visitasRestantes !== undefined) {
+    if (visitasRestantes <= 0) return "vencido";
+    if (visitasRestantes <= VISITAS_AVISO) return "por_vencer";
+    return "activo";
+  }
+
   if (!fechaVencimiento) {
     return "sin_membresia";
   }

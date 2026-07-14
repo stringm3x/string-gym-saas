@@ -181,12 +181,23 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Extender el vencimiento del miembro (paridad con el cobro manual).
-    // Incluye el plan cobrado para que la ficha y futuras renovaciones lo usen.
+    // Incluye el plan cobrado + saldo de visitas si el plan es por visitas (D3).
     if (miembroId && periodoFin) {
-      const updatePayload: Record<string, string> = {
+      const updatePayload: Record<string, unknown> = {
         fecha_vencimiento: periodoFin,
       };
-      if (planId) updatePayload.plan_id = planId;
+      if (planId) {
+        updatePayload.plan_id = planId;
+        const { data: plan } = await admin
+          .from("planes_membresia")
+          .select("tipo, visitas")
+          .eq("id", planId)
+          .maybeSingle();
+        updatePayload.visitas_restantes =
+          plan?.tipo === "visitas" || plan?.tipo === "paquete"
+            ? (plan?.visitas ?? null)
+            : null;
+      }
       await admin
         .from("miembros")
         .update(updatePayload)

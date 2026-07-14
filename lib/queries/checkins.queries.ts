@@ -32,7 +32,28 @@ export async function bloqueaVencidos(
 }
 
 /**
- * Registra un check-in del miembro. Retorna { ok, id } o error.
+ * ¿El socio es de plan por visitas y ya no le quedan? (D3, bloqueo de check-in).
+ * false para planes por tiempo (visitas_restantes null).
+ */
+export async function visitasAgotadas(
+  tenantId: string,
+  miembroId: string,
+  client?: SupabaseClient
+): Promise<boolean> {
+  const supabase = client ?? (await createClient());
+  const { data } = await supabase
+    .from("miembros")
+    .select("visitas_restantes")
+    .eq("tenant_id", tenantId)
+    .eq("id", miembroId)
+    .maybeSingle();
+  const v = data?.visitas_restantes as number | null | undefined;
+  return v !== null && v !== undefined && v <= 0;
+}
+
+/**
+ * Registra un check-in del miembro. Retorna { ok, id } o error. Si el plan es
+ * por visitas (visitas_restantes no null), descuenta 1 visita (D3).
  */
 export async function createCheckin(
   tenantId: string,
@@ -54,6 +75,22 @@ export async function createCheckin(
       ok: false,
       error: error?.message ?? "No se pudo registrar el check-in",
     };
+  }
+
+  // Descuento de visita (solo planes por visitas; guardado contra negativos).
+  const { data: m } = await supabase
+    .from("miembros")
+    .select("visitas_restantes")
+    .eq("tenant_id", tenantId)
+    .eq("id", miembroId)
+    .maybeSingle();
+  const restantes = m?.visitas_restantes as number | null | undefined;
+  if (restantes !== null && restantes !== undefined && restantes > 0) {
+    await supabase
+      .from("miembros")
+      .update({ visitas_restantes: restantes - 1 })
+      .eq("tenant_id", tenantId)
+      .eq("id", miembroId);
   }
 
   return { ok: true, id: data.id, fecha_hora: data.fecha_hora };

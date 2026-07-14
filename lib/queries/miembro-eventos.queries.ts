@@ -116,11 +116,16 @@ export async function cambiarPlan(
 
   const { data: plan } = await supabase
     .from("planes_membresia")
-    .select("nombre, dias_duracion")
+    .select("nombre, dias_duracion, tipo, visitas")
     .eq("tenant_id", tenantId)
     .eq("id", nuevoPlanId)
     .maybeSingle();
   if (!plan) return { ok: false, error: "Plan no encontrado." };
+
+  const visitasRestantes =
+    plan.tipo === "visitas" || plan.tipo === "paquete"
+      ? (plan.visitas as number | null)
+      : null;
 
   const planAnteriorId = (m.plan_id as string | null) ?? null;
   let anteriorNombre: string | null = null;
@@ -141,6 +146,7 @@ export async function cambiarPlan(
       plan_id: nuevoPlanId,
       fecha_vencimiento: nuevoVenc,
       estado: "activo",
+      visitas_restantes: visitasRestantes,
     })
     .eq("tenant_id", tenantId)
     .eq("id", miembroId);

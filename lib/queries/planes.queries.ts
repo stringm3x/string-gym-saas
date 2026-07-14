@@ -8,6 +8,8 @@ export interface PlanMembresia {
   nombre: string;
   precio: number;
   dias_duracion: number;
+  tipo: "tiempo" | "visitas" | "paquete";
+  visitas: number | null;
   activo: boolean;
   created_at: string;
 }

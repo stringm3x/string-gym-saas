@@ -19,10 +19,19 @@ export interface PlanFormState {
 const empty: PlanFormState = { ok: false, error: null, fieldErrors: {} };
 
 function parse(formData: FormData) {
+  const visitasRaw = formData.get("visitas");
   return {
     nombre: String(formData.get("nombre") ?? ""),
     precio: Number(formData.get("precio") ?? 0),
     dias_duracion: Number(formData.get("dias_duracion") ?? 0),
+    tipo: (String(formData.get("tipo") ?? "tiempo") || "tiempo") as
+      | "tiempo"
+      | "visitas"
+      | "paquete",
+    visitas:
+      visitasRaw && String(visitasRaw).trim()
+        ? Number(visitasRaw)
+        : null,
   };
 }
 

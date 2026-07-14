@@ -126,7 +126,10 @@ export default async function MiembroDetailPage({ params }: PageProps) {
             <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
               {miembro.nombre}
             </h2>
-            <MiembroStatusBadge fechaVencimiento={miembro.fecha_vencimiento} />
+            <MiembroStatusBadge
+              fechaVencimiento={miembro.fecha_vencimiento}
+              visitasRestantes={miembro.visitas_restantes}
+            />
           </div>
 
           <div className="flex items-center gap-2">

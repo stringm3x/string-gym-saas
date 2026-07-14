@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFeature, type Plan } from "@/lib/features";
 import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
-import { createCheckin } from "@/lib/queries/checkins.queries";
+import { createCheckin, visitasAgotadas } from "@/lib/queries/checkins.queries";
 import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
 import { randomUUID } from "node:crypto";
 import {
@@ -21,6 +21,7 @@ export type KioscoError =
   | "MIEMBRO_ARCHIVADO"
   | "MEMBRESIA_VENCIDA"
   | "MEMBRESIA_CONGELADA"
+  | "SIN_VISITAS"
   | "NO_DISPONIBLE"
   | "ERROR";
 
@@ -76,6 +77,9 @@ export async function checkInKioscoAction(
       error: "MEMBRESIA_CONGELADA",
       nombre: miembro.nombre,
     };
+  }
+  if (await visitasAgotadas(gym.id, miembro.id, admin)) {
+    return { success: false, error: "SIN_VISITAS", nombre: miembro.nombre };
   }
   if (
     miembro.fecha_vencimiento &&

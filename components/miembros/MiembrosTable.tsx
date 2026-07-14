@@ -116,7 +116,10 @@ export function MiembrosTable({
               </Td>
 
               <Td>
-                <MiembroStatusBadge fechaVencimiento={m.fecha_vencimiento} />
+                <MiembroStatusBadge
+                  fechaVencimiento={m.fecha_vencimiento}
+                  visitasRestantes={m.visitas_restantes}
+                />
               </Td>
 
               <Td>

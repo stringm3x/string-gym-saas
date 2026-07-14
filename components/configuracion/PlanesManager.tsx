@@ -108,7 +108,9 @@ function PlanRow({
             {!plan.activo && <Badge variant="neutral">Archivado</Badge>}
           </div>
           <p className="text-xs text-text-secondary">
-            {plan.dias_duracion} {plan.dias_duracion === 1 ? "día" : "días"}
+            {plan.tipo === "tiempo"
+              ? `${plan.dias_duracion} ${plan.dias_duracion === 1 ? "día" : "días"}`
+              : `${plan.visitas ?? 0} visitas · válido ${plan.dias_duracion} días`}
           </p>
         </div>
       </div>
@@ -158,6 +160,10 @@ function PlanFormModal({
       : createPlanAction;
 
   const [state, formAction, isPending] = useActionState(action, initial);
+  const planInicial = modal?.mode === "edit" ? modal.plan : undefined;
+  const [tipo, setTipo] = useState<"tiempo" | "visitas" | "paquete">(
+    planInicial?.tipo ?? "tiempo"
+  );
 
   useEffect(() => {
     if (state.ok) {
@@ -201,7 +207,7 @@ function PlanFormModal({
             error={state.fieldErrors.precio}
           />
           <Input
-            label="Duración (días)"
+            label={tipo === "tiempo" ? "Duración (días)" : "Validez (días)"}
             name="dias_duracion"
             type="number"
             inputMode="numeric"
@@ -212,6 +218,58 @@ function PlanFormModal({
             error={state.fieldErrors.dias_duracion}
           />
         </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-text-secondary">
+            Tipo de plan
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {(
+              [
+                { v: "tiempo", l: "Por tiempo" },
+                { v: "visitas", l: "Por visitas" },
+                { v: "paquete", l: "Paquete" },
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                onClick={() => setTipo(o.v)}
+                className={cn(
+                  "rounded-lg border px-2 py-2 text-xs font-medium transition-colors",
+                  tipo === o.v
+                    ? "border-brand-green bg-brand-green/10 text-brand-green"
+                    : "border-border bg-surface text-text-secondary hover:text-text-primary"
+                )}
+              >
+                {o.l}
+              </button>
+            ))}
+          </div>
+          <input type="hidden" name="tipo" value={tipo} />
+          <p className="text-[11px] text-text-muted">
+            {tipo === "tiempo"
+              ? "Vigente por los días indicados."
+              : tipo === "visitas"
+                ? "Se descuenta 1 visita por check-in (la validez es un tope amplio)."
+                : "Visitas + validez máxima en días."}
+          </p>
+        </div>
+
+        {tipo !== "tiempo" && (
+          <Input
+            label="Número de visitas"
+            name="visitas"
+            type="number"
+            inputMode="numeric"
+            step="1"
+            min="1"
+            required
+            defaultValue={plan?.visitas ?? undefined}
+            placeholder="Ej. 10"
+            error={state.fieldErrors.visitas}
+          />
+        )}
 
         {state.error && Object.keys(state.fieldErrors).length === 0 && (
           <p

@@ -17,6 +17,7 @@ export interface Miembro {
   archivado: boolean;
   archivado_at: string | null;
   plan_id: string | null;
+  visitas_restantes: number | null;
   origen_importacion: string | null;
   created_at: string;
 }

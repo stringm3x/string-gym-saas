@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
-import { createCheckin, bloqueaVencidos } from "@/lib/queries/checkins.queries";
+import {
+  createCheckin,
+  bloqueaVencidos,
+  visitasAgotadas,
+} from "@/lib/queries/checkins.queries";
 import {
   searchMiembrosForCheckin,
   getMiembro,
@@ -34,6 +38,16 @@ export async function registerCheckinAction(
   }
 
   const estado = getEstadoMembresia(miembro.fecha_vencimiento);
+
+  // Sin visitas (D3): plan por visitas agotado.
+  if (await visitasAgotadas(tenant.id, miembroId)) {
+    return {
+      ok: false,
+      error: "Sin visitas disponibles",
+      bloqueado: true,
+      miembro: { id: miembro.id, nombre: miembro.nombre, estadoMembresia: estado },
+    };
+  }
 
   // Congelación (D1): bloqueo duro durante la pausa, sin importar la política.
   if (await congelacionActiva(tenant.id, miembroId)) {
