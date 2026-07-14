@@ -3,7 +3,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { PagoInput } from "@/lib/validations/pago.schema";
 import type { VisitaRapidaInput } from "@/lib/validations/visita-rapida.schema";
 import { generarTokenRecibo } from "@/lib/utils/tokens";
-import { aplicarMovimiento } from "@/lib/queries/productos.queries";
 import { createNotification } from "@/lib/utils/notifications";
 import { hoyCDMX, hoyISO, inicioDeMesCDMX } from "@/lib/utils/dates";
 import { emitPagoRegistrado } from "@/lib/whatsapp/emit";
@@ -65,81 +64,35 @@ export async function createPago(
   const supabase = await createClient();
   const token = generarTokenRecibo();
 
-  const payload = {
-    tenant_id: tenantId,
-    miembro_id: input.miembro_id || null,
-    concepto: input.concepto,
-    monto: input.monto,
-    metodo_pago: input.metodo_pago,
-    periodo_inicio: input.periodo_inicio || null,
-    periodo_fin: input.periodo_fin || null,
-    plan_id: input.plan_id || null,
-    promocion_id: input.promocion_id || null,
-    producto_id: input.producto_id || null,
-    token_publico: token,
-  };
+  // Cobro atómico (Bug #5): pago + descuento de stock + extensión de membresía
+  // en UNA transacción vía RPC de Postgres. Si algo falla, todo revierte.
+  const { data: pagoId, error } = await supabase.rpc("registrar_pago", {
+    p_tenant_id: tenantId,
+    p_concepto: input.concepto,
+    p_monto: input.monto,
+    p_token: token,
+    p_metodo_pago: input.metodo_pago,
+    p_miembro_id: input.miembro_id || null,
+    p_periodo_inicio: input.periodo_inicio || null,
+    p_periodo_fin: input.periodo_fin || null,
+    p_plan_id: input.plan_id || null,
+    p_promocion_id: input.promocion_id || null,
+    p_producto_id: input.producto_id || null,
+    p_cantidad_producto: input.cantidad_producto ?? null,
+  });
 
-  const { data, error } = await supabase
-    .from("pagos")
-    .insert(payload)
-    .select("id")
-    .single();
-
-  if (error || !data) {
-    return {
-      ok: false,
-      error: error?.message ?? "No se pudo registrar el pago",
-    };
-  }
-
-  // Si es venta de producto, descontar del stock con un movimiento de salida.
-  if (input.concepto === "producto" && input.producto_id) {
-    const cantidad = input.cantidad_producto ?? 1;
-    const movResult = await aplicarMovimiento(
-      tenantId,
-      {
-        producto_id: input.producto_id,
-        tipo: "salida",
-        cantidad,
-        motivo: "Venta en caja",
-      },
-      data.id
-    );
-
-    if (!movResult.ok) {
-      return {
-        ok: false,
-        error:
-          "El pago se registró, pero hubo un problema con el stock: " +
-          movResult.error,
-      };
+  if (error || !pagoId) {
+    const msg = error?.message ?? "";
+    if (msg.includes("STOCK_INSUFICIENTE")) {
+      return { ok: false, error: "Stock insuficiente para completar la venta." };
     }
-  }
-
-  // Si es pago de membresía, actualizar fecha_vencimiento del miembro (y su
-  // plan, para que la ficha refleje el plan vigente y las renovaciones lo
-  // reutilicen). Solo pisamos plan_id si el cobro trae uno.
-  if (input.concepto === "membresia" && input.miembro_id && input.periodo_fin) {
-    const updatePayload: Record<string, string> = {
-      fecha_vencimiento: input.periodo_fin,
-      estado: "activo",
-    };
-    if (input.plan_id) updatePayload.plan_id = input.plan_id;
-
-    const { error: updError } = await supabase
-      .from("miembros")
-      .update(updatePayload)
-      .eq("tenant_id", tenantId)
-      .eq("id", input.miembro_id);
-
-    if (updError) {
-      return {
-        ok: false,
-        error:
-          "El pago se registró, pero no se pudo actualizar la fecha de vencimiento. Revísalo en el detalle del miembro.",
-      };
+    if (msg.includes("INVENTARIO_NO_ENCONTRADO")) {
+      return { ok: false, error: "No se encontró el inventario del producto." };
     }
+    return { ok: false, error: msg || "No se pudo registrar el pago" };
   }
+
+  const data = { id: pagoId as string };
 
   // Notificación in-app (Fase 7.3). No bloquea el pago si falla.
   let quien = "";
