@@ -86,6 +86,7 @@ export async function getIngresosStats(
     .from("pagos")
     .select("monto, fecha_pago")
     .eq("tenant_id", tenantId)
+    .is("anulado_at", null) // excluye anulados, igual que caja y las gráficas
     .gte("fecha_pago", inicioMesAnt.toISOString());
 
   const empty: IngresosStats = { hoy: 0, semana: 0, mes: 0, mesAnterior: 0 };
