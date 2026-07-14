@@ -13,7 +13,9 @@ import {
   getMiembroPortal,
   getProximasReservasPortal,
   getCheckinsPortal,
+  getQrTokenPortal,
 } from "@/lib/queries/portal.queries";
+import { generarQRDataUrl } from "@/lib/utils/qr-generator";
 import { hasFeature } from "@/lib/features";
 import { yaOpinoEsteMes, getGooglePlaceId } from "@/lib/queries/opiniones.queries";
 import { getPlanNutricionActivoPortal } from "@/lib/queries/nutricion.queries";
@@ -44,7 +46,8 @@ export default async function PortalHomePage({ params }: PageProps) {
   const canClases = hasFeature(gym.plan, "clases");
   const canOpiniones = hasFeature(gym.plan, "opiniones");
   const canNutricion = hasFeature(gym.plan, "nutricion");
-  const [reservas, checkins, opinoEsteMes, googlePlaceId, planNutricion] =
+  const canQr = hasFeature(gym.plan, "qr_access");
+  const [reservas, checkins, opinoEsteMes, googlePlaceId, planNutricion, qrToken] =
     await Promise.all([
       canClases
         ? getProximasReservasPortal(session.tenantId, session.miembroId)
@@ -57,7 +60,12 @@ export default async function PortalHomePage({ params }: PageProps) {
       canNutricion
         ? getPlanNutricionActivoPortal(session.tenantId, session.miembroId)
         : Promise.resolve(null),
+      canQr
+        ? getQrTokenPortal(session.tenantId, session.miembroId)
+        : Promise.resolve(null),
     ]);
+
+  const qrDataUrl = qrToken ? await generarQRDataUrl(qrToken) : null;
 
   const hoy = new Date(hoyISO() + "T00:00:00");
   const venc = miembro.fecha_vencimiento
@@ -133,6 +141,37 @@ export default async function PortalHomePage({ params }: PageProps) {
             <LuReceipt className="h-3.5 w-3.5" /> Mis recibos
           </Link>
         </section>
+
+        {/* Mi QR de acceso (B5) */}
+        {qrDataUrl && qrToken && (
+          <section className="rounded-2xl border border-border bg-surface p-6 text-center">
+            <h2 className="flex items-center justify-center gap-1.5 text-sm font-semibold text-text-primary">
+              <LuScanLine className="h-4 w-4" /> Mi QR de acceso
+            </h2>
+            <p className="mt-1 text-xs text-text-secondary">
+              Muéstralo en recepción para registrar tu entrada.
+            </p>
+            <div className="mx-auto mt-4 w-fit rounded-xl bg-white p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={qrDataUrl} alt="Mi código QR de acceso" className="h-48 w-48" />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <a
+                href={qrDataUrl}
+                download={`qr-${slug}.png`}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-text-primary transition-colors hover:border-brand-green"
+              >
+                Descargar
+              </a>
+              <a
+                href={`/qr/${qrToken}`}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-green px-3 py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90"
+              >
+                Pantalla completa
+              </a>
+            </div>
+          </section>
+        )}
 
         {/* Opinión del miembro (Fase P.4) */}
         {canOpiniones && vigente && !opinoEsteMes && (

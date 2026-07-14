@@ -256,6 +256,21 @@ export async function getMiembroPortal(
   return (data as MiembroPortal | null) ?? null;
 }
 
+/** Token del QR de acceso del socio (para mostrarlo/descargarlo en el portal). */
+export async function getQrTokenPortal(
+  tenantId: string,
+  miembroId: string
+): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("miembros")
+    .select("qr_token")
+    .eq("tenant_id", tenantId)
+    .eq("id", miembroId)
+    .maybeSingle();
+  return (data?.qr_token as string | null) ?? null;
+}
+
 export interface ReservaPortal {
   id: string;
   sesion_id: string;
