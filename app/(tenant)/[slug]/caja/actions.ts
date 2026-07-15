@@ -64,6 +64,8 @@ export async function registerPagoAction(
     producto_id: String(formData.get("producto_id") ?? ""),
     cantidad_producto:
       cantidadRaw && String(cantidadRaw).trim() ? Number(cantidadRaw) : null,
+    nombre_visitante: String(formData.get("nombre_visitante") ?? ""),
+    telefono_visitante: String(formData.get("telefono_visitante") ?? ""),
   };
 
   const parsed = pagoSchema.safeParse(raw);
@@ -75,6 +77,22 @@ export async function registerPagoAction(
       if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
     }
     return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
+  }
+
+  // Visita sin miembro: la persona no está inscrita. Se registra como visita
+  // rápida con nombre libre (o "Visitante" si no se capturó). No crea miembro.
+  if (parsed.data.concepto === "visita" && !parsed.data.miembro_id) {
+    const result = await createVisitaRapida(tenant.id, {
+      nombre_visitante: parsed.data.nombre_visitante?.trim() || "Visitante",
+      telefono_visitante: parsed.data.telefono_visitante || "",
+      monto: parsed.data.monto,
+      metodo_pago: parsed.data.metodo_pago,
+    });
+    if (!result.ok) {
+      return { ok: false, error: result.error, fieldErrors: {} };
+    }
+    revalidatePath(`/${tenant.slug}/caja`);
+    return { ok: true, error: null, fieldErrors: {}, pagoId: result.id };
   }
 
   // Nota de crédito aplicada (B2b): el server valida contra el saldo real y

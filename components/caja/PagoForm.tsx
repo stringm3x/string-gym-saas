@@ -396,7 +396,14 @@ export function PagoForm({
       {/* Miembro */}
       {requiereMiembro && (
         <div className="space-y-2">
-          <Label required>Miembro</Label>
+          <Label required={concepto === "membresia"}>
+            Miembro
+            {concepto === "visita" && (
+              <span className="ml-1 font-normal text-text-muted">
+                (opcional)
+              </span>
+            )}
+          </Label>
           {miembro ? (
             <SelectedMiembroChip
               miembro={miembro}
@@ -419,6 +426,29 @@ export function PagoForm({
             <p role="alert" className="text-xs text-danger">
               {state.fieldErrors.miembro_id}
             </p>
+          )}
+
+          {/* Visita sin miembro: datos opcionales del visitante no inscrito. */}
+          {concepto === "visita" && !miembro && (
+            <div className="grid gap-3 rounded-xl border border-border bg-bg/40 p-4 sm:grid-cols-2">
+              <p className="text-xs text-text-muted sm:col-span-2">
+                ¿No está inscrito? Registra la visita sin miembro. Si dejas el
+                nombre vacío aparecerá como “Visitante”.
+              </p>
+              <Input
+                label="Nombre del visitante"
+                name="nombre_visitante"
+                placeholder="Ej. Juan Pérez"
+                error={state.fieldErrors.nombre_visitante}
+              />
+              <Input
+                label="Teléfono"
+                name="telefono_visitante"
+                type="tel"
+                placeholder="55 1234 5678"
+                error={state.fieldErrors.telefono_visitante}
+              />
+            </div>
           )}
         </div>
       )}

@@ -36,10 +36,16 @@ export const pagoSchema = z
     producto_id: z.string().uuid().optional().or(z.literal("")),
     /** Cantidad vendida del producto (descuenta del stock). Default 1. */
     cantidad_producto: z.number().int().positive().optional().nullable(),
+    /** Visita sin miembro: nombre libre del visitante (opcional). */
+    nombre_visitante: z.string().trim().max(120).optional().or(z.literal("")),
+    /** Visita sin miembro: teléfono del visitante (opcional). */
+    telefono_visitante: z.string().trim().max(20).optional().or(z.literal("")),
   })
   .refine(
     (data) => {
-      if (data.concepto === "membresia" || data.concepto === "visita") {
+      // Solo la membresía exige miembro. La visita puede ser de alguien no
+      // inscrito (se registra con nombre libre o como "Visitante").
+      if (data.concepto === "membresia") {
         return Boolean(data.miembro_id);
       }
       return true;
