@@ -275,6 +275,7 @@ export function PlanPagoForm({
             onChange={(e) => setFrecuencia(e.target.value as FrecuenciaCuota)}
             className={inputClass}
           >
+            <option value="semanal">Semanal (cada 7 días)</option>
             <option value="quincenal">Quincenal (cada 15 días)</option>
             <option value="mensual">Mensual (cada 30 días)</option>
           </select>

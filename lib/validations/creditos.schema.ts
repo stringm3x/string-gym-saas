@@ -1,11 +1,12 @@
 import { z } from "zod";
 
 /** Frecuencia con la que vencen las cuotas. */
-export const frecuenciaCuotaEnum = z.enum(["quincenal", "mensual"]);
+export const frecuenciaCuotaEnum = z.enum(["semanal", "quincenal", "mensual"]);
 export type FrecuenciaCuota = z.infer<typeof frecuenciaCuotaEnum>;
 
 /** Días entre cuotas según la frecuencia. */
 export const DIAS_FRECUENCIA: Record<FrecuenciaCuota, number> = {
+  semanal: 7,
   quincenal: 15,
   mensual: 30,
 };
