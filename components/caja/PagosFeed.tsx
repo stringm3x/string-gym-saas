@@ -86,7 +86,7 @@ function TicketRow({
           {first.miembro_id && first.miembro_nombre ? (
             <Link
               href={`/${slug}/miembros/${first.miembro_id}`}
-              className="truncate text-sm font-medium text-text-primary transition-colors hover:text-brand-green"
+              className="block truncate text-sm font-medium text-text-primary transition-colors hover:text-brand-green"
             >
               {first.miembro_nombre}
             </Link>
@@ -145,7 +145,7 @@ function PagoRow({ pago: p, slug }: { pago: PagoConMiembro; slug: string }) {
           ) : p.miembro_id && p.miembro_nombre ? (
             <Link
               href={`/${slug}/miembros/${p.miembro_id}`}
-              className="truncate text-sm font-medium text-text-primary transition-colors hover:text-brand-green"
+              className="block truncate text-sm font-medium text-text-primary transition-colors hover:text-brand-green"
             >
               {p.miembro_nombre}
             </Link>
