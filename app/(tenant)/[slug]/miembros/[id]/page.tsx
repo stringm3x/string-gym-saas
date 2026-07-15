@@ -23,6 +23,7 @@ import { CongelacionSolicitudes } from "@/components/miembros/CongelacionSolicit
 import {
   getEventosMiembro,
   getCongelacionesSolicitadas,
+  congelacionActiva,
 } from "@/lib/queries/miembro-eventos.queries";
 import { MiembroArchivadoBanner } from "@/components/miembros/MiembroArchivadoBanner";
 import { ManualCheckinButton } from "@/components/checkins/ManualCheckinButton";
@@ -75,6 +76,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     planesNutricion,
     eventosMembresia,
     congelacionesPendientes,
+    tieneCongelacionActiva,
   ] = await Promise.all([
     getMiembro(tenant.id, id),
     listCheckinsByMiembro(tenant.id, id, 20),
@@ -101,6 +103,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
       : Promise.resolve([] as PlanNutricion[]),
     getEventosMiembro(tenant.id, id),
     getCongelacionesSolicitadas(tenant.id, id),
+    congelacionActiva(tenant.id, id),
   ]);
 
   if (!miembro) {
@@ -155,6 +158,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
                 <MembresiaAcciones
                   miembroId={miembro.id}
                   planes={planesMembresia}
+                  congelacionActiva={tieneCongelacionActiva}
                 />
               )}
             <AccionesRapidas

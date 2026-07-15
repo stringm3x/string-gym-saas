@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LuSnowflake, LuArrowLeftRight } from "react-icons/lu";
+import { LuSnowflake, LuSun, LuArrowLeftRight } from "react-icons/lu";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -10,6 +10,7 @@ import { formatMoneda } from "@/lib/utils/format";
 import { formatearFechaMX, isoMasDias, hoyISO } from "@/lib/utils/dates";
 import {
   congelarMembresiaAction,
+  descongelarMembresiaAction,
   cambiarPlanAction,
 } from "@/app/(tenant)/[slug]/miembros/[id]/membresia-actions";
 import type { PlanMembresia } from "@/lib/queries/planes.queries";
@@ -17,24 +18,46 @@ import type { PlanMembresia } from "@/lib/queries/planes.queries";
 interface Props {
   miembroId: string;
   planes: PlanMembresia[];
+  /** Si hay una congelación vigente hoy: se muestra "Descongelar". */
+  congelacionActiva?: boolean;
   disabled?: boolean;
 }
 
-export function MembresiaAcciones({ miembroId, planes, disabled }: Props) {
-  const [modal, setModal] = useState<null | "congelar" | "plan">(null);
+export function MembresiaAcciones({
+  miembroId,
+  planes,
+  congelacionActiva,
+  disabled,
+}: Props) {
+  const [modal, setModal] = useState<null | "congelar" | "descongelar" | "plan">(
+    null
+  );
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="sm"
-        leftIcon={<LuSnowflake className="h-4 w-4" />}
-        onClick={() => setModal("congelar")}
-        disabled={disabled}
-        className="text-text-secondary hover:text-brand-green"
-      >
-        Congelar
-      </Button>
+      {congelacionActiva ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          leftIcon={<LuSun className="h-4 w-4" />}
+          onClick={() => setModal("descongelar")}
+          disabled={disabled}
+          className="text-warning hover:text-warning"
+        >
+          Descongelar
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          size="sm"
+          leftIcon={<LuSnowflake className="h-4 w-4" />}
+          onClick={() => setModal("congelar")}
+          disabled={disabled}
+          className="text-text-secondary hover:text-brand-green"
+        >
+          Congelar
+        </Button>
+      )}
       {planes.length > 0 && (
         <Button
           variant="ghost"
@@ -50,6 +73,12 @@ export function MembresiaAcciones({ miembroId, planes, disabled }: Props) {
 
       {modal === "congelar" && (
         <CongelarModal
+          miembroId={miembroId}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal === "descongelar" && (
+        <DescongelarModal
           miembroId={miembroId}
           onClose={() => setModal(null)}
         />
@@ -136,6 +165,56 @@ function CongelarModal({
           </Button>
           <Button type="button" onClick={congelar} loading={isPending}>
             Congelar
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function DescongelarModal({
+  miembroId,
+  onClose,
+}: {
+  miembroId: string;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const { success, error: toastError } = useToast();
+  const [isPending, start] = useTransition();
+
+  function descongelar() {
+    start(async () => {
+      const r = await descongelarMembresiaAction(miembroId);
+      if (!r.ok) {
+        toastError("No se pudo descongelar", r.error ?? "Inténtalo de nuevo");
+        return;
+      }
+      success("Membresía descongelada");
+      onClose();
+      router.refresh();
+    });
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Descongelar membresía">
+      <div className="space-y-4">
+        <p className="text-sm text-text-secondary">
+          Se reanuda la membresía hoy. Los días de la pausa que aún no se
+          consumieron se descuentan del vencimiento (solo cuentan los días que
+          estuvo congelada). Esta acción no se puede deshacer.
+        </p>
+        <div className="flex justify-end gap-2 border-t border-border pt-4">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            disabled={isPending}
+          >
+            Cancelar
+          </Button>
+          <Button type="button" onClick={descongelar} loading={isPending}>
+            Descongelar
           </Button>
         </div>
       </div>

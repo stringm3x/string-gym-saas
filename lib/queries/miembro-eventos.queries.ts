@@ -265,6 +265,87 @@ export async function congelacionActiva(
   return (data ?? []).length > 0;
 }
 
+/**
+ * Descongela una membresía activa: devuelve al vencimiento los días de la pausa
+ * NO consumidos (de hoy a fecha_fin), cierra la congelación y deja constancia
+ * en el historial de quién descongeló y cuántos días devolvió. Los días ya
+ * transcurridos de la pausa se respetan.
+ */
+export async function descongelarMembresia(
+  tenantId: string,
+  miembroId: string,
+  creadoPor: { userId: string | null; nombre: string | null }
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const hoy = hoyISO();
+
+  // Congelación activa ya iniciada. Si hubiera varias, la de fin más lejano.
+  const { data: ev } = await supabase
+    .from("miembro_eventos")
+    .select("id, fecha_fin")
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .eq("tipo", "congelacion")
+    .eq("estado", "activa")
+    .lte("fecha_inicio", hoy)
+    .order("fecha_fin", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!ev) return { ok: false, error: "No hay congelación activa." };
+
+  // Días no consumidos = fecha_fin − hoy. diasEntre es inclusivo en ambos
+  // extremos, por eso restamos 1 (hoy ya se consumió). Nunca negativo.
+  const diasNoConsumidos = Math.max(
+    0,
+    diasEntre(hoy, ev.fecha_fin as string) - 1
+  );
+
+  // Devolver esos días: recorta la extensión que la congelación había aplicado.
+  if (diasNoConsumidos > 0) {
+    const { data: m } = await supabase
+      .from("miembros")
+      .select("fecha_vencimiento")
+      .eq("tenant_id", tenantId)
+      .eq("id", miembroId)
+      .maybeSingle();
+    if (m?.fecha_vencimiento) {
+      await supabase
+        .from("miembros")
+        .update({
+          fecha_vencimiento: isoMasDias(
+            -diasNoConsumidos,
+            m.fecha_vencimiento as string
+          ),
+        })
+        .eq("tenant_id", tenantId)
+        .eq("id", miembroId);
+    }
+  }
+
+  // Cerrar la congelación → vuelve a mostrarse "Congelar" en la ficha.
+  const { error: updErr } = await supabase
+    .from("miembro_eventos")
+    .update({ estado: "cancelada" })
+    .eq("tenant_id", tenantId)
+    .eq("id", ev.id);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  // Constancia en el historial (evento propio, sin rango de fechas).
+  const plural = diasNoConsumidos === 1 ? "" : "s";
+  await supabase.from("miembro_eventos").insert({
+    tenant_id: tenantId,
+    miembro_id: miembroId,
+    tipo: "congelacion",
+    estado: "cancelada",
+    creado_por: creadoPor.userId,
+    creado_por_nombre: creadoPor.nombre,
+    descripcion: `Descongelación — ${diasNoConsumidos} día${plural} devuelto${plural}`,
+  });
+
+  return { ok: true };
+}
+
 /** Cambia el plan del socio (administrativo, sin cobro) y lo registra (D2). */
 export async function cambiarPlan(
   tenantId: string,

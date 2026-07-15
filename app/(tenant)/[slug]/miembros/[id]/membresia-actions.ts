@@ -7,6 +7,7 @@ import { hasPermission } from "@/lib/permissions";
 import { getActiveStaff } from "@/lib/queries/staff.queries";
 import {
   congelarMembresia,
+  descongelarMembresia,
   cambiarPlan,
   aprobarCongelacion,
   rechazarCongelacion,
@@ -38,6 +39,25 @@ export async function congelarMembresiaAction(
   const r = await congelarMembresia(tenant.id, miembroId, {
     fechaInicio,
     fechaFin,
+    userId,
+    nombre,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+
+  revalidatePath(`/${tenant.slug}/miembros/${miembroId}`);
+  return { ok: true };
+}
+
+export async function descongelarMembresiaAction(
+  miembroId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "editar_miembros")) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
+
+  const { userId, nombre } = await quienSoy(tenant.id);
+  const r = await descongelarMembresia(tenant.id, miembroId, {
     userId,
     nombre,
   });
