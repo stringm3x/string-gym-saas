@@ -8,6 +8,7 @@ import {
   LuArrowRight,
   LuExternalLink,
   LuCheck,
+  LuCircleCheck,
 } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa";
 import { useToast } from "@/components/ui/Toast";
@@ -325,9 +326,12 @@ export function CampanaWizard({
             </>
           ) : apiSent ? (
             <>
-              <div className="rounded-lg border border-brand-green/30 bg-brand-green/5 px-4 py-3 text-sm text-text-primary">
-                ✅ Campaña enviada por WhatsApp a {enviadosApi}{" "}
-                {enviadosApi === 1 ? "contacto" : "contactos"}.
+              <div className="flex items-center gap-1.5 rounded-lg border border-brand-green/30 bg-brand-green/5 px-4 py-3 text-sm text-text-primary">
+                <LuCircleCheck className="h-4 w-4 shrink-0 text-brand-green" />
+                <span>
+                  Campaña enviada por WhatsApp a {enviadosApi}{" "}
+                  {enviadosApi === 1 ? "contacto" : "contactos"}.
+                </span>
               </div>
               <div className="flex justify-end">
                 <button

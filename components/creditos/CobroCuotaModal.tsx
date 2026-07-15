@@ -46,7 +46,7 @@ export function CobroCuotaModal({
       }
       success(
         r.planCompletado
-          ? "Cuota pagada — plan completado 🎉"
+          ? "Cuota pagada — plan completado"
           : "Pago de cuota registrado"
       );
       router.refresh();

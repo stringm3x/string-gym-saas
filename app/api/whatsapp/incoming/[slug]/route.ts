@@ -83,7 +83,7 @@ export async function POST(
   if (!dentroDeLimite(msg.from)) {
     await sendWhatsappText(
       msg.from,
-      "Por favor espera un momento antes de enviar otro mensaje 🙏",
+      "Por favor espera un momento antes de enviar otro mensaje.",
       apiKey
     );
     return NextResponse.json({ ok: true });

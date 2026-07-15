@@ -51,7 +51,7 @@ export async function sendAlertaSolicitud(s: SolicitudData): Promise<void> {
     await r.emails.send({
       from: FROM,
       to: ALERTA_TO,
-      subject: `🏋️ Nueva solicitud: ${s.nombre_gym ?? s.nombre} (${s.plan_interes ?? "?"})`,
+      subject: `Nueva solicitud: ${s.nombre_gym ?? s.nombre} (${s.plan_interes ?? "?"})`,
       html: `<h2>Nueva solicitud de prueba</h2><table>${filas}</table>`,
     });
   } catch {

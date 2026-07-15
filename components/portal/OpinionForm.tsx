@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { LuStar, LuX, LuExternalLink } from "react-icons/lu";
+import { LuStar, LuX, LuExternalLink, LuThumbsUp } from "react-icons/lu";
 import { enviarOpinionPortalAction } from "@/app/portal/[slug]/opinion-actions";
 
 /** URL de reseña de Google a partir del Place ID. */
@@ -109,8 +109,9 @@ export function OpinionForm({
         </>
       ) : (
         <div className="text-center">
-          <p className="text-sm font-semibold text-text-primary">
-            ¡Gracias por tu opinión! 🙌
+          <p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-text-primary">
+            <LuThumbsUp className="h-4 w-4 text-brand-green" /> ¡Gracias por tu
+            opinión!
           </p>
           {cinco && googlePlaceId && (
             <>

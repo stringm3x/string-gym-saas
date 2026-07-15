@@ -5,7 +5,7 @@ import {
   LuDownload,
   LuArrowRight,
 } from "react-icons/lu";
-import { LuExternalLink, LuQrCode } from "react-icons/lu";
+import { LuExternalLink, LuQrCode, LuTarget } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { hasFeature } from "@/lib/features";
 import {
@@ -149,8 +149,9 @@ export default async function OnboardingPage({
       {/* Demo del Portal del Miembro (Fase P.2) */}
       {demo && (
         <section className="rounded-xl border border-brand-green/30 bg-brand-green/5 p-5">
-          <h2 className="text-base font-semibold text-text-primary">
-            🎯 Prueba el Portal del Miembro
+          <h2 className="flex items-center gap-1.5 text-base font-semibold text-text-primary">
+            <LuTarget className="h-4 w-4 text-brand-green" /> Prueba el Portal
+            del Miembro
           </h2>
           <p className="mt-1 text-sm text-text-secondary">
             Creamos un miembro de demo para que veas cómo lo ven tus clientes.

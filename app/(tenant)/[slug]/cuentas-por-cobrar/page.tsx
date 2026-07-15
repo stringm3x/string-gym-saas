@@ -9,6 +9,7 @@ import {
 } from "@/lib/queries/creditos.queries";
 import { CxCList } from "@/components/creditos/CxCList";
 import { money } from "@/lib/utils/creditos-calc";
+import { LuDollarSign, LuZap } from "react-icons/lu";
 
 type Filtro = "todas" | "vencidas" | "por_vencer";
 
@@ -81,13 +82,15 @@ export default async function CuentasPorCobrarPage({
       {/* Resumen */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-xs text-text-secondary">💰 Total pendiente</p>
+          <p className="flex items-center gap-1 text-xs text-text-secondary">
+            <LuDollarSign className="h-3.5 w-3.5" /> Total pendiente
+          </p>
           <p className="mt-1 text-2xl font-semibold text-text-primary">
             {money(resumen.total_pendiente)}
           </p>
         </div>
         <div className="rounded-xl border border-danger/30 bg-danger/5 p-4">
-          <p className="text-xs text-danger">🔴 Vencido</p>
+          <p className="text-xs text-danger">Vencido</p>
           <p className="mt-1 text-2xl font-semibold text-danger">
             {money(resumen.vencidas_monto)}
           </p>
@@ -97,7 +100,9 @@ export default async function CuentasPorCobrarPage({
           </p>
         </div>
         <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
-          <p className="text-xs text-warning">⚡ Por vencer (7 días)</p>
+          <p className="flex items-center gap-1 text-xs text-warning">
+            <LuZap className="h-3.5 w-3.5" /> Por vencer (7 días)
+          </p>
           <p className="mt-1 text-2xl font-semibold text-warning">
             {money(resumen.por_vencer_monto)}
           </p>

@@ -171,8 +171,8 @@ export async function procesarMensajeBot(
 
   const gymTelefono = (gym?.telefono as string | null) ?? null;
   const fallback = gymTelefono
-    ? `Hola 👋 Para ayudarte mejor, escríbenos al ${gymTelefono}.`
-    : "Hola 👋 En un momento te contactamos para ayudarte.";
+    ? `Hola, para ayudarte mejor, escríbenos al ${gymTelefono}.`
+    : "Hola, en un momento te contactamos para ayudarte.";
 
   // No-op amable si no hay IA configurada (bot dormido) o no existe el gym.
   if (!process.env.ANTHROPIC_API_KEY || !gym) return fallback;

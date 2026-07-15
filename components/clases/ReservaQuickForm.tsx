@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LuSearch, LuUserPlus } from "react-icons/lu";
+import { LuSearch, LuUserPlus, LuTriangleAlert } from "react-icons/lu";
 import {
   buscarMiembrosAction,
   createReservaAction,
@@ -17,7 +17,11 @@ export function ReservaQuickForm({ sesionId }: { sesionId: string }) {
   const router = useRouter();
   const [tab, setTab] = useState<"miembro" | "visitante">("miembro");
   const [pending, start] = useTransition();
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [msg, setMsg] = useState<{
+    ok: boolean;
+    text: string;
+    advertencia?: boolean;
+  } | null>(null);
 
   // Miembro (autocomplete)
   const [query, setQuery] = useState("");
@@ -61,7 +65,8 @@ export function ReservaQuickForm({ sesionId }: { sesionId: string }) {
         : "Reserva confirmada.";
       setMsg({
         ok: true,
-        text: r.advertencia ? `${base} ⚠️ ${r.advertencia}` : base,
+        text: r.advertencia ? `${base} ${r.advertencia}` : base,
+        advertencia: !!r.advertencia,
       });
       setQuery("");
       setResultados([]);
@@ -157,10 +162,13 @@ export function ReservaQuickForm({ sesionId }: { sesionId: string }) {
 
       {msg && (
         <p
-          className={`mt-2 text-xs ${
+          className={`mt-2 flex items-center gap-1 text-xs ${
             msg.ok ? "text-brand-green" : "text-danger"
           }`}
         >
+          {msg.advertencia && (
+            <LuTriangleAlert className="h-3.5 w-3.5 shrink-0 text-warning" />
+          )}
           {msg.text}
         </p>
       )}
