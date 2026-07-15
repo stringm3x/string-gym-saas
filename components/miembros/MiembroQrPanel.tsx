@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { LuCopy, LuCheck, LuRefreshCw } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa";
 import { regenerarQrAction } from "@/app/(tenant)/[slug]/miembros/qr-actions";
+
+// El origin solo existe en el cliente. Lo leemos con useSyncExternalStore para
+// que SSR e hidratación coincidan (snapshot de servidor vacío) y evitar el
+// mismatch de hidratación al construir el link público absoluto.
+const emptySubscribe = () => () => {};
 
 export function MiembroQrPanel({
   qrDataUrl,
@@ -26,10 +31,14 @@ export function MiembroQrPanel({
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const origin = useSyncExternalStore(
+    emptySubscribe,
+    () => window.location.origin,
+    () => ""
+  );
+
   function publicUrl() {
-    return typeof window !== "undefined"
-      ? `${window.location.origin}/qr/${token}`
-      : `/qr/${token}`;
+    return `${origin}/qr/${token}`;
   }
 
   function copiar() {
