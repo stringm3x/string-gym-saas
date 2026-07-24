@@ -52,7 +52,7 @@ export function CheckinsSemanaChart({
 }) {
   const max = Math.max(...data.map((d) => d.cantidad), 1);
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
+    <div className="card-surface p-5">
       <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
         Check-ins por día
       </p>

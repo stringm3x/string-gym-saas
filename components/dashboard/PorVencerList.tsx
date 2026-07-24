@@ -13,7 +13,7 @@ interface PorVencerListProps {
 
 export function PorVencerList({ miembros, slug }: PorVencerListProps) {
   return (
-    <div className="rounded-xl border border-border bg-surface">
+    <div className="card-surface">
       <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
         <div className="flex items-center gap-2">
           <LuClock className="h-4 w-4 text-warning" />

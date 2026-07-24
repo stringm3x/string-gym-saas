@@ -22,7 +22,7 @@ export function SaludNegocio({
   ];
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-5">
+    <section className="card-surface p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
           <LuHeartPulse className="h-4 w-4 text-brand-green" />
@@ -38,7 +38,7 @@ export function SaludNegocio({
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {items.map((it) => (
-          <div key={it.label} className="rounded-lg border border-border bg-bg p-3">
+          <div key={it.label} className="rounded-xl border border-border bg-bg/60 p-3">
             <p className="text-[11px] uppercase tracking-wider text-text-muted">
               {it.label}
             </p>

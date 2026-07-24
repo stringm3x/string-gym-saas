@@ -11,7 +11,7 @@ export function ClasesHoy({
 }) {
   if (sesiones.length === 0) {
     return (
-      <p className="rounded-xl border border-border bg-surface px-4 py-6 text-center text-xs text-text-secondary">
+      <p className="card-surface px-4 py-6 text-center text-xs text-text-secondary">
         No hay clases programadas para hoy.
       </p>
     );
@@ -30,7 +30,7 @@ export function ClasesHoy({
           <li key={s.id}>
             <Link
               href={`/${slug}/clases/${s.id}`}
-              className={`flex items-center gap-3 overflow-hidden rounded-xl border border-border bg-surface hover:bg-bg ${
+              className={`card-surface card-interactive flex items-center gap-3 ${
                 cancelada ? "opacity-50" : ""
               }`}
             >

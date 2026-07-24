@@ -65,6 +65,44 @@ body {
   outline-offset: 2px;
 }
 
+/* ============================================================
+   Sistema de cards unificado (dashboard + hoy y reutilizable)
+   Superficie con profundidad (gradiente), borde de cristal
+   (hairline superior) y glow neón de marca en la variante
+   interactiva. Aplicar .card-surface a todo panel/tarjeta.
+   ============================================================ */
+@layer components {
+  .card-surface {
+    @apply relative overflow-hidden rounded-2xl border border-border;
+    background-image: linear-gradient(
+      to bottom right,
+      var(--color-surface),
+      color-mix(in srgb, var(--color-surface) 40%, transparent)
+    );
+  }
+  /* Filo de cristal: hairline luminoso en el borde superior */
+  .card-surface::before {
+    content: "";
+    @apply pointer-events-none absolute inset-x-0 top-0 h-px;
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+  }
+  /* Variante interactiva: elevación + glow de marca en hover */
+  .card-interactive {
+    @apply transition-all duration-200;
+  }
+  .card-interactive:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--color-brand-green) 30%, transparent);
+    box-shadow: 0 10px 20px -6px
+      color-mix(in srgb, var(--color-brand-green) 12%, transparent);
+  }
+}
+
 /* Entrada de cards (dashboard) — stagger vía animation-delay inline */
 @keyframes statCardIn {
   from {

@@ -39,7 +39,7 @@ export function IngresosSemanaChart({
 }) {
   const total = data.reduce((s, d) => s + d.monto, 0);
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
+    <div className="card-surface p-5">
       <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
         Ingresos por semana
       </p>

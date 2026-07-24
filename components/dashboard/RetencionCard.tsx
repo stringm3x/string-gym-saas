@@ -8,7 +8,7 @@ export function RetencionCard({ data }: { data: Retencion }) {
   const color = data.sube ? "#4fe05a" : "#ff5c5c";
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
+    <div className="card-surface p-5">
       <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
         Retención del mes
       </p>

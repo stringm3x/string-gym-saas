@@ -65,11 +65,25 @@ export default async function HoyPage({ params }: PageProps) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-          Hoy
-        </h2>
-        <p className="mt-1 text-sm text-text-secondary">{formatFechaHoy()}</p>
+      <div className="relative">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-6 -top-10 h-40 w-72 rounded-full bg-brand-green/10 blur-3xl"
+        />
+        <div className="relative flex items-center gap-3">
+          <span
+            aria-hidden
+            className="h-9 w-1 shrink-0 rounded-full bg-gradient-to-b from-brand-green to-brand-green/10"
+          />
+          <div>
+            <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+              Hoy
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              {formatFechaHoy()}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Stats del día */}
@@ -132,7 +146,11 @@ export default async function HoyPage({ params }: PageProps) {
       {/* Clases de hoy */}
       {canClases && (
         <div>
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+          <h3 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+            <span
+              aria-hidden
+              className="h-3 w-0.5 rounded-full bg-brand-green/60"
+            />
             Clases de hoy
           </h3>
           <ClasesHoy sesiones={sesionesHoy} slug={slug} />
@@ -141,7 +159,11 @@ export default async function HoyPage({ params }: PageProps) {
 
       {/* Alertas */}
       <div>
-        <h3 className="mb-4 text-xs font-semibold uppercase tracking-wide text-text-muted">
+        <h3 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+          <span
+            aria-hidden
+            className="h-3 w-0.5 rounded-full bg-brand-green/60"
+          />
           Puntos de atención
         </h3>
         <AlertasList alertas={alertas} />

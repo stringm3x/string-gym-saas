@@ -19,7 +19,7 @@ export function CheckinsChart({ data }: CheckinsChartProps) {
 
   if (data.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-surface p-5">
+      <div className="card-surface p-5">
         <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
           Check-ins (últimos 7 días)
         </p>
@@ -31,7 +31,7 @@ export function CheckinsChart({ data }: CheckinsChartProps) {
   const hoy = data[data.length - 1];
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
+    <div className="card-surface p-5">
       <div className="flex items-baseline justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-text-muted">

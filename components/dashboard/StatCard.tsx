@@ -71,7 +71,7 @@ export function StatCard({
 
   return (
     <div
-      className="animate-stat-in group relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-surface to-surface/40 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-green/30 hover:shadow-lg hover:shadow-brand-green/5"
+      className="card-surface card-interactive animate-stat-in group p-5"
       style={{ animationDelay: `${index * 70}ms` }}
     >
       {/* Glow sutil del color de marca en hover */}
