@@ -101,7 +101,7 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
               asegurar el formato correcto.
             </p>
             <a
-              href="/plantilla-miembros.csv"
+              href={`/api/${slug}/plantilla-miembros`}
               download
               className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary"
             >
