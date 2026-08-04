@@ -73,9 +73,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           />
 
           {rightSlot && (
-            <span className="pr-3 text-text-muted" aria-hidden="true">
-              {rightSlot}
-            </span>
+            <span className="pr-3 text-text-muted">{rightSlot}</span>
           )}
         </div>
 

@@ -1,8 +1,10 @@
 "use client";
 
-import { Suspense, useActionState } from "react";
+import { Suspense, useActionState, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { LuEye, LuEyeOff } from "react-icons/lu";
+import { Input } from "@/components/ui/Input";
 import { login, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
@@ -11,6 +13,7 @@ function LoginForm() {
   const [state, formAction, isPending] = useActionState(login, initialState);
   const searchParams = useSearchParams();
   const justReset = searchParams.get("reset") === "1";
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="w-full max-w-sm">
@@ -48,23 +51,31 @@ function LoginForm() {
           />
         </div>
 
-        <div className="space-y-1.5">
-          <label
-            htmlFor="password"
-            className="block text-xs font-medium text-text-secondary"
-          >
-            Contraseña
-          </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
-            placeholder="••••••••"
-          />
-        </div>
+        <Input
+          label="Contraseña"
+          id="password"
+          name="password"
+          type={showPassword ? "text" : "password"}
+          autoComplete="current-password"
+          required
+          placeholder="••••••••"
+          rightSlot={
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={
+                showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+              }
+              className="flex items-center text-text-muted hover:text-text-primary"
+            >
+              {showPassword ? (
+                <LuEyeOff className="h-4 w-4" />
+              ) : (
+                <LuEye className="h-4 w-4" />
+              )}
+            </button>
+          }
+        />
 
         {state.error && (
           <p

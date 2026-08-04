@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { LuEye, LuEyeOff } from "react-icons/lu";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +17,8 @@ function NuevaPasswordInner() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     // Capturar los params del link ANTES de crear el client (detectSessionInUrl
@@ -133,20 +136,52 @@ function NuevaPasswordInner() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           label="Nueva contraseña"
-          type="password"
+          type={showPassword ? "text" : "password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
           autoComplete="new-password"
           description="Mínimo 8 caracteres"
+          rightSlot={
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={
+                showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+              }
+              className="flex items-center text-text-muted hover:text-text-primary"
+            >
+              {showPassword ? (
+                <LuEyeOff className="h-4 w-4" />
+              ) : (
+                <LuEye className="h-4 w-4" />
+              )}
+            </button>
+          }
         />
         <Input
           label="Confirmar contraseña"
-          type="password"
+          type={showConfirm ? "text" : "password"}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           required
           autoComplete="new-password"
+          rightSlot={
+            <button
+              type="button"
+              onClick={() => setShowConfirm((v) => !v)}
+              aria-label={
+                showConfirm ? "Ocultar contraseña" : "Mostrar contraseña"
+              }
+              className="flex items-center text-text-muted hover:text-text-primary"
+            >
+              {showConfirm ? (
+                <LuEyeOff className="h-4 w-4" />
+              ) : (
+                <LuEye className="h-4 w-4" />
+              )}
+            </button>
+          }
         />
 
         {error && (
