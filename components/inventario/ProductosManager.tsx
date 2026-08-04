@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useCallback, useEffect, useState } from "react";
 import {
   LuPencil,
   LuPlus,
@@ -51,6 +51,13 @@ type Modal =
 export function ProductosManager({ productos }: ProductosManagerProps) {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<Modal>(null);
+  const [modalKey, setModalKey] = useState(0);
+
+  const openModal = useCallback((m: Modal) => {
+    setModal(m);
+    setModalKey((k) => k + 1);
+  }, []);
+  const closeModal = useCallback(() => setModal(null), []);
 
   const filtered = productos.filter((p) =>
     p.nombre.toLowerCase().includes(search.toLowerCase())
@@ -87,7 +94,7 @@ export function ProductosManager({ productos }: ProductosManagerProps) {
           </div>
           <Button
             leftIcon={<LuPlus className="h-4 w-4" />}
-            onClick={() => setModal({ kind: "create-producto" })}
+            onClick={() => openModal({ kind: "create-producto" })}
           >
             Nuevo producto
           </Button>
@@ -102,7 +109,7 @@ export function ProductosManager({ productos }: ProductosManagerProps) {
           action={
             <Button
               leftIcon={<LuPlus className="h-4 w-4" />}
-              onClick={() => setModal({ kind: "create-producto" })}
+              onClick={() => openModal({ kind: "create-producto" })}
             >
               Crear primer producto
             </Button>
@@ -177,7 +184,7 @@ export function ProductosManager({ productos }: ProductosManagerProps) {
                         size="sm"
                         leftIcon={<LuArrowUpDown className="h-3.5 w-3.5" />}
                         onClick={() =>
-                          setModal({ kind: "ajuste", producto: p })
+                          openModal({ kind: "ajuste", producto: p })
                         }
                       >
                         Ajustar
@@ -187,7 +194,7 @@ export function ProductosManager({ productos }: ProductosManagerProps) {
                         size="sm"
                         aria-label={`Editar ${p.nombre}`}
                         onClick={() =>
-                          setModal({ kind: "edit-producto", producto: p })
+                          openModal({ kind: "edit-producto", producto: p })
                         }
                       >
                         <LuPencil className="h-3.5 w-3.5" />
@@ -201,8 +208,8 @@ export function ProductosManager({ productos }: ProductosManagerProps) {
         </div>
       )}
 
-      <ProductoFormModal modal={modal} onClose={() => setModal(null)} />
-      <AjusteModal modal={modal} onClose={() => setModal(null)} />
+      <ProductoFormModal key={`form-${modalKey}`} modal={modal} onClose={closeModal} />
+      <AjusteModal key={`ajuste-${modalKey}`} modal={modal} onClose={closeModal} />
     </div>
   );
 }

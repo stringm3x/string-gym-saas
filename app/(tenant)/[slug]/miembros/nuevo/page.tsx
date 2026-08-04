@@ -8,6 +8,8 @@ import { listPlanes } from "@/lib/queries/planes.queries";
 import { listPromociones } from "@/lib/queries/promociones.queries";
 import { hasFeature } from "@/lib/features";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ prospecto_id?: string }>;
