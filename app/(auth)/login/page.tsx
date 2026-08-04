@@ -1,12 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { login, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
 
-export default function LoginPage() {
+function LoginForm() {
   const [state, formAction, isPending] = useActionState(login, initialState);
+  const searchParams = useSearchParams();
+  const justReset = searchParams.get("reset") === "1";
 
   return (
     <div className="w-full max-w-sm">
@@ -18,6 +22,12 @@ export default function LoginPage() {
           Inicia sesión en tu panel
         </p>
       </div>
+
+      {justReset && (
+        <p className="mb-4 rounded-lg border border-brand-green/30 bg-brand-green/10 px-3 py-2.5 text-center text-sm text-text-primary">
+          Contraseña actualizada. Inicia sesión con tu nueva contraseña.
+        </p>
+      )}
 
       <form action={formAction} className="space-y-4">
         <div className="space-y-1.5">
@@ -72,7 +82,24 @@ export default function LoginPage() {
         >
           {isPending ? "Entrando…" : "Entrar"}
         </button>
+
+        <p className="text-center">
+          <Link
+            href="/recuperar-password"
+            className="text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary"
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </p>
       </form>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

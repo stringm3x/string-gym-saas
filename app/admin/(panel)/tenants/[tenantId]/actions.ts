@@ -313,7 +313,7 @@ export async function resetPasswordOwnerAction(
 
   const supabase = await createClient();
   const redirectTo = process.env.APP_DOMAIN
-    ? `https://${process.env.APP_DOMAIN}/login`
+    ? `https://${process.env.APP_DOMAIN}/auth/nueva-password`
     : undefined;
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo,
