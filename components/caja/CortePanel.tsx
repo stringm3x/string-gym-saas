@@ -9,7 +9,11 @@ import { useToast } from "@/components/ui/Toast";
 import { formatMoneda } from "@/lib/utils/format";
 import { TZ_MX } from "@/lib/utils/dates";
 import { cn } from "@/lib/utils/cn";
-import type { CorteAbierto, CorteTotales } from "@/lib/queries/cortes.queries";
+import type {
+  CorteAbierto,
+  CorteTotales,
+  CorteTotalesPorConcepto,
+} from "@/lib/queries/cortes.queries";
 import {
   abrirCorteAction,
   cerrarCorteAction,
@@ -27,9 +31,15 @@ interface CortePanelProps {
   slug: string;
   corte: CorteAbierto | null;
   totales: CorteTotales | null;
+  totalesPorConcepto: CorteTotalesPorConcepto | null;
 }
 
-export function CortePanel({ slug, corte, totales }: CortePanelProps) {
+export function CortePanel({
+  slug,
+  corte,
+  totales,
+  totalesPorConcepto,
+}: CortePanelProps) {
   return (
     <div className="rounded-xl border border-border bg-surface p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -50,7 +60,11 @@ export function CortePanel({ slug, corte, totales }: CortePanelProps) {
       </div>
 
       {corte ? (
-        <CorteAbiertoView corte={corte} totales={totales} />
+        <CorteAbiertoView
+          corte={corte}
+          totales={totales}
+          totalesPorConcepto={totalesPorConcepto}
+        />
       ) : (
         <AbrirCorte />
       )}
@@ -111,9 +125,11 @@ function AbrirCorte() {
 function CorteAbiertoView({
   corte,
   totales,
+  totalesPorConcepto,
 }: {
   corte: CorteAbierto;
   totales: CorteTotales | null;
+  totalesPorConcepto: CorteTotalesPorConcepto | null;
 }) {
   const router = useRouter();
   const { error: toastError, success } = useToast();
@@ -172,6 +188,11 @@ function CorteAbiertoView({
         <Tot label="Transferencia" valor={t.transferencia} />
         <Tot label="Total turno" valor={t.total} />
       </div>
+
+      {/* Desglose por tipo */}
+      {totalesPorConcepto && (
+        <DesglosePorConcepto totalesPorConcepto={totalesPorConcepto} />
+      )}
 
       {/* Cierre */}
       <div className="space-y-3 border-t border-border pt-4">
@@ -274,6 +295,67 @@ function Tot({
         )}
       >
         {formatMoneda(valor)}
+      </p>
+    </div>
+  );
+}
+
+const CONCEPTO_LABELS: Record<keyof CorteTotalesPorConcepto, string> = {
+  membresia: "Membresías",
+  visita: "Visitas",
+  producto: "Productos",
+  otro: "Otros",
+};
+
+function DesglosePorConcepto({
+  totalesPorConcepto,
+}: {
+  totalesPorConcepto: CorteTotalesPorConcepto;
+}) {
+  const conceptos = (
+    Object.keys(CONCEPTO_LABELS) as (keyof CorteTotalesPorConcepto)[]
+  ).filter((c) => totalesPorConcepto[c].total > 0);
+
+  if (conceptos.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">
+        Desglose por tipo
+      </p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {conceptos.map((c) => (
+          <TotConcepto
+            key={c}
+            label={CONCEPTO_LABELS[c]}
+            valor={totalesPorConcepto[c].total}
+            cantidad={totalesPorConcepto[c].cantidad}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TotConcepto({
+  label,
+  valor,
+  cantidad,
+}: {
+  label: string;
+  valor: number;
+  cantidad: number;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-bg px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wider text-text-muted">
+        {label}
+      </p>
+      <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-text-primary">
+        {formatMoneda(valor)}{" "}
+        <span className="text-[10px] font-normal text-text-muted">
+          ({cantidad})
+        </span>
       </p>
     </div>
   );

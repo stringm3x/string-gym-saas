@@ -24,6 +24,18 @@ export interface CorteTotales {
   reembolsosEfectivo: number;
 }
 
+export interface ConceptoTotal {
+  cantidad: number;
+  total: number;
+}
+
+export interface CorteTotalesPorConcepto {
+  membresia: ConceptoTotal;
+  visita: ConceptoTotal;
+  producto: ConceptoTotal;
+  otro: ConceptoTotal;
+}
+
 export interface CorteHistorial {
   id: string;
   estado: "abierto" | "cerrado";
@@ -113,6 +125,55 @@ export async function resumenCorteEnVivo(
 ): Promise<CorteTotales> {
   const supabase = await createClient();
   return totalesEnRango(supabase, tenantId, desde, new Date().toISOString());
+}
+
+/** Suma de pagos no anulados por concepto en [desde, hasta). */
+async function totalesPorConceptoEnRango(
+  supabase: SupabaseClient,
+  tenantId: string,
+  desde: string,
+  hasta: string
+): Promise<CorteTotalesPorConcepto> {
+  const { data } = await supabase
+    .from("pagos")
+    .select("concepto, monto")
+    .eq("tenant_id", tenantId)
+    .is("anulado_at", null)
+    .gte("fecha_pago", desde)
+    .lt("fecha_pago", hasta);
+
+  const t: CorteTotalesPorConcepto = {
+    membresia: { cantidad: 0, total: 0 },
+    visita: { cantidad: 0, total: 0 },
+    producto: { cantidad: 0, total: 0 },
+    otro: { cantidad: 0, total: 0 },
+  };
+
+  for (const p of data ?? []) {
+    const concepto = p.concepto as string;
+    const key: keyof CorteTotalesPorConcepto =
+      concepto === "membresia" || concepto === "visita" || concepto === "producto"
+        ? concepto
+        : "otro";
+    t[key].cantidad += 1;
+    t[key].total += Number(p.monto);
+  }
+
+  return t;
+}
+
+/** Desglose por concepto del turno en curso, hasta ahora. */
+export async function resumenCorteEnVivoPorConcepto(
+  tenantId: string,
+  desde: string
+): Promise<CorteTotalesPorConcepto> {
+  const supabase = await createClient();
+  return totalesPorConceptoEnRango(
+    supabase,
+    tenantId,
+    desde,
+    new Date().toISOString()
+  );
 }
 
 /** Abre un turno. Falla si ya hay uno abierto (índice único parcial). */

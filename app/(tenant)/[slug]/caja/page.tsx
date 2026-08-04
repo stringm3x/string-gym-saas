@@ -18,6 +18,7 @@ import {
 import {
   getCorteAbierto,
   resumenCorteEnVivo,
+  resumenCorteEnVivoPorConcepto,
 } from "@/lib/queries/cortes.queries";
 import { CobroSwitcher } from "@/components/caja/CobroSwitcher";
 import { PagosFeed } from "@/components/caja/PagosFeed";
@@ -84,9 +85,12 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     : [];
 
   const corte = await getCorteAbierto(tenant.id);
-  const corteTotales = corte
-    ? await resumenCorteEnVivo(tenant.id, corte.abierto_at)
-    : null;
+  const [corteTotales, corteTotalesPorConcepto] = corte
+    ? await Promise.all([
+        resumenCorteEnVivo(tenant.id, corte.abierto_at),
+        resumenCorteEnVivoPorConcepto(tenant.id, corte.abierto_at),
+      ])
+    : [null, null];
 
   return (
     <div className="space-y-6">
@@ -106,7 +110,12 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
         <AutorizacionesPendientes codigos={codigosPendientes} />
       )}
 
-      <CortePanel slug={slug} corte={corte} totales={corteTotales} />
+      <CortePanel
+        slug={slug}
+        corte={corte}
+        totales={corteTotales}
+        totalesPorConcepto={corteTotalesPorConcepto}
+      />
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         {/* ── Acción: registrar cobro ─────────────────────── */}
