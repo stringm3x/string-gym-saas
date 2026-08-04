@@ -143,24 +143,38 @@ export default async function MiembroDetailPage({ params }: PageProps) {
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            {!miembro.archivado && canCobrar && (
-              <RenovarButton
-                slug={slug}
-                miembroId={miembro.id}
-                planActualId={miembro.plan_id}
-                fechaVencimiento={miembro.fecha_vencimiento}
-                planes={planesMembresia}
-              />
-            )}
-            {!miembro.archivado &&
-              hasPermission(tenant.role, "editar_miembros") && (
-                <MembresiaAcciones
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
+              {!miembro.archivado && canCobrar && (
+                <RenovarButton
+                  slug={slug}
                   miembroId={miembro.id}
+                  planActualId={miembro.plan_id}
+                  fechaVencimiento={miembro.fecha_vencimiento}
                   planes={planesMembresia}
-                  congelacionActiva={tieneCongelacionActiva}
                 />
               )}
+              <ManualCheckinButton
+                miembroId={miembro.id}
+                miembroNombre={miembro.nombre}
+                disabled={miembro.archivado}
+                disabledTitle="Restaura para realizar acciones"
+              />
+            </div>
+
+            {!miembro.archivado &&
+              hasPermission(tenant.role, "editar_miembros") && (
+                <>
+                  <ToolbarDivider />
+                  <MembresiaAcciones
+                    miembroId={miembro.id}
+                    planes={planesMembresia}
+                    congelacionActiva={tieneCongelacionActiva}
+                  />
+                </>
+              )}
+
+            <ToolbarDivider />
             <AccionesRapidas
               nombre={miembro.nombre}
               telefono={miembro.telefono}
@@ -170,17 +184,15 @@ export default async function MiembroDetailPage({ params }: PageProps) {
               entidadId={miembro.id}
               plantillas={canPlantillas ? plantillas : []}
             />
-            <ManualCheckinButton
-              miembroId={miembro.id}
-              miembroNombre={miembro.nombre}
-              disabled={miembro.archivado}
-              disabledTitle="Restaura para realizar acciones"
-            />
+
             {!miembro.archivado && canArchivar && (
-              <MiembroArchivarButton
-                miembroId={miembro.id}
-                miembroNombre={miembro.nombre}
-              />
+              <>
+                <ToolbarDivider />
+                <MiembroArchivarButton
+                  miembroId={miembro.id}
+                  miembroNombre={miembro.nombre}
+                />
+              </>
             )}
           </div>
         </div>
@@ -282,4 +294,8 @@ export default async function MiembroDetailPage({ params }: PageProps) {
       )}
     </div>
   );
+}
+
+function ToolbarDivider() {
+  return <span className="hidden h-6 w-px shrink-0 bg-border sm:block" />;
 }

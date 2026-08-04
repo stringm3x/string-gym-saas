@@ -121,13 +121,13 @@ export function AccionesRapidas({
   }
 
   const btnBase =
-    "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40";
+    "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40";
   const btnDefault =
-    "border-border bg-surface text-text-secondary hover:border-brand-green/40 hover:text-brand-green";
-  const btnActive = "border-brand-green/30 bg-brand-green/10 text-brand-green";
+    "text-text-secondary hover:bg-surface hover:text-text-primary";
+  const btnActive = "bg-brand-green/10 text-brand-green";
 
   return (
-    <div className="relative flex items-center gap-1.5">
+    <div className="relative flex items-center gap-1">
       {/* Llamar */}
       <button
         type="button"

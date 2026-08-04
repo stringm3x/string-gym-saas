@@ -36,6 +36,7 @@ export function ManualCheckinButton({
   return (
     <Button
       variant="secondary"
+      size="sm"
       leftIcon={<LuScanLine className="h-4 w-4" />}
       onClick={handleClick}
       loading={isPending}

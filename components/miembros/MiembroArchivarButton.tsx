@@ -39,8 +39,10 @@ export function MiembroArchivarButton({
     <>
       <Button
         variant="ghost"
+        size="sm"
         leftIcon={<LuArchive className="h-4 w-4" />}
         onClick={() => setOpen(true)}
+        className="text-text-muted hover:text-danger"
       >
         Archivar
       </Button>

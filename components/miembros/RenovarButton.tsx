@@ -72,12 +72,11 @@ export function RenovarButton({
   return (
     <>
       <Button
-        variant="ghost"
+        variant="primary"
         size="sm"
         leftIcon={<LuRefreshCw className="h-4 w-4" />}
         onClick={() => setOpen(true)}
         disabled={disabled}
-        className="text-text-secondary hover:text-brand-green"
       >
         Renovar
       </Button>
