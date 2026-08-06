@@ -8,6 +8,7 @@ export const ACCION_LABEL: Record<string, string> = {
   "tenant.marcar_fundador": "Marcó/quitó fundador",
   "tenant.suspender": "Suspendió el tenant",
   "tenant.reactivar": "Reactivó el tenant",
+  "tenant.activar_plan_pagado": "Activó plan pagado (fin de prueba)",
   "tenant.cancelar": "Canceló el tenant",
   "tenant.extender_prueba": "Extendió la prueba",
   "tenant.toggle_addon": "Activó/desactivó add-on",

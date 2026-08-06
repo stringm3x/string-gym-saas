@@ -20,10 +20,10 @@ export default function AdminLoginPage() {
             <LuShield className="h-3 w-3" /> Panel interno
           </div>
           <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-            STRING<span className="text-brand-green">ADMIN</span>
+            ADMIN<span className="text-brand-green">GYMS</span>
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
-            Acceso restringido a administradores de STRING
+            Acceso restringido a administradores
           </p>
         </div>
 

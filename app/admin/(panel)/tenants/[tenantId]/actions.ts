@@ -96,6 +96,35 @@ export async function marcarFundadorAction(
 
 // ─────────────────────────── Estado del tenant ───────────────────────────
 
+/** Convierte un tenant en prueba a plan pagado: fija plan + estado activo. */
+export async function activarPlanPagadoAction(
+  tenantId: string,
+  input: { plan: string; motivo?: string }
+): Promise<ActionResult> {
+  if (!(await gate())) return DENIED;
+  const parsed = cambiarPlanSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Datos inválidos." };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("gyms")
+    .update({
+      estado: "activo",
+      plan: parsed.data.plan,
+      fecha_inicio_suscripcion: new Date().toISOString(),
+      prueba_hasta: null,
+    })
+    .eq("id", tenantId);
+  if (error) return { ok: false, error: error.message };
+
+  await logEvent("tenant.activar_plan_pagado", tenantId, {
+    plan: parsed.data.plan,
+    motivo: parsed.data.motivo ?? null,
+  });
+  revalidate(tenantId);
+  return { ok: true };
+}
+
 export async function suspenderTenantAction(
   tenantId: string,
   motivo: string

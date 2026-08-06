@@ -25,7 +25,7 @@ export function AdminShell({
         <div className="flex items-center gap-2 border-b border-border px-5 py-4">
           <LuShield className="h-5 w-5 text-brand-green" />
           <span className="font-display text-lg uppercase tracking-wide text-text-primary">
-            STRING<span className="text-brand-green">ADMIN</span>
+            ADMIN<span className="text-brand-green">GYMS</span>
           </span>
         </div>
 
@@ -45,7 +45,7 @@ export function AdminShell({
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex items-center justify-between border-b border-border bg-surface px-6 py-3">
           <span className="rounded-full border border-brand-green/30 bg-brand-green/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-green">
-            Panel interno STRING
+            Panel interno Admin Gyms
           </span>
           <div className="flex items-center gap-3">
             <span className="text-xs text-text-secondary">

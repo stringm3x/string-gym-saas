@@ -9,6 +9,7 @@ import {
   marcarFundadorAction,
   suspenderTenantAction,
   reactivarTenantAction,
+  activarPlanPagadoAction,
   cancelarTenantAction,
   extenderPruebaAction,
   toggleAddonAction,
@@ -53,6 +54,8 @@ export function TenantActionsPanel({
 
   const [plan, setPlan] = useState(tenant.plan);
   const [planMotivo, setPlanMotivo] = useState("");
+  const [planActivar, setPlanActivar] = useState(tenant.plan);
+  const [motivoActivar, setMotivoActivar] = useState("");
   const [suspMotivo, setSuspMotivo] = useState("");
   const [cancelMotivo, setCancelMotivo] = useState("");
   const [dias, setDias] = useState(14);
@@ -139,6 +142,65 @@ export function TenantActionsPanel({
           </button>
         </div>
       </Card>
+
+      {/* Convertir a plan pagado */}
+      {tenant.estado === "prueba" && (
+        <Card title="Convertir a plan pagado">
+          <p className="mb-3 text-xs text-text-secondary">
+            Este tenant está en prueba
+            {tenant.prueba_hasta && (
+              <>
+                {" "}
+                hasta{" "}
+                <span className="text-text-primary">
+                  {new Date(tenant.prueba_hasta).toLocaleDateString("es-MX")}
+                </span>
+              </>
+            )}
+            . Actívalo con un plan pagado para que deje de estar en prueba.
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <select
+              value={planActivar}
+              onChange={(e) => setPlanActivar(e.target.value)}
+              className={`${INPUT} max-w-[140px]`}
+            >
+              <option value="basico">Básico</option>
+              <option value="pro">Pro</option>
+              <option value="escala">Escala</option>
+            </select>
+            <input
+              value={motivoActivar}
+              onChange={(e) => setMotivoActivar(e.target.value)}
+              placeholder="Motivo (opcional)"
+              className={`${INPUT} flex-1 min-w-[160px]`}
+            />
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                if (
+                  !confirm(
+                    `¿Activar este tenant con el plan ${planActivar}? Dejará de estar en prueba.`
+                  )
+                )
+                  return;
+                run(
+                  () =>
+                    activarPlanPagadoAction(tenant.id, {
+                      plan: planActivar,
+                      motivo: motivoActivar,
+                    }),
+                  "Tenant activado con plan pagado"
+                );
+              }}
+              className={BTN}
+            >
+              Activar plan pagado
+            </button>
+          </div>
+        </Card>
+      )}
 
       {/* Estado */}
       <Card title="Estado del tenant">
