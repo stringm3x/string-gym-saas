@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
+import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { getMiembro } from "@/lib/queries/miembros.queries";
 import { listCheckinsByMiembro } from "@/lib/queries/checkins.queries";
 import { listPagosByMiembro } from "@/lib/queries/pagos.queries";
@@ -68,6 +69,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     availableTags,
     notas,
     plantillas,
+    gym,
     reservasClases,
     qrData,
     planesPago,
@@ -85,6 +87,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     listTags(tenant.id),
     listNotas(tenant.id, "miembro", id),
     listPlantillas(tenant.id, { soloActivas: true }),
+    getGymInfo(tenant.id),
     canClases
       ? getReservasByMiembro(tenant.id, id)
       : Promise.resolve([] as ReservaMiembro[]),
@@ -180,6 +183,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
               telefono={miembro.telefono}
               email={miembro.email}
               fechaVencimiento={miembro.fecha_vencimiento}
+              gymNombre={gym?.nombre}
               entidadTipo="miembro"
               entidadId={miembro.id}
               plantillas={canPlantillas ? plantillas : []}

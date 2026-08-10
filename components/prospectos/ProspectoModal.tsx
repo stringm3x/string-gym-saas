@@ -42,6 +42,7 @@ interface ProspectoModalProps {
   prospecto?: ProspectoConTags;
   availableTags?: Tag[];
   plantillas?: PlantillaMensaje[];
+  gymNombre?: string;
   onSuccess?: () => void;
 }
 
@@ -58,6 +59,7 @@ export function ProspectoModal({
   prospecto,
   availableTags = [],
   plantillas = [],
+  gymNombre,
   onSuccess,
 }: ProspectoModalProps) {
   const { success, error: toastError } = useToast();
@@ -95,6 +97,7 @@ export function ProspectoModal({
             nombre={prospecto.nombre}
             telefono={prospecto.telefono}
             email={prospecto.email ?? null}
+            gymNombre={gymNombre}
             entidadTipo="prospecto"
             entidadId={prospecto.id}
             plantillas={plantillas}

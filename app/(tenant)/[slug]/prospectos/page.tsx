@@ -40,11 +40,12 @@ export default async function ProspectosPage({ params }: PageProps) {
     );
   }
 
-  const [prospectos, availableTags, plantillas, planes] = await Promise.all([
+  const [prospectos, availableTags, plantillas, planes, gym] = await Promise.all([
     listProspectos(tenant.id),
     listTags(tenant.id),
     listPlantillas(tenant.id, { soloActivas: true }),
     listPlanes(tenant.id, { soloActivos: true }),
+    getGymInfo(tenant.id),
   ]);
 
   return (
@@ -60,7 +61,7 @@ export default async function ProspectosPage({ params }: PageProps) {
         </p>
       </div>
 
-      <ProspectosKanban prospectos={prospectos} slug={slug} availableTags={availableTags} plantillas={plantillas} planes={planes} />
+      <ProspectosKanban prospectos={prospectos} slug={slug} availableTags={availableTags} plantillas={plantillas} planes={planes} gymNombre={gym?.nombre} />
     </div>
   );
 }

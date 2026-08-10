@@ -45,9 +45,10 @@ interface ProspectosKanbanProps {
   availableTags?: Tag[];
   plantillas?: PlantillaMensaje[];
   planes?: PlanMembresia[];
+  gymNombre?: string;
 }
 
-export function ProspectosKanban({ prospectos, slug, availableTags = [], plantillas = [], planes = [] }: ProspectosKanbanProps) {
+export function ProspectosKanban({ prospectos, slug, availableTags = [], plantillas = [], planes = [], gymNombre }: ProspectosKanbanProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
 
@@ -173,6 +174,7 @@ export function ProspectosKanban({ prospectos, slug, availableTags = [], plantil
         prospecto={isCreating ? undefined : selectedProspecto ?? undefined}
         availableTags={availableTags}
         plantillas={plantillas}
+        gymNombre={gymNombre}
         onSuccess={handleModalSuccess}
       />
 
