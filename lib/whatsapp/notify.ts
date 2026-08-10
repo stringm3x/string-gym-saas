@@ -30,26 +30,31 @@ function destinoDe(event: WhatsappEvent): string | null {
 
 /**
  * Dispara una notificación de WhatsApp. Fire-and-forget: nunca lanza; no-op si
- * no hay destinatario ni infra configurada.
+ * no hay destinatario ni infra configurada. Devuelve true si el envío (o el
+ * POST al webhook de n8n) se aceptó, false si falló — los llamadores
+ * fire-and-forget (`void notifyWhatsapp(...)`) pueden seguir ignorándolo, pero
+ * los que necesitan saber si realmente salió (ej. campañas) ahora sí pueden.
  */
-export async function notifyWhatsapp(event: WhatsappEvent): Promise<void> {
-  if (!destinoDe(event)) return; // sin destinatario → nada que enviar
+export async function notifyWhatsapp(event: WhatsappEvent): Promise<boolean> {
+  if (!destinoDe(event)) return false; // sin destinatario → nada que enviar
 
   const webhook = process.env.N8N_WEBHOOK_URL;
   if (webhook) {
-    // Modo A: n8n orquesta.
+    // Modo A: n8n orquesta. "Éxito" aquí es que el webhook aceptó el POST —
+    // la entrega real la resuelve n8n de forma asíncrona.
     try {
-      await fetch(webhook, {
+      const res = await fetch(webhook, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(event),
       });
+      return res.ok;
     } catch (err) {
       console.error(`[whatsapp] notify (n8n) falló (${event.tipo}):`, err);
+      return false;
     }
-    return;
   }
 
   // Modo B: 360dialog directo (o no-op si tampoco hay DIALOG360_API_KEY).
-  await processWhatsappEvent(event);
+  return processWhatsappEvent(event);
 }

@@ -39,8 +39,8 @@ export interface SendWhatsappParams {
 
 export async function sendWhatsappMessage(
   p: SendWhatsappParams
-): Promise<void> {
-  if (!p.apiKey || !p.to) return; // sin credencial o destino → no-op
+): Promise<boolean> {
+  if (!p.apiKey || !p.to) return false; // sin credencial o destino → no-op
 
   const body = {
     messaging_product: "whatsapp",
@@ -58,7 +58,7 @@ export async function sendWhatsappMessage(
     },
   };
 
-  await postMessage(body, p.apiKey, p.templateName);
+  return postMessage(body, p.apiKey, p.templateName);
 }
 
 /**

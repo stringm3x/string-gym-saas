@@ -11,6 +11,7 @@ import {
 } from "@/lib/queries/campanas.queries";
 import { enviarCampanaWhatsapp } from "@/lib/whatsapp/emit";
 import { campanaInputSchema } from "@/lib/validations/campanas.schema";
+import { compilarPlantilla } from "@/lib/utils/plantilla";
 
 /** Compone el mensaje por destinatario (mismas variables que el wizard). */
 function renderMensaje(msg: string, d: Destinatario): string {
@@ -20,9 +21,7 @@ function renderMensaje(msg: string, d: Destinatario): string {
         month: "long",
       })
     : "";
-  return msg
-    .replaceAll("{nombre}", d.nombre)
-    .replaceAll("{fecha_vencimiento}", venc);
+  return compilarPlantilla(msg, { nombre: d.nombre, fecha_vencimiento: venc });
 }
 
 /**
@@ -38,6 +37,7 @@ export async function enviarCampanaAction(
   total?: number;
   enviadoPorApi?: boolean;
   enviados?: number;
+  fallidos?: number;
 }> {
   const tenant = await getTenant();
   if (!hasFeature(tenant.plan, "campanas")) {
@@ -86,5 +86,6 @@ export async function enviarCampanaAction(
     total: destinatarios.length,
     enviadoPorApi: wa.activo,
     enviados: wa.enviados,
+    fallidos: wa.fallidos,
   };
 }

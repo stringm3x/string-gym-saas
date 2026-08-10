@@ -177,15 +177,16 @@ function traducir(event: WhatsappEvent): SendWhatsappParams | null {
 
 /**
  * Procesa un evento en Modo B (360dialog directo). No-op si estamos en Modo A
- * (n8n) o si no hay credencial directa.
+ * (n8n) o si no hay credencial directa. Devuelve true si 360dialog aceptó el
+ * envío (o si no había nada que enviar), false si el envío falló.
  */
 export async function processWhatsappEvent(
   event: WhatsappEvent
-): Promise<void> {
-  if (process.env.N8N_WEBHOOK_URL) return; // Modo A: n8n ya lo cubrió
-  if (!process.env.DIALOG360_API_KEY) return; // Modo B no habilitado
+): Promise<boolean> {
+  if (process.env.N8N_WEBHOOK_URL) return true; // Modo A: n8n ya lo cubrió
+  if (!process.env.DIALOG360_API_KEY) return true; // Modo B no habilitado
 
   const msg = traducir(event);
-  if (!msg || !msg.to) return;
-  await sendWhatsappMessage(msg);
+  if (!msg || !msg.to) return true;
+  return sendWhatsappMessage(msg);
 }

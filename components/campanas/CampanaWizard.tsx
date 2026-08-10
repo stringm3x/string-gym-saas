@@ -13,6 +13,7 @@ import {
 import { FaWhatsapp } from "react-icons/fa";
 import { useToast } from "@/components/ui/Toast";
 import { buildWhatsAppUrl } from "@/lib/utils/whatsapp";
+import { compilarPlantilla } from "@/lib/utils/plantilla";
 import { enviarCampanaAction } from "@/app/(tenant)/[slug]/comunicaciones/campanas/actions";
 import type { Audiencia } from "@/lib/validations/campanas.schema";
 import type { Destinatario } from "@/lib/queries/campanas.queries";
@@ -34,7 +35,7 @@ function renderMensaje(msg: string, d: Destinatario): string {
         year: "numeric",
       })
     : "";
-  return msg.replaceAll("{nombre}", d.nombre).replaceAll("{fecha_vencimiento}", venc);
+  return compilarPlantilla(msg, { nombre: d.nombre, fecha_vencimiento: venc });
 }
 
 export function CampanaWizard({
@@ -56,6 +57,7 @@ export function CampanaWizard({
   // true si se envió por la API de WhatsApp (vs modo wa.me manual).
   const [apiSent, setApiSent] = useState(false);
   const [enviadosApi, setEnviadosApi] = useState(0);
+  const [fallidosApi, setFallidosApi] = useState(0);
 
   const audData = useMemo(
     () => audiencias.find((a) => a.value === audiencia) ?? null,
@@ -75,8 +77,23 @@ export function CampanaWizard({
       if (r.enviadoPorApi) {
         // Enviada por la API: no abrimos wa.me.
         setApiSent(true);
-        setEnviadosApi(r.enviados ?? 0);
-        success(`Campaña enviada por WhatsApp · ${r.enviados} mensajes`);
+        const enviados = r.enviados ?? 0;
+        const fallidos = r.fallidos ?? 0;
+        setEnviadosApi(enviados);
+        setFallidosApi(fallidos);
+        if (fallidos === 0) {
+          success(`Campaña enviada por WhatsApp · ${enviados} mensajes`);
+        } else if (enviados === 0) {
+          toastError(
+            "No se pudo enviar la campaña",
+            `Los ${fallidos} envíos fallaron. Revisa la configuración de WhatsApp.`
+          );
+        } else {
+          toastError(
+            "Envío parcial",
+            `${enviados} enviados, ${fallidos} fallidos.`
+          );
+        }
       } else {
         if (destinatarios[0]) {
           window.open(
@@ -212,12 +229,12 @@ export function CampanaWizard({
               maxLength={1000}
               rows={5}
               onChange={(e) => setMensaje(e.target.value)}
-              placeholder="Hola {nombre}, tu membresía vence el {fecha_vencimiento}. ¡Renuévala y sigue entrenando!"
+              placeholder="Hola {{nombre}}, tu membresía vence el {{fecha_vencimiento}}. ¡Renuévala y sigue entrenando!"
               className={`${inputClass} resize-y`}
             />
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-[11px] text-text-muted">Variables:</span>
-              {["{nombre}", "{fecha_vencimiento}"].map((v) => (
+              {["{{nombre}}", "{{fecha_vencimiento}}"].map((v) => (
                 <button
                   key={v}
                   type="button"
@@ -326,11 +343,22 @@ export function CampanaWizard({
             </>
           ) : apiSent ? (
             <>
-              <div className="flex items-center gap-1.5 rounded-lg border border-brand-green/30 bg-brand-green/5 px-4 py-3 text-sm text-text-primary">
-                <LuCircleCheck className="h-4 w-4 shrink-0 text-brand-green" />
+              <div
+                className={`flex items-center gap-1.5 rounded-lg border px-4 py-3 text-sm text-text-primary ${
+                  fallidosApi === 0
+                    ? "border-brand-green/30 bg-brand-green/5"
+                    : "border-danger/30 bg-danger/5"
+                }`}
+              >
+                <LuCircleCheck
+                  className={`h-4 w-4 shrink-0 ${
+                    fallidosApi === 0 ? "text-brand-green" : "text-danger"
+                  }`}
+                />
                 <span>
-                  Campaña enviada por WhatsApp a {enviadosApi}{" "}
-                  {enviadosApi === 1 ? "contacto" : "contactos"}.
+                  {fallidosApi === 0
+                    ? `Campaña enviada por WhatsApp a ${enviadosApi} ${enviadosApi === 1 ? "contacto" : "contactos"}.`
+                    : `${enviadosApi} enviados, ${fallidosApi} fallidos de ${enviadosApi + fallidosApi} contactos.`}
                 </span>
               </div>
               <div className="flex justify-end">
