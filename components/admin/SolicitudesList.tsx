@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
-import { LuCircleCheck, LuPhone, LuX } from "react-icons/lu";
+import { LuCircleCheck, LuPhone, LuX, LuTriangleAlert, LuCopy } from "react-icons/lu";
 import {
   contactadoAction,
   descartarAction,
@@ -51,6 +51,11 @@ export function SolicitudesList({
   const estadoActual = params.get("estado") ?? "";
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [credenciales, setCredenciales] = useState<{
+    email: string;
+    tempPassword: string;
+    slug: string;
+  } | null>(null);
 
   function filtrar(estado: string) {
     const sp = new URLSearchParams();
@@ -67,6 +72,34 @@ export function SolicitudesList({
         return;
       }
       setMsg({ ok: true, text: r.slug ? `${okText} (/${r.slug})` : okText });
+      router.refresh();
+    });
+  }
+
+  function activar(id: string) {
+    setMsg(null);
+    setCredenciales(null);
+    start(async () => {
+      const r = await activarSolicitudAction(id);
+      if (!r.ok) {
+        setMsg({ ok: false, text: r.error ?? "Error" });
+        return;
+      }
+      if (r.emailEnviado) {
+        setMsg({
+          ok: true,
+          text: `Gym activado, email enviado a ${r.email} (/${r.slug})`,
+        });
+      } else {
+        setMsg(null);
+        if (r.email && r.tempPassword && r.slug) {
+          setCredenciales({
+            email: r.email,
+            tempPassword: r.tempPassword,
+            slug: r.slug,
+          });
+        }
+      }
       router.refresh();
     });
   }
@@ -107,6 +140,47 @@ export function SolicitudesList({
         >
           {msg.text}
         </p>
+      )}
+
+      {credenciales && (
+        <div className="space-y-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-3 text-xs">
+          <div className="flex items-start justify-between gap-3">
+            <p className="flex items-center gap-1.5 font-medium text-warning">
+              <LuTriangleAlert className="h-3.5 w-3.5 shrink-0" />
+              Gym activado (/{credenciales.slug}), pero el email de
+              bienvenida no se pudo enviar. Comparte estas credenciales
+              manualmente con el owner:
+            </p>
+            <button
+              type="button"
+              onClick={() => setCredenciales(null)}
+              className="shrink-0 text-text-muted hover:text-text-primary"
+              aria-label="Cerrar"
+            >
+              <LuX className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-bg px-3 py-2 font-mono">
+            <span>
+              Usuario: <b>{credenciales.email}</b>
+            </span>
+            <span>·</span>
+            <span>
+              Contraseña temporal: <b>{credenciales.tempPassword}</b>
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                navigator.clipboard.writeText(
+                  `Usuario: ${credenciales.email}\nContraseña temporal: ${credenciales.tempPassword}`
+                )
+              }
+              className="ml-auto inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-text-secondary hover:text-text-primary"
+            >
+              <LuCopy className="h-3 w-3" /> Copiar
+            </button>
+          </div>
+        </div>
       )}
 
       {solicitudes.length === 0 ? (
@@ -161,12 +235,7 @@ export function SolicitudesList({
                     <button
                       type="button"
                       disabled={pending}
-                      onClick={() =>
-                        run(
-                          () => activarSolicitudAction(s.id),
-                          "Gym activado, email enviado"
-                        )
-                      }
+                      onClick={() => activar(s.id)}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-bg hover:bg-brand-green/90 disabled:opacity-50"
                     >
                       <LuCircleCheck className="h-3.5 w-3.5" /> Activar

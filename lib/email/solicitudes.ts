@@ -83,18 +83,23 @@ export async function sendBienvenidaSolicitud(s: SolicitudData): Promise<void> {
   }
 }
 
-/** Email con credenciales al owner cuando se activa su gym. No lanza. */
+/**
+ * Email con credenciales al owner cuando se activa su gym. No lanza.
+ * Devuelve true si Resend confirmó el envío, false si no hay API key
+ * configurada o el envío falló — el caller (admin) necesita saberlo para
+ * poder compartir las credenciales manualmente si el email no salió.
+ */
 export async function sendCredencialesOwner(params: {
   email: string;
   nombreGym: string;
   slug: string;
   tempPassword: string;
-}): Promise<void> {
+}): Promise<boolean> {
   const r = resend();
-  if (!r) return;
+  if (!r) return false;
   const url = `https://app.gym.stringwebs.com/${params.slug}/hoy`;
   try {
-    await r.emails.send({
+    const { error } = await r.emails.send({
       from: FROM,
       to: params.email,
       subject: `Tu cuenta de STRING GYM está lista — ${params.nombreGym}`,
@@ -110,7 +115,8 @@ export async function sendCredencialesOwner(params: {
         <p>Tu panel: <a href="${url}">${url}</a></p>
         <p>— El equipo de STRING GYM</p>`,
     });
+    return !error;
   } catch {
-    /* no bloquear */
+    return false;
   }
 }
