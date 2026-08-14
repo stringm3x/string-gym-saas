@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 
 // Alias "@" → raíz del proyecto, para que los tests resuelvan los imports
@@ -9,5 +9,9 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./", import.meta.url)),
     },
+  },
+  test: {
+    // tests/e2e usa el test runner de Playwright, no el de Vitest.
+    exclude: [...configDefaults.exclude, "tests/e2e/**"],
   },
 });
