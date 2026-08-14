@@ -126,6 +126,7 @@ export async function proxy(request: NextRequest) {
   const publicRoutes = [
     "login",
     "registro",
+    "recuperar-password",
     "auth",
     "recibos",
     "api",
