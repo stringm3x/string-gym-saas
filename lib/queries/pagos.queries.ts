@@ -4,7 +4,7 @@ import type { PagoInput } from "@/lib/validations/pago.schema";
 import type { VisitaRapidaInput } from "@/lib/validations/visita-rapida.schema";
 import { generarTokenRecibo } from "@/lib/utils/tokens";
 import { createNotification } from "@/lib/utils/notifications";
-import { hoyCDMX, hoyISO, inicioDeMesCDMX } from "@/lib/utils/dates";
+import { hoyCDMX, hoyISO, inicioDeMesCDMX, isoMasDias } from "@/lib/utils/dates";
 import { emitPagoRegistrado } from "@/lib/whatsapp/emit";
 
 export type CategoriaCaja =
@@ -293,6 +293,14 @@ export async function anularPago(
   motivo?: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
+
+  const { data: pago } = await supabase
+    .from("pagos")
+    .select("miembro_id, concepto, periodo_inicio, periodo_fin")
+    .eq("tenant_id", tenantId)
+    .eq("id", pagoId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("pagos")
     .update({ anulado_at: new Date().toISOString(), anulado_motivo: motivo ?? null })
@@ -300,6 +308,31 @@ export async function anularPago(
     .eq("id", pagoId);
 
   if (error) return { ok: false, error: error.message };
+
+  // Si el pago extendió la membresía (concepto membresía, con periodo) y esa
+  // extensión sigue vigente (nadie renovó después), se revierte: el
+  // vencimiento vuelve a un día antes de que este pago empezara a contar.
+  // Si ya hubo un pago posterior, fecha_vencimiento no coincide con este
+  // periodo_fin y no se toca (sería revertir la extensión equivocada).
+  if (pago?.miembro_id && pago.concepto === "membresia" && pago.periodo_fin) {
+    const { data: miembro } = await supabase
+      .from("miembros")
+      .select("fecha_vencimiento")
+      .eq("tenant_id", tenantId)
+      .eq("id", pago.miembro_id as string)
+      .maybeSingle();
+
+    if (miembro?.fecha_vencimiento === pago.periodo_fin) {
+      const vencimientoPrevio = pago.periodo_inicio
+        ? isoMasDias(-1, pago.periodo_inicio as string)
+        : null;
+      await supabase
+        .from("miembros")
+        .update({ fecha_vencimiento: vencimientoPrevio })
+        .eq("tenant_id", tenantId)
+        .eq("id", pago.miembro_id as string);
+    }
+  }
 
   // Si el pago cubría una cuota de crédito, desmarcarla (Bug #6): de lo
   // contrario Cuentas por Cobrar la seguiría mostrando pagada aunque el dinero
