@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createPago } from "@/lib/queries/pagos.queries";
 import { aplicarMovimiento } from "@/lib/queries/productos.queries";
 import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
+import { hoyISO } from "@/lib/utils/dates";
 import {
   repartirMonto,
   fechasCuotas,
@@ -208,6 +209,113 @@ export async function pagarCuota(
   }
 
   return { ok: true, pagoId: pagoRes.id, planCompletado };
+}
+
+/**
+ * Abono desde caja: el miembro paga una parte del precio del plan hoy, el
+ * resto queda como saldo pendiente (Cuentas por Cobrar). Por dentro es un
+ * `planes_pago` de 2 cuotas DESIGUALES (a diferencia de `createPlanPago`,
+ * que siempre reparte parejo): la cuota 1 se cobra de inmediato — vía
+ * `pagarCuota`, que ya sabe extender la membresía como un cobro normal — y
+ * la cuota 2 queda pendiente con vencimiento igual al de la membresía.
+ */
+export async function createAbonoMembresia(
+  tenantId: string,
+  input: {
+    miembroId: string;
+    planMembresiaId: string;
+    montoPagado: number;
+    metodoPago: MetodoPago;
+  }
+): Promise<
+  | { ok: true; pagoId: string; montoRestante: number }
+  | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+
+  const { data: plan } = await supabase
+    .from("planes_membresia")
+    .select("id, nombre, precio, dias_duracion")
+    .eq("tenant_id", tenantId)
+    .eq("id", input.planMembresiaId)
+    .maybeSingle();
+  if (!plan) return { ok: false, error: "Plan no encontrado." };
+
+  const precio = Number(plan.precio);
+  if (!(input.montoPagado > 0) || input.montoPagado >= precio) {
+    return {
+      ok: false,
+      error: "El abono debe ser mayor a 0 y menor al precio del plan.",
+    };
+  }
+  const montoRestante = Math.round((precio - input.montoPagado) * 100) / 100;
+
+  const { data: miembro } = await supabase
+    .from("miembros")
+    .select("fecha_vencimiento")
+    .eq("tenant_id", tenantId)
+    .eq("id", input.miembroId)
+    .maybeSingle();
+  const rango = calcularRangoPorDias(
+    plan.dias_duracion,
+    miembro?.fecha_vencimiento ?? null
+  );
+
+  const { data: planPago, error: planErr } = await supabase
+    .from("planes_pago")
+    .insert({
+      tenant_id: tenantId,
+      miembro_id: input.miembroId,
+      plan_membresia_id: plan.id,
+      total: precio,
+      cuotas: 2,
+      concepto: `Abono — ${plan.nombre}`,
+      estado: "activo",
+    })
+    .select("id")
+    .single();
+  if (planErr || !planPago) {
+    return { ok: false, error: planErr?.message ?? "No se pudo registrar el abono." };
+  }
+
+  const { data: cuotasIns, error: cuotasErr } = await supabase
+    .from("cuotas_pago")
+    .insert([
+      {
+        plan_id: planPago.id,
+        tenant_id: tenantId,
+        numero_cuota: 1,
+        monto: input.montoPagado,
+        fecha_vencimiento: hoyISO(),
+      },
+      {
+        plan_id: planPago.id,
+        tenant_id: tenantId,
+        numero_cuota: 2,
+        monto: montoRestante,
+        fecha_vencimiento: rango.periodo_fin,
+      },
+    ])
+    .select("id, numero_cuota");
+  if (cuotasErr || !cuotasIns) {
+    await supabase.from("planes_pago").delete().eq("id", planPago.id);
+    return { ok: false, error: cuotasErr?.message ?? "No se pudieron crear las cuotas." };
+  }
+
+  const cuota1 = cuotasIns.find((c) => c.numero_cuota === 1);
+  if (!cuota1) {
+    await supabase.from("planes_pago").delete().eq("id", planPago.id);
+    return { ok: false, error: "No se pudo registrar el abono." };
+  }
+
+  const pagoRes = await pagarCuota(tenantId, cuota1.id, input.metodoPago);
+  if (!pagoRes.ok) {
+    // No se revierte: la cuota 1 queda pendiente y se puede cobrar de nuevo
+    // desde Cuentas por Cobrar en vez de perder el registro del abono.
+    return { ok: false, error: pagoRes.error };
+  }
+
+  return { ok: true, pagoId: pagoRes.pagoId, montoRestante };
 }
 
 // ─────────────────────────── lecturas ───────────────────────────

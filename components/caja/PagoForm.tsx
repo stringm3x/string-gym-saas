@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   LuSearch,
@@ -31,6 +31,7 @@ import {
 import { searchMiembrosAction } from "@/app/(tenant)/[slug]/checkins/actions";
 import {
   registerPagoAction,
+  registrarAbonoAction,
   getCreditoDisponibleAction,
   type PagoResult,
 } from "@/app/(tenant)/[slug]/caja/actions";
@@ -151,6 +152,16 @@ export function PagoForm({
   const [cantidadProducto, setCantidadProducto] = useState<number>(1);
   const [periodoInicio, setPeriodoInicio] = useState<string>("");
   const [periodoFin, setPeriodoFin] = useState<string>("");
+  // Ciclos de facturación fijos (17→17, 20→20…): con un plan/promo elegido,
+  // permite ajustar las fechas sin perder el plan_id (a diferencia del
+  // monto personalizado, que sí lo suelta).
+  const [fechasPersonalizadas, setFechasPersonalizadas] = useState(false);
+  // Abono: cobra parte del precio del plan hoy, el resto queda pendiente en
+  // Cuentas por Cobrar. Va por una action aparte (registrarAbonoAction), no
+  // por pagoSchema — necesita su propio pending/submit.
+  const [esAbono, setEsAbono] = useState(false);
+  const [montoAbono, setMontoAbono] = useState("");
+  const [isPendingAbono, startAbono] = useTransition();
 
   // Panel de confirmación tras un pago exitoso (botón WhatsApp + recibo).
   const [lastPago, setLastPago] = useState<{
@@ -238,6 +249,10 @@ export function PagoForm({
       setPeriodoFin("");
       return;
     }
+    // Fechas personalizadas: el staff las controla a mano, no se recalculan.
+    if (fechasPersonalizadas && (selMem.kind === "plan" || selMem.kind === "promo")) {
+      return;
+    }
 
     if (selMem.kind === "plan") {
       const rango = calcularRangoPorDias(
@@ -262,7 +277,15 @@ export function PagoForm({
       setPeriodoInicio(rango.periodo_inicio);
       setPeriodoFin(rango.periodo_fin);
     }
-  }, [selMem, miembro, customPreset, requierePeriodo]);
+  }, [selMem, miembro, customPreset, requierePeriodo, fechasPersonalizadas]);
+
+  // Al cambiar de plan/promo, las fechas personalizadas y el abono ya no
+  // aplican (evita dejar un rango o monto viejo pegado a una selección nueva).
+  useEffect(() => {
+    setFechasPersonalizadas(false);
+    setEsAbono(false);
+    setMontoAbono("");
+  }, [selMem.kind]);
 
   // Reset al cambiar concepto
   useEffect(() => {
@@ -273,6 +296,9 @@ export function PagoForm({
     setMontoCustom("");
     setCustomPreset("1_mes");
     setCantidadProducto(1);
+    setFechasPersonalizadas(false);
+    setEsAbono(false);
+    setMontoAbono("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [concepto]);
 
@@ -309,6 +335,9 @@ export function PagoForm({
       setCustomPreset("1_mes");
       setMontoCustom("");
       setCantidadProducto(1);
+      setFechasPersonalizadas(false);
+      setEsAbono(false);
+      setMontoAbono("");
     } else if (state.error && Object.keys(state.fieldErrors).length === 0) {
       toastError("No se pudo registrar", state.error);
     }
@@ -317,6 +346,53 @@ export function PagoForm({
 
   const maxCantidad =
     selProd.kind === "producto" ? selProd.producto.stock_actual : null;
+
+  function handleAbono() {
+    if (!miembro) {
+      toastError("Falta el miembro", "Selecciona un miembro.");
+      return;
+    }
+    if (selMem.kind !== "plan") return;
+    const monto = Number(montoAbono);
+    if (!(monto > 0) || monto >= selMem.plan.precio) {
+      toastError(
+        "Monto inválido",
+        "El abono debe ser mayor a 0 y menor al precio del plan."
+      );
+      return;
+    }
+    startAbono(async () => {
+      const r = await registrarAbonoAction(
+        miembro.id,
+        selMem.plan.id,
+        monto,
+        metodo
+      );
+      if (!r.ok) {
+        toastError("No se pudo registrar el abono", r.error ?? "Inténtalo de nuevo");
+        return;
+      }
+      success(
+        "Abono registrado",
+        r.montoRestante
+          ? `Pendiente: ${formatMoneda(r.montoRestante)}`
+          : undefined
+      );
+      setLastPago({
+        nombre: miembro.nombre,
+        telefono: miembro.telefono,
+        montoStr: formatMoneda(monto),
+        fechaStr: null,
+        pagoId: r.pagoId,
+      });
+      formRef.current?.reset();
+      setMiembro(null);
+      setMetodo("efectivo");
+      setSelMem(defaultSelMem);
+      setEsAbono(false);
+      setMontoAbono("");
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -481,12 +557,91 @@ export function PagoForm({
 
           {(selMem.kind === "plan" || selMem.kind === "promo") &&
             periodoInicio &&
-            periodoFin && (
-              <p className="text-xs text-text-muted">
-                Vigencia: {formatFecha(periodoInicio)} →{" "}
-                {formatFecha(periodoFin)}
+            periodoFin &&
+            (fechasPersonalizadas ? (
+              <div className="grid gap-3 rounded-xl border border-border bg-bg/40 p-4 sm:grid-cols-2">
+                <Input
+                  label="Desde"
+                  type="date"
+                  value={periodoInicio}
+                  onChange={(e) => setPeriodoInicio(e.target.value)}
+                  error={state.fieldErrors.periodo_inicio}
+                />
+                <Input
+                  label="Hasta"
+                  type="date"
+                  value={periodoFin}
+                  onChange={(e) => setPeriodoFin(e.target.value)}
+                  error={state.fieldErrors.periodo_fin}
+                />
+                <button
+                  type="button"
+                  onClick={() => setFechasPersonalizadas(false)}
+                  className="text-left text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary sm:col-span-2"
+                >
+                  Usar la vigencia del plan
+                </button>
+              </div>
+            ) : (
+              <p className="flex items-center justify-between gap-2 text-xs text-text-muted">
+                <span>
+                  Vigencia: {formatFecha(periodoInicio)} →{" "}
+                  {formatFecha(periodoFin)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setFechasPersonalizadas(true)}
+                  className="shrink-0 text-brand-green underline underline-offset-2 hover:opacity-80"
+                >
+                  Personalizar fechas
+                </button>
               </p>
-            )}
+            ))}
+
+          {selMem.kind === "plan" && miembro && (
+            <div className="rounded-xl border border-border bg-bg/40 p-4">
+              <label className="flex cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={esAbono}
+                  onChange={(e) => {
+                    setEsAbono(e.target.checked);
+                    if (e.target.checked) setFechasPersonalizadas(false);
+                  }}
+                  className="h-4 w-4 rounded border-border accent-brand-green"
+                />
+                <span className="text-sm font-medium text-text-primary">
+                  Registrar como abono (pago parcial)
+                </span>
+              </label>
+
+              {esAbono && (
+                <div className="mt-3 space-y-2">
+                  <Input
+                    label="¿Cuánto paga hoy?"
+                    type="number"
+                    inputMode="decimal"
+                    step="1"
+                    min="0"
+                    max={selMem.plan.precio - 1}
+                    value={montoAbono}
+                    onChange={(e) => setMontoAbono(e.target.value)}
+                    leftSlot="$"
+                  />
+                  {Number(montoAbono) > 0 &&
+                    Number(montoAbono) < selMem.plan.precio && (
+                      <p className="text-xs text-text-muted">
+                        Queda pendiente:{" "}
+                        <span className="font-medium text-text-primary">
+                          {formatMoneda(selMem.plan.precio - Number(montoAbono))}
+                        </span>{" "}
+                        — aparece en Cuentas por cobrar.
+                      </p>
+                    )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -668,21 +823,36 @@ export function PagoForm({
       <div className="flex items-center justify-between border-t border-border pt-4">
         <div>
           <p className="text-xs uppercase tracking-wider text-text-muted">
-            {creditoAplicado > 0 ? "A cobrar (menos crédito)" : "Total a cobrar"}
+            {esAbono
+              ? "Abono a cobrar hoy"
+              : creditoAplicado > 0
+                ? "A cobrar (menos crédito)"
+                : "Total a cobrar"}
           </p>
           <p className="font-mono text-2xl font-bold tabular-nums text-brand-green">
-            ${montoNeto.toLocaleString("es-MX")}
+            ${(esAbono ? Number(montoAbono) || 0 : montoNeto).toLocaleString("es-MX")}
           </p>
-          {creditoAplicado > 0 && (
+          {!esAbono && creditoAplicado > 0 && (
             <p className="text-[11px] text-text-secondary">
               Total ${montoFinal.toLocaleString("es-MX")} − crédito $
               {creditoAplicado.toLocaleString("es-MX")}
             </p>
           )}
         </div>
-        <Button type="submit" loading={isPending} size="lg">
-          Registrar pago
-        </Button>
+        {esAbono ? (
+          <Button
+            type="button"
+            onClick={handleAbono}
+            loading={isPendingAbono}
+            size="lg"
+          >
+            Registrar abono
+          </Button>
+        ) : (
+          <Button type="submit" loading={isPending} size="lg">
+            Registrar pago
+          </Button>
+        )}
       </div>
       </form>
     </div>

@@ -13,10 +13,16 @@ import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
  * actual del socio), calculando el periodo con la misma lógica del cobro
  * manual. Reusa createPago (RPC atómico).
  */
+const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export async function renovarMiembroAction(
   miembroId: string,
   planId: string,
-  metodo: "efectivo" | "tarjeta" | "transferencia"
+  metodo: "efectivo" | "tarjeta" | "transferencia",
+  /** Ciclos de facturación fijos (17→17, 20→20…): si se dan, reemplazan el
+   *  cálculo automático sin soltar el plan_id. */
+  periodoInicio?: string,
+  periodoFin?: string
 ): Promise<{ ok: boolean; error?: string; pagoId?: string }> {
   const tenant = await getTenant();
   if (!hasPermission(tenant.role, "registrar_pagos")) {
@@ -30,10 +36,22 @@ export async function renovarMiembroAction(
   if (!miembro) return { ok: false, error: "Miembro no encontrado." };
   if (!plan) return { ok: false, error: "Plan no encontrado." };
 
-  const rango = calcularRangoPorDias(
-    plan.dias_duracion,
-    miembro.fecha_vencimiento
-  );
+  let periodo: { periodo_inicio: string; periodo_fin: string };
+  if (periodoInicio && periodoFin) {
+    if (!FECHA_RE.test(periodoInicio) || !FECHA_RE.test(periodoFin)) {
+      return { ok: false, error: "Fechas inválidas." };
+    }
+    if (periodoFin < periodoInicio) {
+      return { ok: false, error: "La fecha de fin no puede ser antes que la de inicio." };
+    }
+    periodo = { periodo_inicio: periodoInicio, periodo_fin: periodoFin };
+  } else {
+    const rango = calcularRangoPorDias(
+      plan.dias_duracion,
+      miembro.fecha_vencimiento
+    );
+    periodo = { periodo_inicio: rango.periodo_inicio, periodo_fin: rango.periodo_fin };
+  }
 
   const r = await createPago(tenant.id, {
     miembro_id: miembroId,
@@ -44,8 +62,8 @@ export async function renovarMiembroAction(
     promocion_id: "",
     producto_id: "",
     cantidad_producto: null,
-    periodo_inicio: rango.periodo_inicio,
-    periodo_fin: rango.periodo_fin,
+    periodo_inicio: periodo.periodo_inicio,
+    periodo_fin: periodo.periodo_fin,
   });
   if (!r.ok) return { ok: false, error: r.error };
 

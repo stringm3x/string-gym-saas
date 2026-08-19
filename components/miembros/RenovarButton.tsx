@@ -43,6 +43,11 @@ export function RenovarButton({
   const [planId, setPlanId] = useState(planActualId ?? planes[0]?.id ?? "");
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
   const [isPending, startTransition] = useTransition();
+  // Ciclos de facturación fijos (17→17, 20→20…): ajusta las fechas sin
+  // soltar el plan elegido.
+  const [fechasPersonalizadas, setFechasPersonalizadas] = useState(false);
+  const [periodoInicio, setPeriodoInicio] = useState("");
+  const [periodoFin, setPeriodoFin] = useState("");
 
   if (planes.length === 0) return null;
 
@@ -51,19 +56,38 @@ export function RenovarButton({
     ? calcularRangoPorDias(plan.dias_duracion, fechaVencimiento)
     : null;
 
+  function activarFechasPersonalizadas() {
+    if (rango) {
+      setPeriodoInicio(rango.periodo_inicio);
+      setPeriodoFin(rango.periodo_fin);
+    }
+    setFechasPersonalizadas(true);
+  }
+
   function renovar() {
     if (!planId) {
       toastError("Falta el plan", "Elige un plan para renovar.");
       return;
     }
+    if (fechasPersonalizadas && (!periodoInicio || !periodoFin)) {
+      toastError("Faltan fechas", "Indica inicio y fin de la vigencia.");
+      return;
+    }
     startTransition(async () => {
-      const r = await renovarMiembroAction(miembroId, planId, metodo);
+      const r = await renovarMiembroAction(
+        miembroId,
+        planId,
+        metodo,
+        fechasPersonalizadas ? periodoInicio : undefined,
+        fechasPersonalizadas ? periodoFin : undefined
+      );
       if (!r.ok) {
         toastError("No se pudo renovar", r.error ?? "Inténtalo de nuevo");
         return;
       }
       success("Membresía renovada");
       setOpen(false);
+      setFechasPersonalizadas(false);
       if (r.pagoId) router.push(`/${slug}/recibos/${r.pagoId}`);
       else router.refresh();
     });
@@ -89,7 +113,10 @@ export function RenovarButton({
             </span>
             <select
               value={planId}
-              onChange={(e) => setPlanId(e.target.value)}
+              onChange={(e) => {
+                setPlanId(e.target.value);
+                setFechasPersonalizadas(false);
+              }}
               className="w-full cursor-pointer appearance-none rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
             >
               {planes.map((p) => (
@@ -131,12 +158,57 @@ export function RenovarButton({
                   {formatMoneda(plan.precio)}
                 </span>
               </div>
-              <div className="mt-1 flex items-center justify-between">
-                <span className="text-text-secondary">Nueva vigencia hasta</span>
-                <span className="font-medium text-text-primary">
-                  {formatearFechaMX(rango.periodo_fin)}
-                </span>
-              </div>
+
+              {fechasPersonalizadas ? (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <label>
+                    <span className="mb-1 block text-[10px] uppercase tracking-widest text-text-muted">
+                      Inicio
+                    </span>
+                    <input
+                      type="date"
+                      value={periodoInicio}
+                      onChange={(e) => setPeriodoInicio(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+                    />
+                  </label>
+                  <label>
+                    <span className="mb-1 block text-[10px] uppercase tracking-widest text-text-muted">
+                      Fin
+                    </span>
+                    <input
+                      type="date"
+                      value={periodoFin}
+                      min={periodoInicio || undefined}
+                      onChange={(e) => setPeriodoFin(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFechasPersonalizadas(false)}
+                    className="col-span-2 text-left text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary"
+                  >
+                    Usar la vigencia del plan
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-text-secondary">Nueva vigencia hasta</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-text-primary">
+                      {formatearFechaMX(rango.periodo_fin)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={activarFechasPersonalizadas}
+                      className="text-xs text-brand-green underline underline-offset-2 hover:opacity-80"
+                    >
+                      Personalizar
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

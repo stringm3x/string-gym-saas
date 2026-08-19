@@ -21,6 +21,7 @@ import {
   getCreditoDisponible,
   aplicarCredito,
 } from "@/lib/queries/notas-credito.queries";
+import { createAbonoMembresia } from "@/lib/queries/creditos.queries";
 import { hasPermission } from "@/lib/permissions";
 import { getActiveStaff } from "@/lib/queries/staff.queries";
 import { getMiembro } from "@/lib/queries/miembros.queries";
@@ -212,6 +213,43 @@ export async function registrarVisitaRapidaAction(
 
   revalidatePath(`/${tenant.slug}/caja`);
   return { ok: true, error: null, fieldErrors: {}, pagoId: result.id };
+}
+
+export interface AbonoResult {
+  ok: boolean;
+  error?: string;
+  pagoId?: string;
+  montoRestante?: number;
+}
+
+/**
+ * Abono desde caja: cobra una parte del precio del plan hoy y deja el resto
+ * como saldo pendiente en Cuentas por Cobrar (createAbonoMembresia crea un
+ * plan a plazos de 2 cuotas desiguales y cobra la primera de inmediato).
+ */
+export async function registrarAbonoAction(
+  miembroId: string,
+  planMembresiaId: string,
+  montoPagado: number,
+  metodoPago: "efectivo" | "tarjeta" | "transferencia"
+): Promise<AbonoResult> {
+  const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "registrar_pagos")) {
+    return { ok: false, error: "No tienes permiso para cobrar." };
+  }
+
+  const r = await createAbonoMembresia(tenant.id, {
+    miembroId,
+    planMembresiaId,
+    montoPagado,
+    metodoPago,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+
+  revalidatePath(`/${tenant.slug}/caja`);
+  revalidatePath(`/${tenant.slug}/miembros/${miembroId}`);
+  revalidatePath(`/${tenant.slug}/cuentas-por-cobrar`);
+  return { ok: true, pagoId: r.pagoId, montoRestante: r.montoRestante };
 }
 
 export async function anularPagoAction(

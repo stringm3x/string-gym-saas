@@ -73,6 +73,9 @@ export function CobroInscripcion({
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
   const [periodoInicio, setPeriodoInicio] = useState("");
   const [periodoFin, setPeriodoFin] = useState("");
+  // Ciclos de facturación fijos (17→17, 20→20…): con un plan/promo elegido,
+  // permite ajustar las fechas sin perder el plan_id.
+  const [fechasPersonalizadas, setFechasPersonalizadas] = useState(false);
 
   // Derivar monto, plan_id, promocion_id según selección.
   const { montoFinal, planId, promocionId } = (() => {
@@ -99,6 +102,10 @@ export function CobroInscripcion({
 
   // Recalcular periodo según selección.
   useEffect(() => {
+    // Fechas personalizadas: el usuario las controla a mano, no se recalculan.
+    if (fechasPersonalizadas && (selMem.kind === "plan" || selMem.kind === "promo")) {
+      return;
+    }
     if (selMem.kind === "plan") {
       const r = rangoDesdeHoy(selMem.plan.dias_duracion);
       setPeriodoInicio(r.inicio);
@@ -112,7 +119,12 @@ export function CobroInscripcion({
       setPeriodoInicio(r.inicio);
       setPeriodoFin(r.fin);
     }
-  }, [selMem, customPreset]);
+  }, [selMem, customPreset, fechasPersonalizadas]);
+
+  // Al cambiar de plan/promo, las fechas personalizadas ya no aplican.
+  useEffect(() => {
+    setFechasPersonalizadas(false);
+  }, [selMem.kind]);
 
   return (
     <div className="rounded-xl border border-border bg-bg/40">
@@ -245,12 +257,46 @@ export function CobroInscripcion({
 
           {(selMem.kind === "plan" || selMem.kind === "promo") &&
             periodoInicio &&
-            periodoFin && (
-              <p className="text-xs text-text-muted">
-                Vigencia: {formatFecha(periodoInicio)} →{" "}
-                {formatFecha(periodoFin)}
+            periodoFin &&
+            (fechasPersonalizadas ? (
+              <div className="grid gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-2">
+                <Input
+                  label="Desde"
+                  type="date"
+                  value={periodoInicio}
+                  onChange={(e) => setPeriodoInicio(e.target.value)}
+                  error={fieldErrors.periodo_inicio}
+                />
+                <Input
+                  label="Hasta"
+                  type="date"
+                  value={periodoFin}
+                  onChange={(e) => setPeriodoFin(e.target.value)}
+                  error={fieldErrors.periodo_fin}
+                />
+                <button
+                  type="button"
+                  onClick={() => setFechasPersonalizadas(false)}
+                  className="text-left text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary sm:col-span-2"
+                >
+                  Usar la vigencia del plan
+                </button>
+              </div>
+            ) : (
+              <p className="flex items-center justify-between gap-2 text-xs text-text-muted">
+                <span>
+                  Vigencia: {formatFecha(periodoInicio)} →{" "}
+                  {formatFecha(periodoFin)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setFechasPersonalizadas(true)}
+                  className="shrink-0 text-brand-green underline underline-offset-2 hover:opacity-80"
+                >
+                  Personalizar fechas
+                </button>
               </p>
-            )}
+            ))}
 
           {/* Método de pago */}
           <div className="space-y-1.5">
