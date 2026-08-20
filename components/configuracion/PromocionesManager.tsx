@@ -29,6 +29,12 @@ type Modal = { mode: "create" } | { mode: "edit"; promo: Promocion } | null;
 
 export function PromocionesManager({ promociones }: PromocionesManagerProps) {
   const [modal, setModal] = useState<Modal>(null);
+  const [modalKey, setModalKey] = useState(0);
+
+  function openModal(m: Exclude<Modal, null>) {
+    setModal(m);
+    setModalKey((k) => k + 1);
+  }
 
   return (
     <div className="space-y-4">
@@ -42,7 +48,7 @@ export function PromocionesManager({ promociones }: PromocionesManagerProps) {
         </p>
         <Button
           leftIcon={<LuPlus className="h-4 w-4" />}
-          onClick={() => setModal({ mode: "create" })}
+          onClick={() => openModal({ mode: "create" })}
         >
           Nueva promoción
         </Button>
@@ -56,7 +62,7 @@ export function PromocionesManager({ promociones }: PromocionesManagerProps) {
           action={
             <Button
               leftIcon={<LuPlus className="h-4 w-4" />}
-              onClick={() => setModal({ mode: "create" })}
+              onClick={() => openModal({ mode: "create" })}
             >
               Crear primera promoción
             </Button>
@@ -68,13 +74,13 @@ export function PromocionesManager({ promociones }: PromocionesManagerProps) {
             <PromoRow
               key={p.id}
               promo={p}
-              onEdit={() => setModal({ mode: "edit", promo: p })}
+              onEdit={() => openModal({ mode: "edit", promo: p })}
             />
           ))}
         </ul>
       )}
 
-      <PromoFormModal modal={modal} onClose={() => setModal(null)} />
+      <PromoFormModal key={modalKey} modal={modal} onClose={() => setModal(null)} />
     </div>
   );
 }

@@ -28,6 +28,12 @@ export function PlanesManager({ planes }: PlanesManagerProps) {
   const [modal, setModal] = useState<
     { mode: "create" } | { mode: "edit"; plan: PlanMembresia } | null
   >(null);
+  const [modalKey, setModalKey] = useState(0);
+
+  function openModal(m: { mode: "create" } | { mode: "edit"; plan: PlanMembresia }) {
+    setModal(m);
+    setModalKey((k) => k + 1);
+  }
 
   return (
     <div className="space-y-4">
@@ -39,7 +45,7 @@ export function PlanesManager({ planes }: PlanesManagerProps) {
         </p>
         <Button
           leftIcon={<LuPlus className="h-4 w-4" />}
-          onClick={() => setModal({ mode: "create" })}
+          onClick={() => openModal({ mode: "create" })}
         >
           Nuevo plan
         </Button>
@@ -53,7 +59,7 @@ export function PlanesManager({ planes }: PlanesManagerProps) {
           action={
             <Button
               leftIcon={<LuPlus className="h-4 w-4" />}
-              onClick={() => setModal({ mode: "create" })}
+              onClick={() => openModal({ mode: "create" })}
             >
               Crear primer plan
             </Button>
@@ -65,13 +71,13 @@ export function PlanesManager({ planes }: PlanesManagerProps) {
             <PlanRow
               key={p.id}
               plan={p}
-              onEdit={() => setModal({ mode: "edit", plan: p })}
+              onEdit={() => openModal({ mode: "edit", plan: p })}
             />
           ))}
         </ul>
       )}
 
-      <PlanFormModal modal={modal} onClose={() => setModal(null)} />
+      <PlanFormModal key={modalKey} modal={modal} onClose={() => setModal(null)} />
     </div>
   );
 }
