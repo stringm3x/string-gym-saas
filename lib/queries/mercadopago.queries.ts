@@ -55,3 +55,40 @@ export async function clearMpCredentials(
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
+
+export interface PagoExternoPendiente {
+  id: string;
+  monto: number;
+  status: string;
+  descripcion: string | null;
+  createdAt: string;
+}
+
+/**
+ * Cobros con MercadoPago generados pero aún sin confirmar por el webhook
+ * (últimas 24h) — para mostrar "pendiente de confirmación" en Caja en vez
+ * de dejar al cajero sin ninguna señal hasta que el webhook llegue.
+ */
+export async function listPagosExternosPendientes(
+  tenantId: string
+): Promise<PagoExternoPendiente[]> {
+  const supabase = await createClient();
+  const desde = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("pagos_externos")
+    .select("id, monto, status, metadata, created_at")
+    .eq("tenant_id", tenantId)
+    .is("pago_id", null)
+    .in("status", ["pending", "in_process"])
+    .gte("created_at", desde)
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    monto: r.monto,
+    status: r.status,
+    descripcion:
+      (r.metadata as { descripcion?: string } | null)?.descripcion ?? null,
+    createdAt: r.created_at,
+  }));
+}

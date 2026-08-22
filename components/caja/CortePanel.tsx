@@ -3,7 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LuLockOpen, LuLock, LuHistory } from "react-icons/lu";
+import {
+  LuLockOpen,
+  LuLock,
+  LuHistory,
+  LuChevronDown,
+  LuChevronUp,
+} from "react-icons/lu";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { formatMoneda } from "@/lib/utils/format";
@@ -40,6 +46,35 @@ export function CortePanel({
   totales,
   totalesPorConcepto,
 }: CortePanelProps) {
+  // Con turno abierto y sin nada pendiente, no vale la pena ocupar toda la
+  // parte superior de la página — arranca colapsado en una barra resumen.
+  // Sin turno abierto sí se muestra expandido: es una acción pendiente.
+  const [expanded, setExpanded] = useState(!corte);
+
+  if (corte && !expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface px-5 py-3 text-left transition-colors hover:border-brand-green/40"
+      >
+        <span className="flex items-center gap-2 text-sm font-medium text-text-primary">
+          <LuLockOpen className="h-4 w-4 text-brand-green" />
+          Turno abierto
+          {totales && (
+            <span className="text-text-secondary">
+              · {formatMoneda(totales.total)} cobrado
+            </span>
+          )}
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-xs text-text-secondary">
+          Ver corte
+          <LuChevronDown className="h-3.5 w-3.5" />
+        </span>
+      </button>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border bg-surface p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -51,12 +86,23 @@ export function CortePanel({
           )}
           Corte de caja
         </h3>
-        <Link
-          href={`/${slug}/caja/cortes`}
-          className="inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-brand-green"
-        >
-          <LuHistory className="h-3.5 w-3.5" /> Historial
-        </Link>
+        <div className="flex items-center gap-3">
+          {corte && (
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-brand-green"
+            >
+              <LuChevronUp className="h-3.5 w-3.5" /> Colapsar
+            </button>
+          )}
+          <Link
+            href={`/${slug}/caja/cortes`}
+            className="inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-brand-green"
+          >
+            <LuHistory className="h-3.5 w-3.5" /> Historial
+          </Link>
+        </div>
       </div>
 
       {corte ? (
@@ -234,7 +280,7 @@ function CorteAbiertoView({
             className={cn(
               "flex items-center justify-between rounded-lg px-3 py-2 text-sm",
               diferencia === 0
-                ? "bg-brand-green/10 text-brand-green"
+                ? "bg-success/10 text-success"
                 : diferencia < 0
                   ? "bg-danger/10 text-danger"
                   : "bg-warning/10 text-warning"

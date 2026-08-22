@@ -20,12 +20,14 @@ import {
   resumenCorteEnVivo,
   resumenCorteEnVivoPorConcepto,
 } from "@/lib/queries/cortes.queries";
+import { listPagosExternosPendientes } from "@/lib/queries/mercadopago.queries";
 import { CobroSwitcher } from "@/components/caja/CobroSwitcher";
 import { PagosFeed } from "@/components/caja/PagosFeed";
 import { CajaFilters } from "@/components/caja/CajaFilters";
 import { VisitaRapidaButton } from "@/components/caja/VisitaRapidaButton";
 import { CobroMpButton } from "@/components/caja/CobroMpButton";
 import { AutorizacionesPendientes } from "@/components/caja/AutorizacionesPendientes";
+import { PagosExternosPendientes } from "@/components/caja/PagosExternosPendientes";
 import { CortePanel } from "@/components/caja/CortePanel";
 
 interface PageProps {
@@ -82,6 +84,9 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
 
   const codigosPendientes = canAutoservicio
     ? await getCodigosPendientes(tenant.id)
+    : [];
+  const pagosMpPendientes = canMp
+    ? await listPagosExternosPendientes(tenant.id)
     : [];
 
   const corte = await getCorteAbierto(tenant.id);
@@ -150,6 +155,8 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
           <div className="flex justify-end">
             <CajaFilters />
           </div>
+
+          {canMp && <PagosExternosPendientes pendientes={pagosMpPendientes} />}
 
           <div className="divide-y divide-border rounded-xl border border-border bg-surface">
             <ResumenRow

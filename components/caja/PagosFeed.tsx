@@ -55,7 +55,7 @@ export function PagosFeed({ pagos, slug }: PagosFeedProps) {
   const entries = agrupar(pagos);
 
   return (
-    <ul className="max-h-96 divide-y divide-white/5 overflow-y-auto rounded-xl border border-border bg-surface">
+    <ul className="divide-y divide-white/5 rounded-xl border border-border bg-surface">
       {entries.map((e) =>
         e.kind === "ticket" ? (
           <TicketRow key={e.ticketId} entry={e} slug={slug} />

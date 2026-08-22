@@ -24,6 +24,10 @@
   --color-danger: #ff3131;
   --color-orange: #f97316;
   --color-gold: #f6c75e;
+  /* Verde de "correcto/cuadrado" — distinto del verde de marca (acción/
+     selección) para que un cuadre correcto se lea como confirmación, no
+     como el mismo acento que ya está en botones y chips seleccionados. */
+  --color-success: #22c55e;
 
   /* Texto */
   --color-text-primary: #fafafa;

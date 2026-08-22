@@ -307,6 +307,26 @@ export function PagoForm({
     setCantidadProducto(1);
   }, [selProd]);
 
+  // Reset compartido tras un cobro exitoso — sea pago normal o abono. Una
+  // sola fuente de verdad evita que los dos caminos se desincronicen (ej.
+  // que uno limpie "paga con"/fechas personalizadas y el otro no).
+  function resetPagoForm() {
+    formRef.current?.reset();
+    setMiembro(null);
+    setConcepto("membresia");
+    setMetodo("efectivo");
+    setPagaCon("");
+    setCreditoAplicar("");
+    setSelMem(defaultSelMem);
+    setSelProd({ kind: "custom" });
+    setCustomPreset("1_mes");
+    setMontoCustom("");
+    setCantidadProducto(1);
+    setFechasPersonalizadas(false);
+    setEsAbono(false);
+    setMontoAbono("");
+  }
+
   // Success
   useEffect(() => {
     if (state.ok) {
@@ -324,20 +344,7 @@ export function PagoForm({
       } else {
         setLastPago(null);
       }
-      formRef.current?.reset();
-      setMiembro(null);
-      setConcepto("membresia");
-      setMetodo("efectivo");
-      setPagaCon("");
-      setCreditoAplicar("");
-      setSelMem(defaultSelMem);
-      setSelProd({ kind: "custom" });
-      setCustomPreset("1_mes");
-      setMontoCustom("");
-      setCantidadProducto(1);
-      setFechasPersonalizadas(false);
-      setEsAbono(false);
-      setMontoAbono("");
+      resetPagoForm();
     } else if (state.error && Object.keys(state.fieldErrors).length === 0) {
       toastError("No se pudo registrar", state.error);
     }
@@ -346,6 +353,15 @@ export function PagoForm({
 
   const maxCantidad =
     selProd.kind === "producto" ? selProd.producto.stock_actual : null;
+
+  // Validación inline del abono (se muestra antes de intentar enviar, no
+  // solo como toast tras el clic).
+  const abonoError =
+    esAbono && selMem.kind === "plan" && montoAbono.trim() !== ""
+      ? Number(montoAbono) <= 0 || Number(montoAbono) >= selMem.plan.precio
+        ? "El abono debe ser mayor a 0 y menor al precio del plan."
+        : null
+      : null;
 
   function handleAbono() {
     if (!miembro) {
@@ -385,12 +401,7 @@ export function PagoForm({
         fechaStr: null,
         pagoId: r.pagoId,
       });
-      formRef.current?.reset();
-      setMiembro(null);
-      setMetodo("efectivo");
-      setSelMem(defaultSelMem);
-      setEsAbono(false);
-      setMontoAbono("");
+      resetPagoForm();
     });
   }
 
@@ -627,6 +638,7 @@ export function PagoForm({
                     value={montoAbono}
                     onChange={(e) => setMontoAbono(e.target.value)}
                     leftSlot="$"
+                    error={abonoError ?? undefined}
                   />
                   {Number(montoAbono) > 0 &&
                     Number(montoAbono) < selMem.plan.precio && (
@@ -844,6 +856,7 @@ export function PagoForm({
             type="button"
             onClick={handleAbono}
             loading={isPendingAbono}
+            disabled={!montoAbono.trim() || !!abonoError}
             size="lg"
           >
             Registrar abono
@@ -1032,6 +1045,7 @@ function MiembroAutocomplete({
         onChange={(e) => setQuery(e.target.value)}
         leftSlot={<LuSearch className="h-4 w-4" />}
         autoComplete="off"
+        autoFocus
       />
 
       {(results.length > 0 || (query.trim().length >= 2 && !isSearching)) && (

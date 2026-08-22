@@ -113,7 +113,7 @@ function DiferenciaBadge({ diferencia }: { diferencia: number | null }) {
   const cuadra = diferencia === 0;
   const faltante = diferencia < 0;
   const cls = cuadra
-    ? "border-brand-green/30 bg-brand-green/10 text-brand-green"
+    ? "border-success/30 bg-success/10 text-success"
     : faltante
       ? "border-danger/30 bg-danger/10 text-danger"
       : "border-warning/30 bg-warning/10 text-warning";

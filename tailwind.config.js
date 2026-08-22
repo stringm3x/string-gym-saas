@@ -23,6 +23,7 @@ module.exports = {
         danger: "var(--color-danger)",
         orange: "var(--color-orange)",
         gold: "var(--color-gold)",
+        success: "var(--color-success)",
         text: {
           primary: "var(--color-text-primary)",
           secondary: "var(--color-text-secondary)",
