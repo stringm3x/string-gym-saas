@@ -1,6 +1,22 @@
 import { z } from "zod";
 
 /**
+ * Teléfono a 10 dígitos, normalizando espacios/guiones ("55 1234 5678" ->
+ * "5512345678"). Solo se exige en el alta manual (miembroConPagoSchema):
+ * la edición usa una validación más laxa para no romper registros legacy
+ * (importados por CSV, con lada u otros formatos) al guardarlos de nuevo.
+ */
+const telefonoEstricto = z
+  .string()
+  .trim()
+  .transform((v) => v.replace(/[\s-]/g, ""))
+  .refine((v) => v === "" || /^\d{10}$/.test(v), {
+    message: "El teléfono debe tener 10 dígitos",
+  })
+  .optional()
+  .or(z.literal(""));
+
+/**
  * Objeto base de un miembro — sin refinamientos, para poder extenderlo.
  */
 const miembroBaseObject = z.object({
@@ -50,6 +66,7 @@ export type MiembroInput = z.infer<typeof miembroSchema>;
  */
 export const miembroConPagoSchema = miembroBaseObject
   .extend({
+    telefono: telefonoEstricto,
     cobrar_inscripcion: z.boolean().optional(),
     plan_id: z.string().uuid().optional().or(z.literal("")),
     promocion_id: z.string().uuid().optional().or(z.literal("")),

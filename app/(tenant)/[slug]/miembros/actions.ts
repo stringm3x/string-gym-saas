@@ -9,6 +9,8 @@ import {
   updateMiembroNotas as dbUpdateMiembroNotas,
   archivarMiembro as dbArchivarMiembro,
   restaurarMiembro as dbRestaurarMiembro,
+  findMiembroDuplicado,
+  type MiembroDuplicado,
 } from "@/lib/queries/miembros.queries";
 import { createPago } from "@/lib/queries/pagos.queries";
 import {
@@ -32,6 +34,8 @@ export interface MiembroFormState {
   miembroId?: string;
   /** Devuelto si se cobró la inscripción — para abrir el recibo. */
   pagoId?: string;
+  /** Devuelto si nombre/teléfono/correo coincide con un miembro existente. */
+  duplicate?: MiembroDuplicado | null;
 }
 
 const emptyState: MiembroFormState = {
@@ -88,6 +92,19 @@ export async function createMiembroAction(
   }
 
   const data = parsed.data;
+
+  // Alerta de posible duplicado — se puede omitir reenviando el form con
+  // confirmar_duplicado=true (botón "Registrar de todos modos").
+  if (formData.get("confirmar_duplicado") !== "true") {
+    const duplicado = await findMiembroDuplicado(tenant.id, {
+      nombre: data.nombre,
+      telefono: data.telefono,
+      email: data.email,
+    });
+    if (duplicado) {
+      return { ...emptyState, duplicate: duplicado };
+    }
+  }
 
   // 1. Crear miembro. Persistimos el plan elegido aunque no se cobre ahora,
   //    para que las renovaciones futuras sepan "el mismo plan".

@@ -196,6 +196,48 @@ export async function createMiembro(
   return { ok: true, id: data.id };
 }
 
+export interface MiembroDuplicado {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  email: string | null;
+}
+
+/**
+ * Busca un miembro no archivado con el mismo teléfono, correo o nombre
+ * (normalizados) — para advertir antes de crear un posible duplicado.
+ */
+export async function findMiembroDuplicado(
+  tenantId: string,
+  input: { nombre: string; telefono?: string; email?: string }
+): Promise<MiembroDuplicado | null> {
+  const nombreNorm = input.nombre.trim().toLowerCase();
+  const telefonoNorm = input.telefono ? input.telefono.replace(/\D/g, "") : "";
+  const emailNorm = input.email ? input.email.trim().toLowerCase() : "";
+  if (!nombreNorm && !telefonoNorm && !emailNorm) return null;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("miembros")
+    .select("id, nombre, telefono, email")
+    .eq("tenant_id", tenantId)
+    .eq("archivado", false);
+
+  for (const r of data ?? []) {
+    const rTelefono = r.telefono ? String(r.telefono).replace(/\D/g, "") : "";
+    const rEmail = r.email ? String(r.email).trim().toLowerCase() : "";
+    const rNombre = String(r.nombre ?? "").trim().toLowerCase();
+    if (
+      (telefonoNorm && rTelefono && rTelefono === telefonoNorm) ||
+      (emailNorm && rEmail && rEmail === emailNorm) ||
+      (nombreNorm && rNombre === nombreNorm)
+    ) {
+      return { id: r.id, nombre: r.nombre, telefono: r.telefono, email: r.email };
+    }
+  }
+  return null;
+}
+
 /** Sets normalizados de teléfonos/emails existentes — para detectar duplicados. */
 export async function getExistingContactos(
   tenantId: string

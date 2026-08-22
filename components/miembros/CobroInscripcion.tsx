@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/Label";
 import { cn } from "@/lib/utils/cn";
 import { formatFecha } from "@/lib/utils/format";
 import { hoyISO } from "@/lib/utils/dates";
-import { duracionPresets, type DuracionPreset } from "@/lib/utils/membresia-rango";
 import {
   PlanPromoSelector,
   type SeleccionMembresia,
@@ -38,15 +37,6 @@ const metodoOptions: { value: Metodo; label: string; icon: React.ReactNode }[] =
     },
   ];
 
-const customPresets: DuracionPreset[] = [
-  "1_semana",
-  "15_dias",
-  "1_mes",
-  "3_meses",
-  "6_meses",
-  "anual",
-];
-
 /** Rango desde hoy por una cantidad de días (miembro nuevo, sin vigencia previa). */
 function rangoDesdeHoy(dias: number): { inicio: string; fin: string } {
   const hoy = new Date(hoyISO() + "T00:00:00");
@@ -65,11 +55,16 @@ export function CobroInscripcion({
   fieldErrors,
 }: CobroInscripcionProps) {
   const [enabled, setEnabled] = useState(false);
-  const [selMem, setSelMem] = useState<SeleccionMembresia>({ kind: "custom" });
-  const [customPreset, setCustomPreset] = useState<DuracionPreset | "manual">(
-    "1_mes"
+  // Sin personalización manual: por default el primer plan (o promo si no
+  // hay planes). Si el gym no tiene ninguno configurado, cae en "custom"
+  // como estado vacío interno (sin UI para elegirlo ni editarlo).
+  const [selMem, setSelMem] = useState<SeleccionMembresia>(
+    planes.length > 0
+      ? { kind: "plan", plan: planes[0] }
+      : promocionesMembresia.length > 0
+        ? { kind: "promo", promo: promocionesMembresia[0] }
+        : { kind: "custom" }
   );
-  const [montoCustom, setMontoCustom] = useState("");
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
   const [periodoInicio, setPeriodoInicio] = useState("");
   const [periodoFin, setPeriodoFin] = useState("");
@@ -93,11 +88,7 @@ export function CobroInscripcion({
         promocionId: selMem.promo.id,
       };
     }
-    return {
-      montoFinal: Number(montoCustom) || 0,
-      planId: "",
-      promocionId: "",
-    };
+    return { montoFinal: 0, planId: "", promocionId: "" };
   })();
 
   // Recalcular periodo según selección.
@@ -114,12 +105,8 @@ export function CobroInscripcion({
       const r = rangoDesdeHoy(selMem.promo.dias_duracion);
       setPeriodoInicio(r.inicio);
       setPeriodoFin(r.fin);
-    } else if (selMem.kind === "custom" && customPreset !== "manual") {
-      const r = rangoDesdeHoy(duracionPresets[customPreset].dias);
-      setPeriodoInicio(r.inicio);
-      setPeriodoFin(r.fin);
     }
-  }, [selMem, customPreset, fechasPersonalizadas]);
+  }, [selMem, fechasPersonalizadas]);
 
   // Al cambiar de plan/promo, las fechas personalizadas ya no aplican.
   useEffect(() => {
@@ -178,82 +165,20 @@ export function CobroInscripcion({
               promocionesMembresia={promocionesMembresia}
               value={selMem}
               onChange={setSelMem}
+              allowCustom={false}
             />
+            {planes.length === 0 && promocionesMembresia.length === 0 && (
+              <p className="text-xs text-text-muted">
+                No hay planes ni promociones configurados. Crea uno en
+                Configuración → Planes para poder cobrar la inscripción.
+              </p>
+            )}
+            {fieldErrors.monto_pago && (
+              <p role="alert" className="text-xs text-danger">
+                {fieldErrors.monto_pago}
+              </p>
+            )}
           </div>
-
-          {selMem.kind === "custom" && (
-            <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
-              <div className="space-y-2">
-                <Label>Duración</Label>
-                <div className="flex flex-wrap gap-2">
-                  {customPresets.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setCustomPreset(p)}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
-                        customPreset === p
-                          ? "border-brand-green bg-brand-green/10 text-brand-green"
-                          : "border-border bg-surface text-text-secondary hover:text-text-primary"
-                      )}
-                    >
-                      {duracionPresets[p].label}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setCustomPreset("manual")}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
-                      customPreset === "manual"
-                        ? "border-brand-green bg-brand-green/10 text-brand-green"
-                        : "border-border bg-surface text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    Fechas manuales
-                  </button>
-                </div>
-              </div>
-
-              {customPreset === "manual" && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Input
-                    label="Desde"
-                    type="date"
-                    value={periodoInicio}
-                    onChange={(e) => setPeriodoInicio(e.target.value)}
-                    error={fieldErrors.periodo_fin}
-                  />
-                  <Input
-                    label="Hasta"
-                    type="date"
-                    value={periodoFin}
-                    onChange={(e) => setPeriodoFin(e.target.value)}
-                  />
-                </div>
-              )}
-
-              <Input
-                label="Monto"
-                type="number"
-                inputMode="decimal"
-                step="1"
-                min="0"
-                value={montoCustom}
-                onChange={(e) => setMontoCustom(e.target.value)}
-                leftSlot="$"
-                error={fieldErrors.monto_pago}
-              />
-
-              {customPreset !== "manual" && periodoInicio && periodoFin && (
-                <p className="text-xs text-text-muted">
-                  Vigencia: {formatFecha(periodoInicio)} →{" "}
-                  {formatFecha(periodoFin)}
-                </p>
-              )}
-            </div>
-          )}
 
           {(selMem.kind === "plan" || selMem.kind === "promo") &&
             periodoInicio &&

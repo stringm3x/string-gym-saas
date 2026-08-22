@@ -16,6 +16,8 @@ interface PlanPromoSelectorProps {
   promocionesMembresia: Promocion[];
   value: SeleccionMembresia;
   onChange: (sel: SeleccionMembresia) => void;
+  /** Permite elegir un monto/duración manual fuera de los planes/promos. Default true. */
+  allowCustom?: boolean;
 }
 
 export function PlanPromoSelector({
@@ -23,6 +25,7 @@ export function PlanPromoSelector({
   promocionesMembresia,
   value,
   onChange,
+  allowCustom = true,
 }: PlanPromoSelectorProps) {
   return (
     <div className="space-y-4">
@@ -79,26 +82,28 @@ export function PlanPromoSelector({
         </Section>
       )}
 
-      <div>
-        <button
-          type="button"
-          onClick={() => onChange({ kind: "custom" })}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
-            value.kind === "custom"
-              ? "border-brand-green bg-brand-green/10 text-brand-green"
-              : "border-border bg-surface text-text-secondary hover:text-text-primary"
-          )}
-        >
-          Personalizar precio y duración
-          <LuChevronDown
+      {allowCustom && (
+        <div>
+          <button
+            type="button"
+            onClick={() => onChange({ kind: "custom" })}
             className={cn(
-              "h-3.5 w-3.5 transition-transform",
-              value.kind === "custom" && "rotate-180"
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+              value.kind === "custom"
+                ? "border-brand-green bg-brand-green/10 text-brand-green"
+                : "border-border bg-surface text-text-secondary hover:text-text-primary"
             )}
-          />
-        </button>
-      </div>
+          >
+            Personalizar precio y duración
+            <LuChevronDown
+              className={cn(
+                "h-3.5 w-3.5 transition-transform",
+                value.kind === "custom" && "rotate-180"
+              )}
+            />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

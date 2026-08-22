@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -47,6 +48,26 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
 
   const [state, formAction, isPending] = useActionState(action, initialState);
 
+  // Campos controlados: un fallo de validación en el servidor no debe
+  // vaciar lo que el usuario ya escribió (React resetea los inputs no
+  // controlados de un <form action> en cada submit, antes de recibir la
+  // respuesta del server action).
+  const [nombre, setNombre] = useState(
+    miembro?.nombre ?? defaultValues?.nombre ?? ""
+  );
+  const [telefono, setTelefono] = useState(
+    miembro?.telefono ?? defaultValues?.telefono ?? ""
+  );
+  const [email, setEmail] = useState(
+    miembro?.email ?? defaultValues?.email ?? ""
+  );
+  const [fechaInscripcion, setFechaInscripcion] = useState(
+    miembro?.fecha_inscripcion ?? new Date().toISOString().slice(0, 10)
+  );
+  const [fechaVencimiento, setFechaVencimiento] = useState(
+    miembro?.fecha_vencimiento ?? ""
+  );
+
   useEffect(() => {
     if (state.ok && mode === "edit") {
       success("Miembro actualizado");
@@ -62,8 +83,6 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
       toastError("No se pudo guardar", state.error);
     }
   }, [state, mode, slug, router, success, toastError]);
-
-  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <form action={formAction} className="space-y-6">
@@ -84,7 +103,8 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
             label="Nombre completo"
             name="nombre"
             required
-            defaultValue={miembro?.nombre ?? defaultValues?.nombre}
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
             placeholder="Ej. Juan Pérez"
             error={state.fieldErrors.nombre}
             autoComplete="name"
@@ -95,18 +115,20 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
           label="Teléfono"
           name="telefono"
           type="tel"
-          defaultValue={miembro?.telefono ?? defaultValues?.telefono ?? ""}
+          value={telefono}
+          onChange={(e) => setTelefono(e.target.value)}
           placeholder="55 1234 5678"
           error={state.fieldErrors.telefono}
           autoComplete="tel"
-          description="Al menos teléfono o correo"
+          description="Al menos teléfono o correo · 10 dígitos"
         />
 
         <Input
           label="Correo"
           name="email"
           type="email"
-          defaultValue={miembro?.email ?? defaultValues?.email ?? ""}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           placeholder="correo@ejemplo.com"
           error={state.fieldErrors.email}
           autoComplete="email"
@@ -117,7 +139,8 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
           name="fecha_inscripcion"
           type="date"
           required
-          defaultValue={miembro?.fecha_inscripcion ?? today}
+          value={fechaInscripcion}
+          onChange={(e) => setFechaInscripcion(e.target.value)}
           error={state.fieldErrors.fecha_inscripcion}
         />
 
@@ -125,7 +148,8 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
           label="Vence el"
           name="fecha_vencimiento"
           type="date"
-          defaultValue={miembro?.fecha_vencimiento ?? ""}
+          value={fechaVencimiento}
+          onChange={(e) => setFechaVencimiento(e.target.value)}
           error={state.fieldErrors.fecha_vencimiento}
           description="Opcional — se calcula al registrar un pago"
         />
@@ -145,6 +169,40 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
           promocionesMembresia={promocionesMembresia}
           fieldErrors={state.fieldErrors}
         />
+      )}
+
+      {state.duplicate && (
+        <div
+          role="alert"
+          className="space-y-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-xs text-text-secondary"
+        >
+          <p>
+            Ya existe un miembro parecido:{" "}
+            <strong className="text-text-primary">
+              {state.duplicate.nombre}
+            </strong>
+            {state.duplicate.telefono && ` · ${state.duplicate.telefono}`}
+            {state.duplicate.email && ` · ${state.duplicate.email}`}
+          </p>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/${slug}/miembros/${state.duplicate.id}`}
+              className="font-medium text-brand-green underline underline-offset-2 hover:opacity-80"
+            >
+              Ver registro existente
+            </Link>
+            <Button
+              type="submit"
+              name="confirmar_duplicado"
+              value="true"
+              variant="ghost"
+              size="sm"
+              loading={isPending}
+            >
+              Registrar de todos modos
+            </Button>
+          </div>
+        </div>
       )}
 
       {state.error && Object.keys(state.fieldErrors).length === 0 && (
