@@ -2,15 +2,24 @@
  * Job diario de WhatsApp (Fase 7.5, Bloque 4). Corre a las 8am CDMX (14:00 UTC).
  *
  * Por cada gym con whatsapp_automatico (Escala) + whatsapp_activo:
- *  - miembros que vencen en exactamente 7 días  → MEMBRESIA_POR_VENCER
- *  - miembros que vencieron hoy                 → MEMBRESIA_VENCIDA
- *  - miembros activos sin check-in en 14+ días  → MIEMBRO_SIN_ACTIVIDAD (al owner)
- *  - resumen del día al owner                   → RESUMEN_DIARIO
+ *  - miembros que vencen en exactamente 3 o 7 días → MEMBRESIA_POR_VENCER
+ *  - miembros que vencieron hoy                    → MEMBRESIA_VENCIDA
+ *  - miembros que vencieron hace exactamente 3 días
+ *    y no han renovado                             → MEMBRESIA_REACTIVACION
+ *  - cumpleaños hoy                                → CUMPLEANOS
+ *  - miembros activos sin check-in en 14+ días      → MIEMBRO_SIN_ACTIVIDAD (al owner)
+ *  - resumen del día al owner                       → RESUMEN_DIARIO
  *
  * Todo pasa por notifyWhatsapp (no-op si la infra está dormida). Aquí SÍ se
  * hace await (no hay respuesta HTTP en juego): el envío debe completar antes de
  * que termine la función. Cada gym va en try/catch: uno que falle no aborta el
  * resto.
+ *
+ * Deduplicación: por diseño, no por tabla de tracking — cada bloque filtra por
+ * IGUALDAD EXACTA de fecha (ej. fecha_vencimiento = hoy-3), así que un miembro
+ * solo puede caer en cada bucket un día del calendario. Si el cron se
+ * re-ejecuta el mismo día o una fecha cambia justo después de correr, sí
+ * puede duplicar — mismo trade-off que ya existía en los bloques originales.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -118,6 +127,32 @@ async function miembrosInactivos(
   return res;
 }
 
+/**
+ * Miembros no archivados cuyo cumpleaños (mes+día, sin importar el año) es
+ * hoy. No hay forma barata de filtrar mes/día por fecha con el query builder
+ * de Supabase, así que se trae todo lo que tenga fecha_nacimiento y se
+ * filtra en JS — mismo patrón que `miembrosInactivos` con check-ins.
+ */
+async function miembrosDeCumpleanos(
+  admin: SupabaseClient,
+  tenantId: string,
+  mesDia: string // "MM-DD"
+): Promise<MiembroRow[]> {
+  const { data } = await admin
+    .from("miembros")
+    .select("nombre, telefono, fecha_nacimiento")
+    .eq("tenant_id", tenantId)
+    .eq("archivado", false)
+    .not("fecha_nacimiento", "is", null);
+
+  return (data ?? [])
+    .filter((m) => (m.fecha_nacimiento as string).slice(5) === mesDia)
+    .map((m) => ({
+      nombre: m.nombre as string,
+      telefono: (m.telefono as string | null) ?? null,
+    }));
+}
+
 interface ResumenGym {
   checkinshoy: number;
   ingresosHoy: number;
@@ -180,7 +215,10 @@ export async function runWhatsappCron(): Promise<{
   const admin = createAdminClient();
   const gyms = await gymsActivos(admin);
   const hoy = hoyISO();
+  const en3 = isoMasDias(3);
   const en7 = isoMasDias(7);
+  const vencioHace3 = isoMasDias(-3);
+  const mesDiaHoy = hoy.slice(5);
   let eventos = 0;
 
   for (const gym of gyms) {
@@ -214,6 +252,28 @@ export async function runWhatsappCron(): Promise<{
         eventos++;
       }
 
+      // 1b. Vencen en exactamente 3 días (recordatorio intermedio, mismo
+      //     tipo que el de 7 días — la plantilla ya parametriza los días).
+      for (const m of await miembrosConVencimiento(admin, gym.id, en3)) {
+        await notifyWhatsapp({
+          ...base,
+          tipo: "MEMBRESIA_POR_VENCER",
+          miembroNombre: m.nombre,
+          miembroTelefono: m.telefono,
+          diasRestantes: 3,
+          fechaVencimiento: en3,
+        });
+        await registrarMensaje({
+          tenantId: gym.id,
+          telefono: m.telefono ?? "",
+          direccion: "saliente",
+          tipo: "template",
+          contenido: `Recordatorio: tu membresía vence el ${en3} (en 3 días).`,
+          nombreContacto: m.nombre,
+        });
+        eventos++;
+      }
+
       // 2. Vencieron hoy.
       for (const m of await miembrosConVencimiento(admin, gym.id, hoy)) {
         await notifyWhatsapp({
@@ -229,6 +289,47 @@ export async function runWhatsappCron(): Promise<{
           direccion: "saliente",
           tipo: "template",
           contenido: `Tu membresía venció hoy (${hoy}). Renueva para seguir entrenando.`,
+          nombreContacto: m.nombre,
+        });
+        eventos++;
+      }
+
+      // 2b. Vencieron hace exactamente 3 días y no han renovado (si hubieran
+      //     renovado, fecha_vencimiento ya no sería esta — la igualdad
+      //     exacta los excluye solos).
+      for (const m of await miembrosConVencimiento(admin, gym.id, vencioHace3)) {
+        await notifyWhatsapp({
+          ...base,
+          tipo: "MEMBRESIA_REACTIVACION",
+          miembroNombre: m.nombre,
+          miembroTelefono: m.telefono,
+          diasVencido: 3,
+        });
+        await registrarMensaje({
+          tenantId: gym.id,
+          telefono: m.telefono ?? "",
+          direccion: "saliente",
+          tipo: "template",
+          contenido: `Te extrañamos por ${gym.nombre} — tu membresía venció hace 3 días. ¿Renovamos?`,
+          nombreContacto: m.nombre,
+        });
+        eventos++;
+      }
+
+      // 2c. Cumpleaños hoy.
+      for (const m of await miembrosDeCumpleanos(admin, gym.id, mesDiaHoy)) {
+        await notifyWhatsapp({
+          ...base,
+          tipo: "CUMPLEANOS",
+          miembroNombre: m.nombre,
+          miembroTelefono: m.telefono,
+        });
+        await registrarMensaje({
+          tenantId: gym.id,
+          telefono: m.telefono ?? "",
+          direccion: "saliente",
+          tipo: "template",
+          contenido: `¡Feliz cumpleaños de parte de ${gym.nombre}! 🎉`,
           nombreContacto: m.nombre,
         });
         eventos++;

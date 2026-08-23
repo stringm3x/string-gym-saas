@@ -23,6 +23,8 @@ import {
   TEMPLATE_LISTA_ESPERA,
   TEMPLATE_OTP,
   TEMPLATE_VISITAS_BAJAS,
+  TEMPLATE_MEMBRESIA_REACTIVACION,
+  TEMPLATE_CUMPLEANOS,
 } from "./360dialog";
 
 function pesos(n: number): string {
@@ -170,6 +172,28 @@ function traducir(event: WhatsappEvent): SendWhatsappParams | null {
         to: event.miembroTelefono ?? "",
         templateName: TEMPLATE_VISITAS_BAJAS,
         params: [event.miembroNombre, String(event.visitasRestantes)],
+        apiKey: event.whatsappApiKey,
+      };
+
+    case "MEMBRESIA_REACTIVACION":
+      // {{1}} nombre · {{2}} días vencido · {{3}} gym
+      return {
+        to: event.miembroTelefono ?? "",
+        templateName: TEMPLATE_MEMBRESIA_REACTIVACION,
+        params: [
+          event.miembroNombre,
+          String(event.diasVencido),
+          event.gymNombre,
+        ],
+        apiKey: event.whatsappApiKey,
+      };
+
+    case "CUMPLEANOS":
+      // {{1}} nombre · {{2}} gym
+      return {
+        to: event.miembroTelefono ?? "",
+        templateName: TEMPLATE_CUMPLEANOS,
+        params: [event.miembroNombre, event.gymNombre],
         apiKey: event.whatsappApiKey,
       };
   }

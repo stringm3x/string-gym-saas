@@ -22,6 +22,12 @@ export const TEMPLATE_LISTA_ESPERA = "lista_espera";
 export const TEMPLATE_OTP = "otp_portal";
 // Visitas bajas (D8): {{1}} nombre · {{2}} visitas restantes.
 export const TEMPLATE_VISITAS_BAJAS = "visitas_bajas";
+// Reactivación (retención): {{1}} nombre · {{2}} días vencido · {{3}} gym.
+// ⚠️ Debe crearse y aprobarse en Meta/360dialog antes de que envíe nada real.
+export const TEMPLATE_MEMBRESIA_REACTIVACION = "membresia_reactivacion";
+// Cumpleaños (retención): {{1}} nombre · {{2}} gym.
+// ⚠️ Debe crearse y aprobarse en Meta/360dialog antes de que envíe nada real.
+export const TEMPLATE_CUMPLEANOS = "cumpleanos_miembro";
 
 const ENDPOINT = "https://waba.360dialog.io/v1/messages";
 const TIMEOUT_MS = 10_000;

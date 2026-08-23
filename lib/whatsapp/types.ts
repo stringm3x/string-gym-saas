@@ -96,4 +96,15 @@ export type WhatsappEvent =
       miembroTelefono: string | null;
       miembroNombre: string;
       visitasRestantes: number;
-    });
+    })
+  | (GymWa &
+      MiembroDest & {
+        // Reactivación (D-retención): N días después de vencer, sin renovar.
+        tipo: "MEMBRESIA_REACTIVACION";
+        diasVencido: number;
+      })
+  | (GymWa &
+      MiembroDest & {
+        // Cumpleaños (D-retención): felicitación automática el día.
+        tipo: "CUMPLEANOS";
+      });
