@@ -3,7 +3,9 @@
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { LuSearch, LuX } from "react-icons/lu";
 import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { MiembroConTags } from "@/lib/queries/miembros.queries";
@@ -17,6 +19,7 @@ import {
   updateMiembroAction,
   type MiembroFormState,
 } from "@/app/(tenant)/[slug]/miembros/actions";
+import { searchMiembrosAction } from "@/app/(tenant)/[slug]/checkins/actions";
 
 interface MiembroFormProps {
   mode: "create" | "edit";
@@ -28,6 +31,8 @@ interface MiembroFormProps {
   disabled?: boolean;
   planes?: PlanMembresia[];
   promocionesMembresia?: Promocion[];
+  /** Nombre del referidor, si `miembro.referido_por` ya está capturado. */
+  referidoPorNombre?: string | null;
 }
 
 const initialState: MiembroFormState = {
@@ -36,7 +41,7 @@ const initialState: MiembroFormState = {
   fieldErrors: {},
 };
 
-export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, availableTags = [], disabled = false, planes = [], promocionesMembresia = [] }: MiembroFormProps) {
+export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, availableTags = [], disabled = false, planes = [], promocionesMembresia = [], referidoPorNombre = null }: MiembroFormProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
   const [isNavigating, startNavigation] = useTransition();
@@ -66,6 +71,9 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
   );
   const [fechaVencimiento, setFechaVencimiento] = useState(
     miembro?.fecha_vencimiento ?? ""
+  );
+  const [fechaNacimiento, setFechaNacimiento] = useState(
+    miembro?.fecha_nacimiento ?? ""
   );
 
   useEffect(() => {
@@ -153,6 +161,25 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
           error={state.fieldErrors.fecha_vencimiento}
           description="Opcional — se calcula al registrar un pago"
         />
+
+        <Input
+          label="Fecha de nacimiento"
+          name="fecha_nacimiento"
+          type="date"
+          value={fechaNacimiento}
+          onChange={(e) => setFechaNacimiento(e.target.value)}
+          error={state.fieldErrors.fecha_nacimiento}
+          description="Opcional — para felicitarlo en su cumpleaños"
+        />
+
+        <div className="sm:col-span-2">
+          <ReferidoPorField
+            excludeId={miembro?.id}
+            initialId={miembro?.referido_por ?? null}
+            initialNombre={referidoPorNombre}
+            error={state.fieldErrors.referido_por}
+          />
+        </div>
       </div>
 
       {availableTags.length > 0 && (
@@ -229,5 +256,105 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
       </div>
       </fieldset>
     </form>
+  );
+}
+
+function ReferidoPorField({
+  excludeId,
+  initialId,
+  initialNombre,
+  error,
+}: {
+  excludeId?: string;
+  initialId: string | null;
+  initialNombre: string | null;
+  error?: string;
+}) {
+  const [selected, setSelected] = useState<{ id: string; nombre: string } | null>(
+    initialId && initialNombre ? { id: initialId, nombre: initialNombre } : null
+  );
+  const [query, setQuery] = useState("");
+  const [resultados, setResultados] = useState<
+    { id: string; nombre: string; telefono: string | null }[]
+  >([]);
+
+  useEffect(() => {
+    if (selected) return;
+    let cancelado = false;
+    const t = window.setTimeout(async () => {
+      if (query.trim().length < 2) {
+        if (!cancelado) setResultados([]);
+        return;
+      }
+      const r = await searchMiembrosAction(query);
+      if (!cancelado) {
+        setResultados(r.filter((m) => m.id !== excludeId));
+      }
+    }, 250);
+    return () => {
+      cancelado = true;
+      window.clearTimeout(t);
+    };
+  }, [query, selected, excludeId]);
+
+  return (
+    <div className="space-y-1.5">
+      <Label>Referido por</Label>
+      <input type="hidden" name="referido_por" value={selected?.id ?? ""} />
+
+      {selected ? (
+        <div className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
+          <span className="text-text-primary">{selected.nombre}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setSelected(null);
+              setQuery("");
+            }}
+            className="text-text-muted hover:text-danger"
+            aria-label="Quitar referido"
+          >
+            <LuX className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <div className="relative">
+          <Input
+            type="search"
+            placeholder="Buscar miembro que lo refirió…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            leftSlot={<LuSearch className="h-4 w-4" />}
+            autoComplete="off"
+          />
+          {resultados.length > 0 && (
+            <ul className="absolute z-10 mt-1 w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+              {resultados.map((m) => (
+                <li key={m.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelected({ id: m.id, nombre: m.nombre });
+                      setResultados([]);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-hover"
+                  >
+                    {m.nombre}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="text-xs text-danger">
+          {error}
+        </p>
+      )}
+      <p className="text-xs text-text-muted">
+        Opcional — para llevar el conteo de referidos de cada miembro
+      </p>
+    </div>
   );
 }

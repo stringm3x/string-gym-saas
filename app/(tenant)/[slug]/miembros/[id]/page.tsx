@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
-import { getMiembro } from "@/lib/queries/miembros.queries";
+import { getMiembro, listReferidos } from "@/lib/queries/miembros.queries";
 import { listCheckinsByMiembro } from "@/lib/queries/checkins.queries";
 import { listPagosByMiembro } from "@/lib/queries/pagos.queries";
 import { listTags, getTagsForMiembro } from "@/lib/queries/tags.queries";
@@ -11,11 +11,13 @@ import { listNotas } from "@/lib/queries/notas.queries";
 import { listPlantillas } from "@/lib/queries/plantillas.queries";
 import { hasFeature } from "@/lib/features";
 import { hasPermission } from "@/lib/permissions";
+import { hoyISO, hoyCDMX } from "@/lib/utils/dates";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { NotasTimeline } from "@/components/miembros/NotasTimeline";
 import { NotasLegacy } from "@/components/miembros/NotasLegacy";
 import { AccionesRapidas } from "@/components/ui/AccionesRapidas";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
+import { RiesgoInactividadBadge } from "@/components/miembros/RiesgoInactividadBadge";
 import { MiembroArchivarButton } from "@/components/miembros/MiembroArchivarButton";
 import { RenovarButton } from "@/components/miembros/RenovarButton";
 import { MembresiaAcciones } from "@/components/miembros/MembresiaAcciones";
@@ -113,16 +115,40 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const qrDataUrl =
-    canQr && qrData ? await generarQRDataUrl(qrData.qr_token) : null;
+  const [qrDataUrl, referidoPor, referidos] = await Promise.all([
+    canQr && qrData ? generarQRDataUrl(qrData.qr_token) : Promise.resolve(null),
+    miembro.referido_por
+      ? getMiembro(tenant.id, miembro.referido_por)
+      : Promise.resolve(null),
+    listReferidos(tenant.id, miembro.id),
+  ]);
 
   const canTags = hasFeature(tenant.plan, "tags");
   const canTimeline = hasFeature(tenant.plan, "timeline_notas");
   const canPlantillas = hasFeature(tenant.plan, "plantillas_mensaje");
   const canArchivar = hasPermission(tenant.role, "eliminar_archivar_miembros");
   const canCobrar = hasPermission(tenant.role, "registrar_pagos");
+  const canPortal = hasFeature(tenant.plan, "portal_miembro");
+  const portalUrl = canPortal
+    ? `https://${process.env.APP_DOMAIN ?? "app.gym.stringwebs.com"}/portal/${slug}/login`
+    : null;
 
   const miembroConTags = { ...miembro, tags: miembroTags };
+
+  // Riesgo de inactividad: mismo umbral (14+ días sin check-in) que dispara
+  // el aviso automático al dueño, pero visible aquí en el momento en que el
+  // staff está viendo la ficha — no solo una vez al día por WhatsApp.
+  const vigente =
+    !miembro.archivado &&
+    !!miembro.fecha_vencimiento &&
+    miembro.fecha_vencimiento >= hoyISO();
+  const diasSinCheckin = checkins[0]
+    ? Math.floor(
+        (hoyCDMX().getTime() - new Date(checkins[0].fecha_hora).getTime()) /
+          86_400_000
+      )
+    : null;
+  const enRiesgo = vigente && diasSinCheckin !== null && diasSinCheckin >= 14;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -144,6 +170,9 @@ export default async function MiembroDetailPage({ params }: PageProps) {
               fechaVencimiento={miembro.fecha_vencimiento}
               visitasRestantes={miembro.visitas_restantes}
             />
+            {enRiesgo && diasSinCheckin !== null && (
+              <RiesgoInactividadBadge dias={diasSinCheckin} />
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -187,6 +216,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
               entidadTipo="miembro"
               entidadId={miembro.id}
               plantillas={canPlantillas ? plantillas : []}
+              portalUrl={portalUrl}
             />
 
             {!miembro.archivado && canArchivar && (
@@ -200,6 +230,25 @@ export default async function MiembroDetailPage({ params }: PageProps) {
             )}
           </div>
         </div>
+
+        {(referidoPor || referidos.length > 0) && (
+          <p className="mt-2 text-xs text-text-secondary">
+            {referidoPor && (
+              <>
+                Referido por{" "}
+                <Link
+                  href={`/${slug}/miembros/${referidoPor.id}`}
+                  className="font-medium text-text-primary hover:text-brand-green"
+                >
+                  {referidoPor.nombre}
+                </Link>
+              </>
+            )}
+            {referidoPor && referidos.length > 0 && " · "}
+            {referidos.length > 0 &&
+              `${referidos.length} ${referidos.length === 1 ? "referido" : "referidos"} activos`}
+          </p>
+        )}
       </div>
 
       {miembro.archivado && (
@@ -215,6 +264,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           mode="edit"
           slug={slug}
           miembro={miembroConTags}
+          referidoPorNombre={referidoPor?.nombre ?? null}
           availableTags={canTags ? availableTags : []}
           disabled={miembro.archivado}
         />
@@ -228,7 +278,9 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           />
         )}
 
-      {eventosMembresia.length > 0 && (
+      {/* Con timeline unificado (Pro+), los eventos de membresía se fusionan
+          dentro de NotasTimeline en vez de mostrarse en un bloque aparte. */}
+      {!canTimeline && eventosMembresia.length > 0 && (
         <EventosTimeline eventos={eventosMembresia} />
       )}
 
@@ -239,6 +291,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
             entidadId={id}
             notas={notas}
             legacyNotas={miembro.notas}
+            eventos={eventosMembresia}
           />
         ) : (
           <NotasLegacy miembroId={miembro.id} notas={miembro.notas} />

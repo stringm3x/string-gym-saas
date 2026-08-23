@@ -19,6 +19,8 @@ export interface Miembro {
   plan_id: string | null;
   visitas_restantes: number | null;
   origen_importacion: string | null;
+  fecha_nacimiento: string | null;
+  referido_por: string | null;
   created_at: string;
 }
 
@@ -30,13 +32,25 @@ export interface MiembrosListParams {
   tenantId: string;
   search?: string;
   filter?: "all" | "activos" | "inactivos" | "por_vencer" | "sin_telefono";
-  tagId?: string;
+  /** Uno o más tags — semántica OR (miembro tiene AL MENOS uno de estos). */
+  tagIds?: string[];
   /** Incluye archivados junto con los activos. */
   incluirArchivados?: boolean;
   /** Muestra únicamente los archivados. */
   soloArchivados?: boolean;
   /** Filtra por origen: manual (sin importar) o csv (importados). */
   origen?: "todos" | "manual" | "csv";
+  /** Página 1-based. Default 1. */
+  page?: number;
+  /** Miembros por página. Default 50. */
+  pageSize?: number;
+}
+
+export interface MiembrosListResult {
+  miembros: MiembroConTags[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 type MiembroRaw = Miembro & {
@@ -47,29 +61,44 @@ export async function listMiembros({
   tenantId,
   search,
   filter = "all",
-  tagId,
+  tagIds,
   incluirArchivados = false,
   soloArchivados = false,
   origen = "todos",
-}: MiembrosListParams): Promise<MiembroConTags[]> {
+  page = 1,
+  pageSize = 50,
+}: MiembrosListParams): Promise<MiembrosListResult> {
   const supabase = await createClient();
+  const paginaActual = Math.max(1, page);
+  const from = (paginaActual - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const vacio: MiembrosListResult = {
+    miembros: [],
+    total: 0,
+    page: paginaActual,
+    pageSize,
+  };
 
-  // Si hay filtro por tag, primero obtenemos los IDs de miembros con ese tag.
+  // Si hay filtro por tags, primero obtenemos los IDs de miembros con
+  // alguno de esos tags (OR — "tiene el tag A o el tag B").
   let allowedIds: string[] | null = null;
-  if (tagId) {
+  if (tagIds && tagIds.length > 0) {
     const { data: tagged } = await supabase
       .from("miembros_tags")
       .select("miembro_id")
       .eq("tenant_id", tenantId)
-      .eq("tag_id", tagId);
+      .in("tag_id", tagIds);
 
-    allowedIds = (tagged ?? []).map((r) => r.miembro_id as string);
-    if (allowedIds.length === 0) return [];
+    allowedIds = [...new Set((tagged ?? []).map((r) => r.miembro_id as string))];
+    if (allowedIds.length === 0) return vacio;
   }
 
   let query = supabase
     .from("miembros")
-    .select("*, miembros_tags(tags(id, nombre, color, tenant_id, created_at))")
+    .select(
+      "*, miembros_tags(tags(id, nombre, color, tenant_id, created_at))",
+      { count: "exact" }
+    )
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false });
 
@@ -120,14 +149,14 @@ export async function listMiembros({
     );
   }
 
-  const { data, error } = await query;
+  const { data, error, count } = await query.range(from, to);
 
   if (error) {
     console.error("listMiembros error:", error);
-    return [];
+    return vacio;
   }
 
-  return ((data ?? []) as unknown as MiembroRaw[]).map(
+  const miembros = ((data ?? []) as unknown as MiembroRaw[]).map(
     ({ miembros_tags, ...rest }) => ({
       ...rest,
       tags: (miembros_tags ?? [])
@@ -135,6 +164,8 @@ export async function listMiembros({
         .filter((t): t is Tag => t !== null),
     })
   );
+
+  return { miembros, total: count ?? miembros.length, page: paginaActual, pageSize };
 }
 
 export async function getMiembro(
@@ -168,6 +199,8 @@ export async function createMiembro(
     email: input.email || null,
     fecha_inscripcion: input.fecha_inscripcion,
     fecha_vencimiento: input.fecha_vencimiento || null,
+    fecha_nacimiento: input.fecha_nacimiento || null,
+    referido_por: input.referido_por || null,
     plan_id: planId ?? null,
   };
 
@@ -194,6 +227,27 @@ export async function createMiembro(
   });
 
   return { ok: true, id: data.id };
+}
+
+export interface ReferidoLite {
+  id: string;
+  nombre: string;
+}
+
+/** Miembros no archivados que este miembro refirió (D — programa de referidos). */
+export async function listReferidos(
+  tenantId: string,
+  miembroId: string
+): Promise<ReferidoLite[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("miembros")
+    .select("id, nombre")
+    .eq("tenant_id", tenantId)
+    .eq("referido_por", miembroId)
+    .eq("archivado", false)
+    .order("nombre");
+  return (data ?? []) as ReferidoLite[];
 }
 
 export interface MiembroDuplicado {
@@ -338,6 +392,8 @@ export async function updateMiembro(
     email: input.email || null,
     fecha_inscripcion: input.fecha_inscripcion,
     fecha_vencimiento: input.fecha_vencimiento || null,
+    fecha_nacimiento: input.fecha_nacimiento || null,
+    referido_por: input.referido_por || null,
   };
   // Solo tocar plan_id si se pasó explícitamente (no pisar en edición normal).
   if (planId !== undefined) {

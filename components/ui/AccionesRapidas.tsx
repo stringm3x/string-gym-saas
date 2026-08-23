@@ -8,6 +8,7 @@ import {
   LuMail,
   LuCheck,
   LuChevronDown,
+  LuLogIn,
 } from "react-icons/lu";
 import { useToast } from "@/components/ui/Toast";
 import { registrarAccionAction } from "@/app/(tenant)/[slug]/notas/actions";
@@ -31,6 +32,8 @@ interface AccionesRapidasProps {
   entidadTipo: "miembro" | "prospecto";
   entidadId: string;
   plantillas?: PlantillaMensaje[];
+  /** URL de login al portal del miembro — si viene, muestra el botón "Portal". */
+  portalUrl?: string | null;
 }
 
 export function AccionesRapidas({
@@ -42,6 +45,7 @@ export function AccionesRapidas({
   entidadTipo,
   entidadId,
   plantillas = [],
+  portalUrl,
 }: AccionesRapidasProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -106,6 +110,31 @@ export function AccionesRapidas({
     await registrar(nota, "whatsapp");
     setLoading(null);
     success("WhatsApp registrado");
+  }
+
+  async function handlePortal() {
+    if (!portalUrl || (!telefono && !email)) return;
+    setShowPlantillas(false);
+
+    const mensaje = `Hola ${nombre}, aquí puedes entrar a tu portal${gymNombre ? ` de ${gymNombre}` : ""}: ${portalUrl}\n\nAhí ves tu membresía, tus check-ins y puedes renovar o reservar clases.`;
+
+    if (telefono) {
+      const numero = telefono.replace(/\D/g, "");
+      window.open(
+        `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`,
+        "_blank"
+      );
+    } else if (email) {
+      window.open(
+        `mailto:${email}?subject=${encodeURIComponent("Tu acceso al portal")}&body=${encodeURIComponent(mensaje)}`,
+        "_self"
+      );
+    }
+
+    setLoading("portal");
+    await registrar("Acceso al portal enviado", "whatsapp");
+    setLoading(null);
+    success("Acceso al portal enviado");
   }
 
   function handleEmail() {
@@ -209,6 +238,20 @@ export function AccionesRapidas({
         <LuMail className="h-3.5 w-3.5" />
         Email
       </button>
+
+      {/* Portal — solo aplica a miembros (los prospectos no tienen cuenta) */}
+      {entidadTipo === "miembro" && portalUrl && (
+        <button
+          type="button"
+          onClick={handlePortal}
+          disabled={(!telefono && !email) || loading === "portal"}
+          title="Enviar acceso al portal"
+          className={`${btnBase} ${btnDefault}`}
+        >
+          <LuLogIn className="h-3.5 w-3.5" />
+          Portal
+        </button>
+      )}
 
       {/* Marcar contactado */}
       <button

@@ -43,6 +43,12 @@ const miembroBaseObject = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
     .optional()
     .or(z.literal("")),
+  fecha_nacimiento: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
+    .optional()
+    .or(z.literal("")),
+  referido_por: z.string().uuid().optional().or(z.literal("")),
 });
 
 const requiereContacto = (data: { telefono?: string; email?: string }) =>

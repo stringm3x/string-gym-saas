@@ -51,6 +51,8 @@ function parseFormData(formData: FormData) {
     email: String(formData.get("email") ?? ""),
     fecha_inscripcion: String(formData.get("fecha_inscripcion") ?? ""),
     fecha_vencimiento: String(formData.get("fecha_vencimiento") ?? ""),
+    fecha_nacimiento: String(formData.get("fecha_nacimiento") ?? ""),
+    referido_por: String(formData.get("referido_por") ?? ""),
     prospecto_id: String(formData.get("prospecto_id") ?? ""),
     tag_ids: formData.getAll("tag_ids").map(String),
   };
@@ -116,6 +118,8 @@ export async function createMiembroAction(
       email: data.email,
       fecha_inscripcion: data.fecha_inscripcion,
       fecha_vencimiento: data.fecha_vencimiento,
+      fecha_nacimiento: data.fecha_nacimiento,
+      referido_por: data.referido_por,
     },
     data.plan_id || null
   );

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { LuSearch } from "react-icons/lu";
+import { LuSearch, LuChevronDown } from "react-icons/lu";
 import { cn } from "@/lib/utils/cn";
 import { Input } from "@/components/ui/Input";
 import { hasFeature, type Plan } from "@/lib/features";
@@ -39,9 +39,12 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
+  const [tagsOpen, setTagsOpen] = useState(false);
 
   const currentSearch = searchParams.get("q") ?? "";
-  const currentTag = searchParams.get("tag") ?? "";
+  const currentTags = (searchParams.get("tags") ?? "")
+    .split(",")
+    .filter(Boolean);
   const currentOrigen = searchParams.get("origen") ?? "todos";
   // Estado derivado: archivado tiene prioridad; si no, el filtro de membresía.
   const currentEstado: Estado = searchParams.get("archivado") === "true"
@@ -59,6 +62,7 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
       } else {
         params.delete("q");
       }
+      params.delete("page");
       startTransition(() => {
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
       });
@@ -78,18 +82,29 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
       if (estado === "all") params.delete("filter");
       else params.set("filter", estado);
     }
+    params.delete("page");
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     });
   }
 
-  function setTagFilter(tagId: string) {
+  function toggleTag(tagId: string) {
+    const next = currentTags.includes(tagId)
+      ? currentTags.filter((t) => t !== tagId)
+      : [...currentTags, tagId];
     const params = new URLSearchParams(searchParams.toString());
-    if (!tagId) {
-      params.delete("tag");
-    } else {
-      params.set("tag", tagId);
-    }
+    if (next.length === 0) params.delete("tags");
+    else params.set("tags", next.join(","));
+    params.delete("page");
+    startTransition(() => {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  }
+
+  function clearTags() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("tags");
+    params.delete("page");
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     });
@@ -102,6 +117,7 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
     } else {
       params.set("origen", origen);
     }
+    params.delete("page");
     startTransition(() => {
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     });
@@ -158,28 +174,64 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
         </div>
 
         {canTags && availableTags.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted">Tag:</span>
-            <select
-              value={currentTag}
-              onChange={(e) => setTagFilter(e.target.value)}
-              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs text-text-primary focus:border-brand-green focus:outline-none"
+          <div className="relative flex items-center gap-2">
+            <span className="text-xs text-text-muted">Tags:</span>
+            <button
+              type="button"
+              onClick={() => setTagsOpen((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors duration-150",
+                currentTags.length > 0
+                  ? "border-brand-green/40 bg-brand-green/10 text-brand-green"
+                  : "border-border bg-surface text-text-primary hover:border-text-muted"
+              )}
             >
-              <option value="">Todos los tags</option>
-              {availableTags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.nombre}
-                </option>
-              ))}
-            </select>
-            {currentTag && (
+              {currentTags.length === 0
+                ? "Todos los tags"
+                : `${currentTags.length} seleccionado${currentTags.length === 1 ? "" : "s"}`}
+              <LuChevronDown
+                className={cn(
+                  "h-3 w-3 transition-transform",
+                  tagsOpen && "rotate-180"
+                )}
+              />
+            </button>
+            {currentTags.length > 0 && (
               <button
                 type="button"
-                onClick={() => setTagFilter("")}
+                onClick={clearTags}
                 className="text-xs text-text-muted underline hover:text-text-primary"
               >
                 Limpiar
               </button>
+            )}
+
+            {tagsOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setTagsOpen(false)}
+                />
+                <div className="absolute left-0 top-full z-20 mt-1 w-56 rounded-xl border border-border bg-surface p-1 shadow-lg">
+                  {availableTags.map((tag) => {
+                    const checked = currentTags.includes(tag.id);
+                    return (
+                      <label
+                        key={tag.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-primary hover:bg-surface-hover"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleTag(tag.id)}
+                          className="h-3.5 w-3.5 rounded border-border accent-brand-green"
+                        />
+                        {tag.nombre}
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         )}
