@@ -1,11 +1,45 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PagoInput } from "@/lib/validations/pago.schema";
 import type { VisitaRapidaInput } from "@/lib/validations/visita-rapida.schema";
 import { generarTokenRecibo } from "@/lib/utils/tokens";
 import { createNotification } from "@/lib/utils/notifications";
 import { hoyCDMX, hoyISO, inicioDeMesCDMX, isoMasDias } from "@/lib/utils/dates";
 import { emitPagoRegistrado } from "@/lib/whatsapp/emit";
+import { getCajaDefault, resolverCajaDeVenta } from "@/lib/queries/cajas.queries";
+
+/**
+ * Enlaza uno o más pagos ya creados a una caja (ver sql/063_cajas_multiples.sql).
+ * Si no se especifica cajaId (pagos sin punto de venta físico: portal, kiosco,
+ * MercadoPago, cuotas de crédito…), cae en la caja default del gym. Best-effort:
+ * un fallo aquí no debe deshacer un cobro que ya se registró de verdad.
+ */
+async function registrarCajaDePagos(
+  supabase: SupabaseClient,
+  tenantId: string,
+  pagoIds: string[],
+  cajaId?: string
+): Promise<void> {
+  if (pagoIds.length === 0) return;
+  try {
+    let caja = cajaId;
+    if (!caja) {
+      const def = await getCajaDefault(tenantId);
+      if (!def) return;
+      caja = def.id;
+    }
+    await supabase.from("pagos_caja").insert(
+      pagoIds.map((pago_id) => ({
+        tenant_id: tenantId,
+        pago_id,
+        caja_id: caja,
+      }))
+    );
+  } catch (err) {
+    console.error("[pagos] registrarCajaDePagos:", err);
+  }
+}
 
 export type CategoriaCaja =
   | "all"
@@ -60,7 +94,8 @@ export interface PagoConMiembro extends Pago {
  */
 export async function createPago(
   tenantId: string,
-  input: PagoInput
+  input: PagoInput,
+  cajaId?: string
 ): Promise<
   { ok: true; id: string; token: string } | { ok: false; error: string }
 > {
@@ -96,6 +131,8 @@ export async function createPago(
   }
 
   const data = { id: pagoId as string };
+
+  await registrarCajaDePagos(supabase, tenantId, [data.id], cajaId);
 
   // Notificación in-app (Fase 7.3). No bloquea el pago si falla.
   let quien = "";
@@ -248,7 +285,29 @@ export async function registrarTicket(
     }
     return { ok: false, error: msg || "No se pudo registrar el ticket." };
   }
-  return { ok: true, ticketId: data as string, token };
+
+  const ticketId = data as string;
+
+  // El RPC crea una fila en `pagos` por línea, todas con el mismo ticket_id.
+  // Cada línea resuelve su propia caja por su producto (un ticket puede
+  // mezclar, ej., un agua y una membresía — cada una a su caja).
+  const { data: lineas } = await supabase
+    .from("pagos")
+    .select("id, producto_id")
+    .eq("tenant_id", tenantId)
+    .eq("ticket_id", ticketId);
+
+  await Promise.all(
+    (lineas ?? []).map(async (l) => {
+      const caja = await resolverCajaDeVenta(
+        tenantId,
+        (l.producto_id as string | null) ?? null
+      );
+      await registrarCajaDePagos(supabase, tenantId, [l.id as string], caja ?? undefined);
+    })
+  );
+
+  return { ok: true, ticketId, token };
 }
 
 /**
@@ -257,7 +316,8 @@ export async function registrarTicket(
  */
 export async function createVisitaRapida(
   tenantId: string,
-  input: VisitaRapidaInput
+  input: VisitaRapidaInput,
+  cajaId?: string
 ): Promise<
   { ok: true; id: string; token: string } | { ok: false; error: string }
 > {
@@ -283,6 +343,7 @@ export async function createVisitaRapida(
   if (error || !data) {
     return { ok: false, error: error?.message ?? "No se pudo registrar la visita" };
   }
+  await registrarCajaDePagos(supabase, tenantId, [data.id], cajaId);
   return { ok: true, id: data.id, token };
 }
 
@@ -402,7 +463,8 @@ function categoriaAConceptos(cat: CategoriaCaja): string[] | null {
 export async function listPagosDelDia(
   tenantId: string,
   categoria: CategoriaCaja = "all",
-  limit = 50
+  limit = 50,
+  cajaId?: string
 ): Promise<PagoConMiembro[]> {
   const supabase = await createClient();
 
@@ -416,7 +478,9 @@ export async function listPagosDelDia(
     .eq("tenant_id", tenantId)
     .gte("fecha_pago", inicioHoy.toISOString())
     .order("fecha_pago", { ascending: false })
-    .limit(limit);
+    // Se filtra por caja después de traer (pagos_caja es una tabla aparte),
+    // así que se pide de más para no truncar antes de filtrar.
+    .limit(cajaId ? limit * 3 : limit);
 
   if (categoria === "visitas") {
     q = q.eq("es_visita_rapida", true);
@@ -428,7 +492,12 @@ export async function listPagosDelDia(
   const { data, error } = await q;
   if (error || !data) return [];
 
-  return data.map((row: any) => ({
+  const filtrados = (await filtrarPorCaja(supabase, tenantId, cajaId, data)).slice(
+    0,
+    limit
+  );
+
+  return filtrados.map((row: any) => ({
     id: row.id,
     tenant_id: row.tenant_id,
     miembro_id: row.miembro_id,
@@ -455,6 +524,29 @@ export async function listPagosDelDia(
   }));
 }
 
+/** Acota `rows` (cada uno con `id`) a los que pertenecen a `cajaId`. Sin
+ * cajaId, devuelve todo tal cual (comportamiento de antes de que existieran
+ * las cajas múltiples). */
+async function filtrarPorCaja<T extends { id: string }>(
+  supabase: SupabaseClient,
+  tenantId: string,
+  cajaId: string | undefined,
+  rows: T[]
+): Promise<T[]> {
+  if (!cajaId || rows.length === 0) return rows;
+  const { data } = await supabase
+    .from("pagos_caja")
+    .select("pago_id")
+    .eq("tenant_id", tenantId)
+    .eq("caja_id", cajaId)
+    .in(
+      "pago_id",
+      rows.map((r) => r.id)
+    );
+  const ids = new Set((data ?? []).map((r) => r.pago_id as string));
+  return rows.filter((r) => ids.has(r.id));
+}
+
 export interface ResumenPeriodo {
   total: number;
   cantidad: number;
@@ -472,7 +564,8 @@ export interface ResumenCaja {
  */
 export async function getResumenCaja(
   tenantId: string,
-  categoria: CategoriaCaja = "all"
+  categoria: CategoriaCaja = "all",
+  cajaId?: string
 ): Promise<ResumenCaja> {
   const supabase = await createClient();
 
@@ -488,7 +581,7 @@ export async function getResumenCaja(
 
   let q = supabase
     .from("pagos")
-    .select("monto, fecha_pago, concepto")
+    .select("id, monto, fecha_pago, concepto")
     .eq("tenant_id", tenantId)
     .is("anulado_at", null) // los pagos anulados no cuentan en totales
     .is("reembolsado_at", null) // ni los reembolsados
@@ -501,7 +594,7 @@ export async function getResumenCaja(
     if (conceptos) q = q.in("concepto", conceptos);
   }
 
-  const { data, error } = await q;
+  const { data: dataCruda, error } = await q;
 
   const empty: ResumenPeriodo = { total: 0, cantidad: 0 };
   const resumen: ResumenCaja = {
@@ -510,7 +603,9 @@ export async function getResumenCaja(
     mes: { ...empty },
   };
 
-  if (error || !data) return resumen;
+  if (error || !dataCruda) return resumen;
+
+  const data = await filtrarPorCaja(supabase, tenantId, cajaId, dataCruda);
 
   for (const p of data) {
     const monto = Number(p.monto);

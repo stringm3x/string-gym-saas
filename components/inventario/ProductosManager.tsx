@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatMoneda } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 import type { ProductoConStock } from "@/lib/queries/productos.queries";
+import type { Caja } from "@/lib/queries/cajas.queries";
 import {
   createProductoAction,
   updateProductoAction,
@@ -29,6 +30,7 @@ import {
 
 interface ProductosManagerProps {
   productos: ProductoConStock[];
+  cajas: Caja[];
 }
 
 const emptyProd: ProductoFormState = {
@@ -48,7 +50,7 @@ type Modal =
   | { kind: "ajuste"; producto: ProductoConStock }
   | null;
 
-export function ProductosManager({ productos }: ProductosManagerProps) {
+export function ProductosManager({ productos, cajas }: ProductosManagerProps) {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<Modal>(null);
   const [modalKey, setModalKey] = useState(0);
@@ -208,7 +210,12 @@ export function ProductosManager({ productos }: ProductosManagerProps) {
         </div>
       )}
 
-      <ProductoFormModal key={`form-${modalKey}`} modal={modal} onClose={closeModal} />
+      <ProductoFormModal
+        key={`form-${modalKey}`}
+        modal={modal}
+        onClose={closeModal}
+        cajas={cajas}
+      />
       <AjusteModal key={`ajuste-${modalKey}`} modal={modal} onClose={closeModal} />
     </div>
   );
@@ -245,9 +252,11 @@ function Td({ children }: { children: React.ReactNode }) {
 function ProductoFormModal({
   modal,
   onClose,
+  cajas,
 }: {
   modal: Modal;
   onClose: () => void;
+  cajas: Caja[];
 }) {
   const { success } = useToast();
   const isOpen =
@@ -323,6 +332,28 @@ function ProductoFormModal({
             description="Para calcular margen"
           />
         </div>
+
+        {cajas.length > 1 && (
+          <div className="space-y-1.5">
+            <Label>Caja</Label>
+            <select
+              name="caja_id"
+              defaultValue={producto?.caja_id ?? ""}
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+            >
+              {cajas.map((c) => (
+                <option key={c.id} value={c.es_default ? "" : c.id}>
+                  {c.nombre}
+                  {c.es_default ? " (default)" : ""}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-text-muted">
+              A qué caja cuenta la venta de este producto — no hace falta
+              cambiar de pestaña en Caja para cobrarlo bien.
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           {!isEdit && (

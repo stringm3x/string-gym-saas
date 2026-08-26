@@ -44,6 +44,7 @@ export function ConfigNav({ slug, plan, role }: ConfigNavProps) {
           feature: "promociones",
           permiso: "configurar_planes_promociones",
         },
+        { label: "Cajas", href: `${base}/cajas` },
       ],
     },
     {

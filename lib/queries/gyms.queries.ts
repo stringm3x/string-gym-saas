@@ -18,6 +18,8 @@ export interface GymFull extends GymInfo {
   rfc: string | null;
   checkin_bloquea_vencidos: boolean;
   congelacion_auto_aprobar: boolean;
+  /** Exige PIN de staff al abrir/cerrar turno de caja (tablet compartida). */
+  caja_checkin_pin: boolean;
 }
 
 /**
@@ -46,7 +48,7 @@ export async function getGymFull(tenantId: string): Promise<GymFull | null> {
   const { data, error } = await supabase
     .from("gyms")
     .select(
-      "id, slug, nombre, logo_url, telefono, direccion, rfc, checkin_bloquea_vencidos, congelacion_auto_aprobar"
+      "id, slug, nombre, logo_url, telefono, direccion, rfc, checkin_bloquea_vencidos, congelacion_auto_aprobar, caja_checkin_pin"
     )
     .eq("id", tenantId)
     .single();

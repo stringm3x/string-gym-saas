@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LuWallet, LuReceipt } from "react-icons/lu";
 import {
   listPagosDelDia,
@@ -9,8 +10,12 @@ import { listPromociones } from "@/lib/queries/promociones.queries";
 import { listProductosParaVenta } from "@/lib/queries/productos.queries";
 import { getTenant } from "@/lib/tenant";
 import { hasFeature } from "@/lib/features";
-import { getGymInfo } from "@/lib/queries/gyms.queries";
+import { getGymFull } from "@/lib/queries/gyms.queries";
+import { listStaffParaCheckin } from "@/lib/queries/staff.queries";
+import { listCajas } from "@/lib/queries/cajas.queries";
 import { formatMoneda } from "@/lib/utils/format";
+import { hoyCDMX } from "@/lib/utils/dates";
+import { cn } from "@/lib/utils/cn";
 import {
   getCodigosPendientes,
   limpiarExpirados,
@@ -19,6 +24,7 @@ import {
   getCorteAbierto,
   resumenCorteEnVivo,
   resumenCorteEnVivoPorConcepto,
+  listCajasAbiertas,
 } from "@/lib/queries/cortes.queries";
 import { listPagosExternosPendientes } from "@/lib/queries/mercadopago.queries";
 import { CobroSwitcher } from "@/components/caja/CobroSwitcher";
@@ -32,7 +38,7 @@ import { CortePanel } from "@/components/caja/CortePanel";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ cat?: string }>;
+  searchParams: Promise<{ cat?: string; caja?: string }>;
 }
 
 function parseCategoria(value?: string): CategoriaCaja {
@@ -62,16 +68,14 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
   if (canAutoservicio) await limpiarExpirados(tenant.id);
 
   const [
-    pagos,
-    resumen,
+    cajas,
     planes,
     promocionesMembresia,
     promocionesProducto,
     productos,
     gym,
   ] = await Promise.all([
-    listPagosDelDia(tenant.id, categoria, 50),
-    getResumenCaja(tenant.id, categoria),
+    listCajas(tenant.id),
     listPlanes(tenant.id, { soloActivos: true }),
     listPromociones(tenant.id, {
       soloActivasVigentes: true,
@@ -79,23 +83,77 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     }),
     listPromociones(tenant.id, { soloActivasVigentes: true, tipo: "producto" }),
     listProductosParaVenta(tenant.id),
-    getGymInfo(tenant.id),
+    getGymFull(tenant.id),
   ]);
 
-  const codigosPendientes = canAutoservicio
-    ? await getCodigosPendientes(tenant.id)
-    : [];
-  const pagosMpPendientes = canMp
-    ? await listPagosExternosPendientes(tenant.id)
-    : [];
+  // Fallback defensivo: todo gym tiene al menos una caja default por
+  // backfill (sql/063_cajas_multiples.sql), pero si por lo que sea no la
+  // tuviera, evita romper la página entera.
+  const cajaActiva =
+    cajas.find((c) => c.id === sp.caja) ??
+    cajas.find((c) => c.es_default) ??
+    cajas[0] ??
+    null;
 
-  const corte = await getCorteAbierto(tenant.id);
-  const [corteTotales, corteTotalesPorConcepto] = corte
-    ? await Promise.all([
-        resumenCorteEnVivo(tenant.id, corte.abierto_at),
-        resumenCorteEnVivoPorConcepto(tenant.id, corte.abierto_at),
-      ])
-    : [null, null];
+  const [
+    pagos,
+    resumen,
+    codigosPendientes,
+    pagosMpPendientes,
+    cajasAbiertas,
+  ] = await Promise.all([
+    cajaActiva
+      ? listPagosDelDia(tenant.id, categoria, 50, cajaActiva.id)
+      : Promise.resolve([]),
+    cajaActiva
+      ? getResumenCaja(tenant.id, categoria, cajaActiva.id)
+      : Promise.resolve({
+          dia: { total: 0, cantidad: 0 },
+          semana: { total: 0, cantidad: 0 },
+          mes: { total: 0, cantidad: 0 },
+        }),
+    canAutoservicio ? getCodigosPendientes(tenant.id) : Promise.resolve([]),
+    canMp ? listPagosExternosPendientes(tenant.id) : Promise.resolve([]),
+    cajas.length > 1 ? listCajasAbiertas(tenant.id) : Promise.resolve([]),
+  ]);
+
+  const cajaRequiereCuadre = cajaActiva?.requiere_cuadre ?? false;
+  const checkinRequerido = (gym?.caja_checkin_pin ?? false) && cajaRequiereCuadre;
+  const [corte, staffParaCheckin] = await Promise.all([
+    cajaActiva && cajaRequiereCuadre
+      ? getCorteAbierto(tenant.id, cajaActiva.id)
+      : Promise.resolve(null),
+    checkinRequerido ? listStaffParaCheckin(tenant.id) : Promise.resolve([]),
+  ]);
+
+  let corteTotales: Awaited<ReturnType<typeof resumenCorteEnVivo>> | null = null;
+  let corteTotalesPorConcepto: Awaited<
+    ReturnType<typeof resumenCorteEnVivoPorConcepto>
+  > | null = null;
+  if (cajaActiva && cajaRequiereCuadre && corte) {
+    [corteTotales, corteTotalesPorConcepto] = await Promise.all([
+      resumenCorteEnVivo(tenant.id, corte.caja_id, corte.abierto_at),
+      resumenCorteEnVivoPorConcepto(tenant.id, corte.caja_id, corte.abierto_at),
+    ]);
+  } else if (cajaActiva && !cajaRequiereCuadre) {
+    // Sin turno: "hoy" es simplemente desde la medianoche de México.
+    const desdeHoy = hoyCDMX().toISOString();
+    [corteTotales, corteTotalesPorConcepto] = await Promise.all([
+      resumenCorteEnVivo(tenant.id, cajaActiva.id, desdeHoy),
+      resumenCorteEnVivoPorConcepto(tenant.id, cajaActiva.id, desdeHoy),
+    ]);
+  }
+
+  const totalPorCaja = new Map(
+    cajasAbiertas.map((c) => [c.cajaId, c.totalCobrado])
+  );
+
+  function hrefCaja(cajaId: string): string {
+    const params = new URLSearchParams();
+    if (sp.cat) params.set("cat", sp.cat);
+    params.set("caja", cajaId);
+    return `/${slug}/caja?${params.toString()}`;
+  }
 
   return (
     <div className="space-y-6">
@@ -111,80 +169,138 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
         <VisitaRapidaButton />
       </div>
 
+      {cajas.length > 1 && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface p-1">
+            {cajas.map((c) => {
+              const activa = cajaActiva?.id === c.id;
+              const total = totalPorCaja.get(c.id);
+              return (
+                <Link
+                  key={c.id}
+                  href={hrefCaja(c.id)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+                    activa
+                      ? "bg-bg text-text-primary"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  {c.nombre}
+                  {total !== undefined && (
+                    <span
+                      className={cn(
+                        "ml-1.5",
+                        activa ? "text-brand-green" : "text-text-muted"
+                      )}
+                    >
+                      · {formatMoneda(total)}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+          <p className="text-xs text-text-muted">
+            No hace falta que cambies de pestaña para cobrar bien — cada
+            producto ya sabe a qué caja pertenece. Las pestañas son solo
+            para ver el corte de cada una.
+          </p>
+        </div>
+      )}
+
       {canAutoservicio && (
         <AutorizacionesPendientes codigos={codigosPendientes} />
       )}
 
-      <CortePanel
-        slug={slug}
-        corte={corte}
-        totales={corteTotales}
-        totalesPorConcepto={corteTotalesPorConcepto}
-      />
+      {cajaActiva ? (
+        <CortePanel
+          slug={slug}
+          cajaId={cajaActiva.id}
+          nombreCaja={cajaActiva.nombre}
+          requiereCuadre={cajaRequiereCuadre}
+          corte={corte}
+          totales={corteTotales}
+          totalesPorConcepto={corteTotalesPorConcepto}
+          checkinRequerido={checkinRequerido}
+          staffParaCheckin={staffParaCheckin}
+        />
+      ) : (
+        <p className="rounded-xl border border-border bg-surface px-4 py-6 text-center text-sm text-text-muted">
+          No hay ninguna caja configurada — algo salió mal al crear tu gym.
+          Contacta soporte.
+        </p>
+      )}
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-        {/* ── Acción: registrar cobro ─────────────────────── */}
-        <section className="space-y-4">
-          <SectionHeader
-            icon={<LuWallet className="h-4 w-4" />}
-            title="Registrar cobro"
-            subtitle="Cobra membresías, productos o visitas."
-            accent
-          />
-          <CobroSwitcher
-            slug={slug}
-            planes={planes}
-            promocionesMembresia={promocionesMembresia}
-            promocionesProducto={promocionesProducto}
-            productos={productos}
-          />
-
-          {canMp && (
-            <CobroMpButton planes={planes} gymNombre={gym?.nombre ?? ""} />
-          )}
-        </section>
-
-        {/* ── Reporte: cobrado hoy ─────────────────────────── */}
-        <section className="space-y-4">
-          <SectionHeader
-            icon={<LuReceipt className="h-4 w-4" />}
-            title="Cobrado hoy"
-            subtitle="Totales y movimientos del día."
-          />
-
-          <div className="flex justify-end">
-            <CajaFilters />
-          </div>
-
-          {canMp && <PagosExternosPendientes pendientes={pagosMpPendientes} />}
-
-          <div className="divide-y divide-border rounded-xl border border-border bg-surface">
-            <ResumenRow
-              label="Hoy"
-              total={formatMoneda(resumen.dia.total)}
-              cantidad={resumen.dia.cantidad}
-              prominent
+      {cajaActiva && (
+        <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+          {/* ── Acción: registrar cobro ─────────────────────── */}
+          <section className="space-y-4">
+            <SectionHeader
+              icon={<LuWallet className="h-4 w-4" />}
+              title="Registrar cobro"
+              subtitle="Cobra membresías, productos o visitas."
+              accent
             />
-            <ResumenRow
-              label="Esta semana"
-              total={formatMoneda(resumen.semana.total)}
-              cantidad={resumen.semana.cantidad}
+            <CobroSwitcher
+              slug={slug}
+              planes={planes}
+              promocionesMembresia={promocionesMembresia}
+              promocionesProducto={promocionesProducto}
+              productos={productos}
             />
-            <ResumenRow
-              label="Este mes"
-              total={formatMoneda(resumen.mes.total)}
-              cantidad={resumen.mes.cantidad}
-            />
-          </div>
 
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-              Movimientos de hoy
-            </h3>
-            <PagosFeed pagos={pagos} slug={slug} />
-          </div>
-        </section>
-      </div>
+            {canMp && (
+              <CobroMpButton planes={planes} gymNombre={gym?.nombre ?? ""} />
+            )}
+          </section>
+
+          {/* ── Reporte: cobrado hoy ─────────────────────────── */}
+          <section className="space-y-4">
+            <SectionHeader
+              icon={<LuReceipt className="h-4 w-4" />}
+              title="Cobrado hoy"
+              subtitle={
+                cajas.length > 1
+                  ? `Totales y movimientos de ${cajaActiva.nombre}.`
+                  : "Totales y movimientos del día."
+              }
+            />
+
+            <div className="flex justify-end">
+              <CajaFilters />
+            </div>
+
+            {canMp && <PagosExternosPendientes pendientes={pagosMpPendientes} />}
+
+            <div className="divide-y divide-border rounded-xl border border-border bg-surface">
+              <ResumenRow
+                label="Hoy"
+                total={formatMoneda(resumen.dia.total)}
+                cantidad={resumen.dia.cantidad}
+                prominent
+              />
+              <ResumenRow
+                label="Esta semana"
+                total={formatMoneda(resumen.semana.total)}
+                cantidad={resumen.semana.cantidad}
+              />
+              <ResumenRow
+                label="Este mes"
+                total={formatMoneda(resumen.mes.total)}
+                cantidad={resumen.mes.cantidad}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                Movimientos de hoy
+              </h3>
+              <PagosFeed pagos={pagos} slug={slug} />
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

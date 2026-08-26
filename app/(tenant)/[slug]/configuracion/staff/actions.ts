@@ -6,7 +6,11 @@ import { getTenant } from "@/lib/tenant";
 import { hasPermission } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getStaffById } from "@/lib/queries/staff.queries";
+import {
+  getStaffById,
+  setStaffPin,
+  clearStaffPin,
+} from "@/lib/queries/staff.queries";
 import { inviteStaffSchema } from "@/lib/validations/staff.schema";
 
 export interface StaffActionState {
@@ -271,5 +275,59 @@ export async function deleteStaffAction(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(`/${tenant.slug}/configuracion/staff`);
+  return { ok: true };
+}
+
+export async function setStaffPinAction(
+  staffId: string,
+  pin: string
+): Promise<SimpleResult> {
+  const { tenant, allowed } = await requireOwner();
+  if (!allowed) return { ok: false, error: "Sin permiso." };
+
+  const staff = await getStaffById(tenant.id, staffId);
+  if (!staff) return { ok: false, error: "No encontrado." };
+  if (staff.estado !== "activo") {
+    return { ok: false, error: "Solo se puede asignar PIN a un miembro activo." };
+  }
+
+  const result = await setStaffPin(tenant.id, staffId, pin);
+  if (!result.ok) return { ok: false, error: result.error };
+
+  revalidatePath(`/${tenant.slug}/configuracion/staff`);
+  return { ok: true };
+}
+
+export async function clearStaffPinAction(staffId: string): Promise<SimpleResult> {
+  const { tenant, allowed } = await requireOwner();
+  if (!allowed) return { ok: false, error: "Sin permiso." };
+
+  const staff = await getStaffById(tenant.id, staffId);
+  if (!staff) return { ok: false, error: "No encontrado." };
+
+  const result = await clearStaffPin(tenant.id, staffId);
+  if (!result.ok) return { ok: false, error: result.error };
+
+  revalidatePath(`/${tenant.slug}/configuracion/staff`);
+  return { ok: true };
+}
+
+/** Prende/apaga que abrir/cerrar turno de caja exija PIN en vez de confiar
+ * en la sesión activa del navegador (útil en una tablet compartida). */
+export async function toggleCajaCheckinPinAction(
+  activar: boolean
+): Promise<SimpleResult> {
+  const { tenant, allowed } = await requireOwner();
+  if (!allowed) return { ok: false, error: "Sin permiso." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("gyms")
+    .update({ caja_checkin_pin: activar })
+    .eq("id", tenant.id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/${tenant.slug}/configuracion/staff`);
+  revalidatePath(`/${tenant.slug}/caja`);
   return { ok: true };
 }

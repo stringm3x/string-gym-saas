@@ -14,6 +14,7 @@ export const productoSchema = z.object({
   costo: z.number().nonnegative().max(1_000_000).optional().nullable(),
   stock_inicial: z.number().int().nonnegative().optional().nullable(),
   stock_minimo: z.number().int().nonnegative().optional().nullable(),
+  caja_id: z.string().uuid().optional().nullable().or(z.literal("")),
 });
 
 export type ProductoInput = z.infer<typeof productoSchema>;

@@ -2,11 +2,14 @@ import Link from "next/link";
 import { LuArrowLeft } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { listCortes } from "@/lib/queries/cortes.queries";
+import { listCajasTodas } from "@/lib/queries/cajas.queries";
 import { formatMoneda } from "@/lib/utils/format";
 import { TZ_MX } from "@/lib/utils/dates";
+import { cn } from "@/lib/utils/cn";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ caja?: string }>;
 }
 
 function fechaHora(iso: string): string {
@@ -19,10 +22,18 @@ function fechaHora(iso: string): string {
   }).format(new Date(iso));
 }
 
-export default async function CortesPage({ params }: PageProps) {
-  const { slug } = await params;
-  const tenant = await getTenant();
-  const cortes = await listCortes(tenant.id, 50);
+export default async function CortesPage({ params, searchParams }: PageProps) {
+  const [{ slug }, sp, tenant] = await Promise.all([
+    params,
+    searchParams,
+    getTenant(),
+  ]);
+
+  const [cortes, cajas] = await Promise.all([
+    listCortes(tenant.id, { cajaId: sp.caja, limit: 50 }),
+    listCajasTodas(tenant.id),
+  ]);
+  const nombreDeCaja = new Map(cajas.map((c) => [c.id, c.nombre]));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -41,6 +52,36 @@ export default async function CortesPage({ params }: PageProps) {
         </p>
       </div>
 
+      {cajas.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface p-1">
+          <Link
+            href={`/${slug}/caja/cortes`}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+              !sp.caja
+                ? "bg-bg text-text-primary"
+                : "text-text-secondary hover:text-text-primary"
+            )}
+          >
+            Todas
+          </Link>
+          {cajas.map((c) => (
+            <Link
+              key={c.id}
+              href={`/${slug}/caja/cortes?caja=${c.id}`}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+                sp.caja === c.id
+                  ? "bg-bg text-text-primary"
+                  : "text-text-secondary hover:text-text-primary"
+              )}
+            >
+              {c.nombre}
+            </Link>
+          ))}
+        </div>
+      )}
+
       {cortes.length === 0 ? (
         <p className="rounded-xl border border-border bg-surface px-4 py-8 text-center text-sm text-text-muted">
           Aún no hay cortes registrados.
@@ -54,9 +95,14 @@ export default async function CortesPage({ params }: PageProps) {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-text-primary">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-text-primary">
                     {fechaHora(c.abierto_at)}
                     {c.cerrado_at && ` → ${fechaHora(c.cerrado_at)}`}
+                    {cajas.length > 1 && (
+                      <span className="rounded-full border border-border bg-bg px-2 py-0.5 text-[10px] font-medium text-text-secondary">
+                        {nombreDeCaja.get(c.caja_id) ?? "Caja eliminada"}
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs text-text-muted">
                     Abrió {c.abierto_por_nombre ?? "—"}
@@ -74,14 +120,40 @@ export default async function CortesPage({ params }: PageProps) {
               </div>
 
               {c.estado === "cerrado" && (
-                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
-                  <Dato label="Fondo" valor={c.fondo_inicial} />
-                  <Dato label="Efectivo" valor={c.total_efectivo} />
-                  <Dato label="Tarjeta" valor={c.total_tarjeta} />
-                  <Dato label="Transferencia" valor={c.total_transferencia} />
-                  <Dato label="Esperado" valor={c.efectivo_esperado} />
-                  <Dato label="Contado" valor={c.efectivo_contado} />
-                </div>
+                <>
+                  <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-3">
+                    <Dato label="Fondo" valor={c.fondo_inicial} />
+                    <Dato label="Efectivo" valor={c.total_efectivo} />
+                    <Dato label="Tarjeta" valor={c.total_tarjeta} />
+                    <Dato label="Transferencia" valor={c.total_transferencia} />
+                    <Dato label="Esperado" valor={c.efectivo_esperado} />
+                    <Dato label="Contado" valor={c.efectivo_contado} />
+                  </div>
+
+                  {(c.total_membresia || c.total_visita || c.total_producto || c.total_otro) != null &&
+                    (Number(c.total_membresia) > 0 ||
+                      Number(c.total_visita) > 0 ||
+                      Number(c.total_producto) > 0 ||
+                      Number(c.total_otro) > 0) && (
+                      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 border-t border-border pt-2 text-xs sm:grid-cols-3">
+                        <Dato label="Membresías" valor={c.total_membresia} />
+                        <Dato label="Visitas" valor={c.total_visita} />
+                        <Dato label="Productos" valor={c.total_producto} />
+                        <Dato label="Otros" valor={c.total_otro} />
+                        {c.ganancia_productos !== null &&
+                          Number(c.total_producto) > 0 && (
+                            <div className="flex justify-between gap-2">
+                              <span className="text-text-muted">
+                                Ganancia productos
+                              </span>
+                              <span className="font-mono tabular-nums text-success">
+                                {formatMoneda(c.ganancia_productos)}
+                              </span>
+                            </div>
+                          )}
+                      </div>
+                    )}
+                </>
               )}
 
               {c.notas && (

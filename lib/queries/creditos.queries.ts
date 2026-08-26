@@ -31,7 +31,6 @@ export async function createPlanPago(
   const esProducto = input.tipo === "producto";
   const cantidad = input.cantidad ?? 1;
 
-  // Producto: el miembro se lo lleva hoy → se descuenta stock al crear el plan.
   const restaurarStock = async () => {
     if (esProducto && input.producto_id) {
       await aplicarMovimiento(tenantId, {
@@ -43,16 +42,9 @@ export async function createPlanPago(
     }
   };
 
-  if (esProducto && input.producto_id) {
-    const mov = await aplicarMovimiento(tenantId, {
-      producto_id: input.producto_id,
-      tipo: "salida",
-      cantidad,
-      motivo: "Plan a plazos (producto)",
-    });
-    if (!mov.ok) return { ok: false, error: mov.error };
-  }
-
+  // 1. Crear el plan primero — el movimiento de stock (paso 2) necesita su id
+  //    para poder trazar el costo de esta venta hasta el corte de caja
+  //    (el pago real llega después, en cuotas separadas sin producto_id).
   const { data: plan, error } = await supabase
     .from("planes_pago")
     .insert({
@@ -70,8 +62,27 @@ export async function createPlanPago(
     .single();
 
   if (error || !plan) {
-    await restaurarStock();
     return { ok: false, error: error?.message ?? "No se pudo crear el plan." };
+  }
+
+  // 2. Producto: el miembro se lo lleva hoy → se descuenta stock al crear el
+  //    plan, enlazado (plan_pago_id) para calcular su costo en el corte.
+  if (esProducto && input.producto_id) {
+    const mov = await aplicarMovimiento(
+      tenantId,
+      {
+        producto_id: input.producto_id,
+        tipo: "salida",
+        cantidad,
+        motivo: "Plan a plazos (producto)",
+      },
+      undefined,
+      plan.id
+    );
+    if (!mov.ok) {
+      await supabase.from("planes_pago").delete().eq("id", plan.id);
+      return { ok: false, error: mov.error };
+    }
   }
 
   const montos = repartirMonto(input.total, input.cuotas);

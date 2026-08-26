@@ -15,6 +15,8 @@ export interface Producto {
   categoria: string | null;
   precio: number;
   costo: number | null;
+  /** Caja a la que cuenta la venta de este producto — null = caja default. */
+  caja_id: string | null;
   created_at: string;
 }
 
@@ -33,6 +35,7 @@ export interface MovimientoInventario {
   cantidad: number;
   motivo: string | null;
   pago_id: string | null;
+  plan_pago_id: string | null;
   created_at: string;
 }
 
@@ -78,6 +81,7 @@ export async function listProductosConStock(
       categoria: p.categoria,
       precio: Number(p.precio),
       costo: p.costo === null ? null : Number(p.costo),
+      caja_id: p.caja_id ?? null,
       created_at: p.created_at,
       stock_actual,
       stock_minimo,
@@ -123,6 +127,7 @@ export async function getProducto(
     categoria: data.categoria,
     precio: Number(data.precio),
     costo: data.costo === null ? null : Number(data.costo),
+    caja_id: data.caja_id ?? null,
     created_at: data.created_at,
     stock_actual,
     stock_minimo,
@@ -148,6 +153,7 @@ export async function createProducto(
       categoria: input.categoria || null,
       precio: input.precio,
       costo: input.costo ?? null,
+      caja_id: input.caja_id || null,
     })
     .select("id")
     .single();
@@ -203,6 +209,7 @@ export async function updateProducto(
       categoria: input.categoria || null,
       precio: input.precio,
       costo: input.costo ?? null,
+      caja_id: input.caja_id || null,
     })
     .eq("tenant_id", tenantId)
     .eq("id", id);
@@ -234,11 +241,16 @@ export async function updateProducto(
  * - ajuste: si cantidad es positiva suma, si es negativa resta
  *
  * pagoId es opcional — se llena cuando el movimiento viene de una venta en Caja.
+ * planPagoId es opcional — se llena cuando el movimiento viene de un producto
+ * vendido a crédito (plan a plazos): el pago real llega después en cuotas
+ * separadas sin producto_id, así que este es el único enlace que permite
+ * calcular el costo de esa venta (ver lib/queries/cortes.queries.ts).
  */
 export async function aplicarMovimiento(
   tenantId: string,
   input: MovimientoInput,
-  pagoId?: string
+  pagoId?: string,
+  planPagoId?: string
 ): Promise<
   { ok: true; id: string; nuevoStock: number } | { ok: false; error: string }
 > {
@@ -281,6 +293,7 @@ export async function aplicarMovimiento(
       cantidad: Math.abs(input.cantidad),
       motivo: input.motivo || null,
       pago_id: pagoId ?? null,
+      plan_pago_id: planPagoId ?? null,
     })
     .select("id")
     .single();
@@ -358,6 +371,7 @@ export async function listMovimientos(
     cantidad: row.cantidad,
     motivo: row.motivo,
     pago_id: row.pago_id,
+    plan_pago_id: row.plan_pago_id,
     created_at: row.created_at,
     producto_nombre: row.productos?.nombre ?? "Producto eliminado",
   }));

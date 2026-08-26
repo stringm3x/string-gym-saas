@@ -22,6 +22,7 @@ import {
   aplicarCredito,
 } from "@/lib/queries/notas-credito.queries";
 import { createAbonoMembresia } from "@/lib/queries/creditos.queries";
+import { resolverCajaDeVenta } from "@/lib/queries/cajas.queries";
 import { hasPermission } from "@/lib/permissions";
 import { getActiveStaff } from "@/lib/queries/staff.queries";
 import { getMiembro } from "@/lib/queries/miembros.queries";
@@ -80,15 +81,26 @@ export async function registerPagoAction(
     return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
   }
 
+  // La caja la decide QUÉ se vendió (el producto), no en qué pestaña estaba
+  // parado el cajero — así no hay que cambiar de caja para cobrar bien.
+  const cajaId = await resolverCajaDeVenta(
+    tenant.id,
+    parsed.data.producto_id || null
+  );
+
   // Visita sin miembro: la persona no está inscrita. Se registra como visita
   // rápida con nombre libre (o "Visitante" si no se capturó). No crea miembro.
   if (parsed.data.concepto === "visita" && !parsed.data.miembro_id) {
-    const result = await createVisitaRapida(tenant.id, {
-      nombre_visitante: parsed.data.nombre_visitante?.trim() || "Visitante",
-      telefono_visitante: parsed.data.telefono_visitante || "",
-      monto: parsed.data.monto,
-      metodo_pago: parsed.data.metodo_pago,
-    });
+    const result = await createVisitaRapida(
+      tenant.id,
+      {
+        nombre_visitante: parsed.data.nombre_visitante?.trim() || "Visitante",
+        telefono_visitante: parsed.data.telefono_visitante || "",
+        monto: parsed.data.monto,
+        metodo_pago: parsed.data.metodo_pago,
+      },
+      cajaId ?? undefined
+    );
     if (!result.ok) {
       return { ok: false, error: result.error, fieldErrors: {} };
     }
@@ -112,10 +124,14 @@ export async function registerPagoAction(
   }
   const montoNeto = parsed.data.monto - creditoAplicado;
 
-  const result = await createPago(tenant.id, {
-    ...parsed.data,
-    monto: montoNeto,
-  });
+  const result = await createPago(
+    tenant.id,
+    {
+      ...parsed.data,
+      monto: montoNeto,
+    },
+    cajaId ?? undefined
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: {} };
@@ -206,7 +222,12 @@ export async function registrarVisitaRapidaAction(
     return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
   }
 
-  const result = await createVisitaRapida(tenant.id, parsed.data);
+  const cajaId = await resolverCajaDeVenta(tenant.id, null);
+  const result = await createVisitaRapida(
+    tenant.id,
+    parsed.data,
+    cajaId ?? undefined
+  );
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: {} };
   }

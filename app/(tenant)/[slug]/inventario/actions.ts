@@ -43,6 +43,7 @@ function parseProducto(formData: FormData) {
       stockMinimoRaw && String(stockMinimoRaw).trim()
         ? Number(stockMinimoRaw)
         : null,
+    caja_id: String(formData.get("caja_id") ?? "") || null,
   };
 }
 

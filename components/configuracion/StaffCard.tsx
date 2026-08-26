@@ -1,8 +1,10 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, type BadgeVariant } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { formatFechaHora } from "@/lib/utils/format";
 import {
@@ -11,6 +13,8 @@ import {
   deactivateStaffAction,
   reactivateStaffAction,
   deleteStaffAction,
+  setStaffPinAction,
+  clearStaffPinAction,
 } from "@/app/(tenant)/[slug]/configuracion/staff/actions";
 import type { Staff, StaffEstado, StaffRol } from "@/lib/types/staff";
 
@@ -35,6 +39,7 @@ export function StaffCard({ staff }: StaffCardProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [pinOpen, setPinOpen] = useState(false);
 
   const isOwner = staff.rol === "owner";
   const inicial = staff.nombre.trim().charAt(0).toUpperCase() || "?";
@@ -117,15 +122,20 @@ export function StaffCard({ staff }: StaffCardProps) {
           )}
 
           {staff.estado === "activo" && (
-            <ActionLink
-              danger
-              disabled={isPending}
-              onClick={() =>
-                run(() => deactivateStaffAction(staff.id), "Miembro desactivado")
-              }
-            >
-              Desactivar
-            </ActionLink>
+            <>
+              <ActionLink disabled={isPending} onClick={() => setPinOpen(true)}>
+                PIN
+              </ActionLink>
+              <ActionLink
+                danger
+                disabled={isPending}
+                onClick={() =>
+                  run(() => deactivateStaffAction(staff.id), "Miembro desactivado")
+                }
+              >
+                Desactivar
+              </ActionLink>
+            </>
           )}
 
           {staff.estado === "desactivado" && (
@@ -145,7 +155,102 @@ export function StaffCard({ staff }: StaffCardProps) {
           )}
         </div>
       )}
+
+      {pinOpen && (
+        <PinModal
+          staffId={staff.id}
+          staffNombre={staff.nombre}
+          onClose={() => setPinOpen(false)}
+        />
+      )}
     </div>
+  );
+}
+
+function PinModal({
+  staffId,
+  staffNombre,
+  onClose,
+}: {
+  staffId: string;
+  staffNombre: string;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const { success, error: toastError } = useToast();
+  const [pin, setPin] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  function guardar() {
+    if (!/^\d{4}$/.test(pin)) {
+      toastError("PIN inválido", "Debe ser de 4 dígitos.");
+      return;
+    }
+    startTransition(async () => {
+      const r = await setStaffPinAction(staffId, pin);
+      if (!r.ok) {
+        toastError("No se pudo guardar", r.error);
+        return;
+      }
+      success("PIN asignado");
+      router.refresh();
+      onClose();
+    });
+  }
+
+  function quitar() {
+    startTransition(async () => {
+      const r = await clearStaffPinAction(staffId);
+      if (!r.ok) {
+        toastError("No se pudo quitar", r.error);
+        return;
+      }
+      success("PIN eliminado");
+      router.refresh();
+      onClose();
+    });
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`PIN de ${staffNombre}`}
+      description="4 dígitos. Lo usa para confirmar su identidad al abrir o cerrar un turno de caja, sin tener que iniciar sesión con su cuenta."
+      size="sm"
+    >
+      <div className="space-y-4">
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="\d{4}"
+          maxLength={4}
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+          placeholder="0000"
+          autoFocus
+          className="w-full rounded-lg border border-border bg-bg px-3 py-3 text-center font-mono text-2xl tracking-[0.5em] text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+        />
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={quitar}
+            disabled={isPending}
+            className="text-xs text-text-muted underline hover:text-danger disabled:opacity-40"
+          >
+            Quitar PIN
+          </button>
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={guardar} loading={isPending}>
+              Guardar
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
