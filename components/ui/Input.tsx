@@ -10,6 +10,8 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   rightSlot?: React.ReactNode;
 }
 
+// Único sitio con radio (radio-s = 4px): la esquina viva se siente agresiva
+// al tacto en un campo. 44px de alto para tablet.
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
     {
@@ -33,7 +35,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       [describedById, errorId].filter(Boolean).join(" ") || undefined;
 
     return (
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {label && (
           <Label htmlFor={inputId} required={required}>
             {label}
@@ -42,7 +44,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         <div
           className={cn(
-            "flex items-center rounded-lg border bg-surface transition-colors duration-150",
+            "flex items-center rounded border bg-bg transition-colors duration-150",
             error
               ? "border-danger/60 focus-within:border-danger"
               : "border-border focus-within:border-brand-green",
@@ -62,7 +64,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-invalid={error ? true : undefined}
             aria-describedby={ariaDescribedBy}
             className={cn(
-              "w-full bg-transparent px-3 py-2.5 text-sm text-text-primary",
+              "w-full bg-transparent px-3 py-3 text-sm leading-5 text-text-primary",
               "placeholder:text-text-muted",
               "focus:outline-none",
               leftSlot && "pl-2",

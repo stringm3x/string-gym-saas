@@ -38,13 +38,10 @@ export function Header({
           noLeidas={notificacionesNoLeidas}
         />
 
-        {/* Badge de plan: oculto en mobile para dejar aire */}
-        <div className="hidden items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 sm:flex">
-          <span className="h-2 w-2 rounded-full bg-brand-green" />
-          <span className="text-xs font-medium text-text-secondary">
-            Plan {PLAN_LABELS[plan]}
-          </span>
-        </div>
+        {/* Plan en chip mono (kicker), oculto en mobile para dejar aire */}
+        <span className="hidden border border-border px-2.5 py-1 font-mono text-etiqueta uppercase text-text-secondary sm:inline-block">
+          Plan {PLAN_LABELS[plan]}
+        </span>
 
         <HeaderUserMenu slug={slug} />
       </div>

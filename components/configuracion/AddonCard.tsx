@@ -66,13 +66,13 @@ export function AddonCard({
     : estadoBadge[addon.estado];
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-text-muted">
+    <div className="flex flex-col gap-3 border border-border bg-surface p-4 transition-colors hover:border-text-muted">
       <button
         type="button"
         onClick={onOpenDetail}
         className="flex items-start gap-3 text-left"
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-green/10 text-brand-green">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-brand-green/10 text-brand-green">
           <AddonIcon name={addon.iconName} className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
@@ -98,7 +98,7 @@ export function AddonCard({
           <button
             type="button"
             onClick={onOpenDetail}
-            className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary"
+            className="px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary"
           >
             Más info
           </button>
@@ -108,7 +108,7 @@ export function AddonCard({
               href={whatsappCancelarAddon(gymNombre, addon.nombre)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:border-danger/40 hover:text-danger"
+              className="border border-border px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:border-danger/40 hover:text-danger"
             >
               Cancelar
             </a>
@@ -117,7 +117,7 @@ export function AddonCard({
               href={whatsappContratarAddon(gymNombre, addon.nombre, addon.precio)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-bg transition-colors hover:bg-brand-green/90"
+              className="bg-brand-green px-3 py-1.5 text-xs font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
             >
               Contratar
             </a>
@@ -126,7 +126,7 @@ export function AddonCard({
               href={whatsappNotificarAddon(gymNombre, addon.nombre)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-brand-green transition-colors hover:bg-brand-green/10"
+              className="border border-border px-2.5 py-1.5 text-xs font-medium text-brand-green transition-colors hover:bg-brand-green/10"
             >
               Avísame
             </a>

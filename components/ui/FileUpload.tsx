@@ -80,8 +80,8 @@ export function FileUpload({
       {label && <Label>{label}</Label>}
 
       {currentUrl ? (
-        <div className="flex items-center gap-4 rounded-xl border border-border bg-surface p-4">
-          <div className="relative h-16 w-32 shrink-0 overflow-hidden rounded-lg bg-bg">
+        <div className="flex items-center gap-4 border border-border bg-surface p-4">
+          <div className="relative h-16 w-32 shrink-0 overflow-hidden bg-bg">
             <Image
               src={currentUrl}
               alt="Logo actual"
@@ -96,7 +96,7 @@ export function FileUpload({
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={busy !== null}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary disabled:opacity-40"
             >
               {busy === "upload" ? (
                 <LuLoaderCircle className="h-3.5 w-3.5 animate-spin" />
@@ -110,7 +110,7 @@ export function FileUpload({
                 type="button"
                 onClick={handleDelete}
                 disabled={busy !== null}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:border-danger/40 hover:text-danger disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:border-danger/40 hover:text-danger disabled:opacity-40"
               >
                 {busy === "delete" ? (
                   <LuLoaderCircle className="h-3.5 w-3.5 animate-spin" />
@@ -134,7 +134,7 @@ export function FileUpload({
           onDrop={onDrop}
           disabled={busy !== null}
           className={cn(
-            "flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-10 text-center transition-colors",
+            "flex w-full flex-col items-center justify-center gap-2 border border-dashed py-10 text-center transition-colors",
             dragging
               ? "border-brand-green bg-brand-green/5"
               : "border-border bg-surface hover:border-text-muted"

@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LuFileText } from "react-icons/lu";
 import { aceptarTerminosAction } from "@/app/(tenant)/[slug]/terminos-actions";
 import { TERMINOS_URL, PRIVACIDAD_URL } from "@/lib/constants";
 
@@ -36,32 +35,32 @@ export function TerminosGate() {
       aria-modal="true"
       aria-labelledby="terminos-title"
     >
-      <div className="absolute inset-0 bg-bg/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-bg/70" />
 
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
-        <div className="flex flex-col items-center gap-3 border-b border-border px-6 py-6 text-center">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-green/10 text-brand-green">
-            <LuFileText className="h-5 w-5" />
-          </span>
+      <div className="relative w-full max-w-md border border-border bg-surface">
+        <div className="flex flex-col gap-3 border-b border-border px-6 py-6">
+          <p className="font-mono text-etiqueta uppercase text-brand-green">
+            Antes de empezar
+          </p>
           <h2
             id="terminos-title"
-            className="text-base font-semibold text-text-primary"
+            className="text-lg font-semibold text-text-primary"
           >
-            Antes de continuar, acepta nuestros términos
+            Acepta los términos del servicio
           </h2>
-          <p className="text-xs text-text-secondary">
+          <p className="text-sm text-text-secondary">
             Para usar STRING GYM necesitamos que aceptes las condiciones del
-            servicio.
+            servicio y el aviso de privacidad.
           </p>
         </div>
 
-        <div className="space-y-5 px-6 py-5">
+        <div className="flex flex-col gap-5 px-6 py-5">
           <label className="flex cursor-pointer items-start gap-3">
             <input
               type="checkbox"
               checked={aceptado}
               onChange={(e) => setAceptado(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-brand-green"
+              className="mt-0.5 h-5 w-5 shrink-0 accent-brand-green"
             />
             <span className="text-sm text-text-secondary">
               Acepto los{" "}
@@ -69,7 +68,7 @@ export function TerminosGate() {
                 href={TERMINOS_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-brand-green underline underline-offset-2 hover:opacity-80"
+                className="text-brand-green underline underline-offset-4"
               >
                 Términos de Servicio
               </a>{" "}
@@ -78,7 +77,7 @@ export function TerminosGate() {
                 href={PRIVACIDAD_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-brand-green underline underline-offset-2 hover:opacity-80"
+                className="text-brand-green underline underline-offset-4"
               >
                 Aviso de Privacidad
               </a>
@@ -87,7 +86,10 @@ export function TerminosGate() {
           </label>
 
           {error && (
-            <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+            <p
+              role="alert"
+              className="border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
+            >
               {error}
             </p>
           )}
@@ -96,7 +98,7 @@ export function TerminosGate() {
             type="button"
             disabled={!aceptado || pending}
             onClick={confirmar}
-            className="w-full rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-12 w-full items-center justify-center bg-brand-green px-4 text-base font-semibold text-on-brand transition-colors hover:bg-brand-green/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {pending ? "Guardando…" : "Aceptar y continuar"}
           </button>

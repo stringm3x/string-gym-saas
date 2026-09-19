@@ -33,7 +33,7 @@ export function HeaderUserMenu({ slug }: { slug: string }) {
         onClick={() => setOpen((v) => !v)}
         aria-label="Menú de cuenta"
         aria-haspopup="menu"
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-green text-xs font-bold text-bg transition-opacity hover:opacity-90"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-green text-xs font-bold text-on-brand transition-opacity hover:opacity-90"
       >
         {iniciales(nombre)}
       </button>
@@ -48,13 +48,13 @@ export function HeaderUserMenu({ slug }: { slug: string }) {
           />
           <div
             role="menu"
-            className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl"
+            className="absolute right-0 z-50 mt-2 w-52 overflow-hidden border border-border bg-surface"
           >
             <div className="border-b border-border px-4 py-3">
               <p className="truncate text-sm font-medium text-text-primary">
                 {nombre}
               </p>
-              <p className="text-xs capitalize text-text-secondary">
+              <p className="font-mono text-etiqueta uppercase text-text-muted">
                 {staff?.rol ?? ""}
               </p>
             </div>
@@ -62,7 +62,7 @@ export function HeaderUserMenu({ slug }: { slug: string }) {
               href={`/${slug}/configuracion`}
               onClick={() => setOpen(false)}
               role="menuitem"
-              className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-primary transition-colors hover:bg-bg"
+              className="flex h-11 items-center gap-2.5 px-4 text-sm text-text-primary transition-colors hover:bg-surface-hover"
             >
               <LuUserCog className="h-4 w-4 text-text-muted" /> Mi cuenta
             </Link>
@@ -70,7 +70,7 @@ export function HeaderUserMenu({ slug }: { slug: string }) {
               <button
                 type="submit"
                 role="menuitem"
-                className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-text-primary transition-colors hover:bg-bg"
+                className="flex h-11 w-full items-center gap-2.5 px-4 text-left text-sm text-text-primary transition-colors hover:bg-surface-hover"
               >
                 <LuLogOut className="h-4 w-4 text-text-muted" /> Cerrar sesión
               </button>

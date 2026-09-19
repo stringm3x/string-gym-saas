@@ -28,7 +28,7 @@ export function ColorPicker({
       <div className="flex items-center gap-2">
         <label
           className={cn(
-            "relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border",
+            "relative h-10 w-10 shrink-0 overflow-hidden border border-border",
             disabled && "opacity-50"
           )}
           style={{ backgroundColor: valido ? value : "transparent" }}
@@ -51,7 +51,7 @@ export function ColorPicker({
           placeholder={DEFAULT_COLOR_ACENTO}
           maxLength={7}
           className={cn(
-            "w-32 rounded-lg border bg-surface px-3 py-2 font-mono text-sm text-text-primary focus:outline-none disabled:opacity-50",
+            "w-32 border bg-surface px-3 py-2 font-mono text-sm text-text-primary focus:outline-none disabled:opacity-50",
             valido
               ? "border-border focus:border-brand-green"
               : "border-danger focus:border-danger"
@@ -68,7 +68,7 @@ export function ColorPicker({
                 disabled={disabled}
                 title={c}
                 className={cn(
-                  "h-6 w-6 rounded-md border transition-transform hover:scale-110 disabled:opacity-50",
+                  "h-8 w-8 border transition-colors hover:border-text-primary disabled:opacity-50",
                   value.toLowerCase() === c.toLowerCase()
                     ? "border-text-primary"
                     : "border-border"

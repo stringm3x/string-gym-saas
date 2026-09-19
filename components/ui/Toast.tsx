@@ -84,18 +84,19 @@ export function useToast() {
   return ctx;
 }
 
-const variantConfig: Record<ToastVariant, { icon: ReactNode; ring: string }> = {
+// Sin sombra ni anillo: una franja de 4px a la izquierda dice de qué se trata.
+const variantConfig: Record<ToastVariant, { icon: ReactNode; bar: string }> = {
   success: {
     icon: <LuCircleCheck className="h-5 w-5 text-brand-green" />,
-    ring: "ring-brand-green/30",
+    bar: "border-l-brand-green",
   },
   error: {
     icon: <LuCircleAlert className="h-5 w-5 text-danger" />,
-    ring: "ring-danger/30",
+    bar: "border-l-danger",
   },
   info: {
-    icon: <LuInfo className="h-5 w-5 text-gold" />,
-    ring: "ring-gold/30",
+    icon: <LuInfo className="h-5 w-5 text-text-secondary" />,
+    bar: "border-l-text-secondary",
   },
 };
 
@@ -139,10 +140,10 @@ function ToastItem({
     <div
       role="status"
       className={cn(
-        "pointer-events-auto flex items-start gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-lg ring-1",
+        "pointer-events-auto flex items-start gap-3 border border-border border-l-4 bg-surface px-4 py-3",
         "transition-all duration-200 ease-out",
         enter ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
-        cfg.ring
+        cfg.bar
       )}
     >
       <div className="mt-0.5 shrink-0">{cfg.icon}</div>
@@ -150,13 +151,13 @@ function ToastItem({
       <div className="flex-1 space-y-1">
         <p className="text-sm font-semibold text-text-primary">{toast.title}</p>
         {toast.description && (
-          <p className="text-xs text-text-secondary">{toast.description}</p>
+          <p className="text-sm text-text-secondary">{toast.description}</p>
         )}
         {toast.cta && (
           <Link
             href={toast.cta.href}
             onClick={onDismiss}
-            className="inline-block text-xs font-medium text-brand-green underline-offset-2 hover:underline"
+            className="inline-block text-sm font-medium text-brand-green underline-offset-2 hover:underline"
           >
             {toast.cta.label}
           </Link>
@@ -167,7 +168,7 @@ function ToastItem({
         type="button"
         onClick={onDismiss}
         aria-label="Cerrar notificación"
-        className="shrink-0 rounded-md p-1 text-text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-text-primary"
+        className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center text-text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-text-primary"
       >
         <LuX className="h-4 w-4" />
       </button>

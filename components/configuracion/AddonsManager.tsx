@@ -4,6 +4,7 @@ import { useState } from "react";
 import { LuPackagePlus } from "react-icons/lu";
 import { AddonCard } from "./AddonCard";
 import { AddonDetailModal } from "./AddonDetailModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ADDONS_CATALOG, type AddonDefinition } from "@/lib/addons";
 import type { Plan } from "@/lib/features";
 import type { GymAddon } from "@/lib/queries/addons.queries";
@@ -46,7 +47,7 @@ export function AddonsManager({
   return (
     <div className="space-y-8">
       {activos.length > 0 && (
-        <Section titulo="Tus add-ons activos">
+        <Section titulo="Tus complementos activos">
           {activos.map((a) => (
             <AddonCard
               key={a.id}
@@ -88,12 +89,11 @@ export function AddonsManager({
       {activos.length === 0 &&
         disponibles.length === 0 &&
         proximamente.length === 0 && (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-12 text-center">
-            <LuPackagePlus className="h-8 w-8 text-text-muted" />
-            <p className="text-sm text-text-secondary">
-              No hay add-ons en el catálogo todavía.
-            </p>
-          </div>
+          <EmptyState
+            icon={<LuPackagePlus />}
+            title="Sin complementos por ahora"
+            description="Todo lo que incluye tu plan ya está activo. Cuando haya complementos para contratar, aparecen aquí."
+          />
         )}
 
       <AddonDetailModal
@@ -117,7 +117,7 @@ function Section({
 }) {
   return (
     <section className="space-y-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+      <h3 className="text-etiqueta uppercase text-text-muted font-mono">
         {titulo}
       </h3>
       <div className="grid gap-3 sm:grid-cols-2">{children}</div>

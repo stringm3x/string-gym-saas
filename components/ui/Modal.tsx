@@ -56,18 +56,18 @@ export function Modal({
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      {/* Backdrop */}
+      {/* Fondo: negro sólido al 70%, sin desenfoque (nada de glassmorphism). */}
       <button
         type="button"
         aria-label="Cerrar"
         onClick={onClose}
-        className="absolute inset-0 bg-bg/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-bg/70"
       />
 
-      {/* Card */}
+      {/* Caja: borde, esquina viva, sin sombra. */}
       <div
         className={cn(
-          "relative w-full overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl",
+          "relative w-full border border-border bg-surface",
           sizeStyles[size]
         )}
       >
@@ -80,7 +80,7 @@ export function Modal({
               {title}
             </h2>
             {description && (
-              <p className="mt-0.5 text-xs text-text-secondary">
+              <p className="mt-0.5 text-sm text-text-secondary">
                 {description}
               </p>
             )}
@@ -89,7 +89,7 @@ export function Modal({
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="shrink-0 rounded-md p-1 text-text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-text-primary"
+            className="-mr-2 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center text-text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-text-primary"
           >
             <LuX className="h-4 w-4" />
           </button>

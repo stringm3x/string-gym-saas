@@ -82,7 +82,7 @@ export function NotificationsBell({
       >
         <LuBell className="h-5 w-5" />
         {noLeidas > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-green px-1 text-[10px] font-bold text-bg">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center bg-brand-green px-1 text-xs font-bold text-on-brand">
             {noLeidas > 9 ? "9+" : noLeidas}
           </span>
         )}
@@ -98,7 +98,7 @@ export function NotificationsBell({
             className="fixed inset-0 z-40 cursor-default"
           />
 
-          <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+          <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden border border-border bg-surface">
             <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
               <span className="text-sm font-semibold text-text-primary">
                 Notificaciones
@@ -108,7 +108,7 @@ export function NotificationsBell({
                   type="button"
                   onClick={marcarTodas}
                   disabled={pending}
-                  className="inline-flex items-center gap-1 text-xs text-brand-green hover:opacity-80 disabled:opacity-50"
+                  className="inline-flex h-8 items-center gap-1 text-xs text-brand-green underline-offset-4 hover:underline disabled:opacity-50"
                 >
                   <LuCheck className="h-3.5 w-3.5" /> Marcar todas
                 </button>
@@ -116,8 +116,8 @@ export function NotificationsBell({
             </div>
 
             {notificaciones.length === 0 ? (
-              <p className="px-4 py-10 text-center text-xs text-text-secondary">
-                No tienes notificaciones.
+              <p className="px-4 py-8 text-center text-sm text-text-muted">
+                Sin notificaciones.
               </p>
             ) : (
               <ul className="max-h-96 overflow-y-auto">
@@ -128,12 +128,12 @@ export function NotificationsBell({
                       <button
                         type="button"
                         onClick={() => abrir(n)}
-                        className={`flex w-full items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-bg ${
+                        className={`flex w-full items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface-hover ${
                           n.leida ? "opacity-60" : ""
                         }`}
                       >
-                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-green/10 text-brand-green">
-                          <Icono className="h-3.5 w-3.5" />
+                        <span className="mt-0.5 shrink-0 text-brand-green">
+                          <Icono className="h-4 w-4" />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export function NotificationsBell({
                               {n.mensaje}
                             </span>
                           )}
-                          <span className="mt-0.5 block text-[10px] text-text-muted">
+                          <span className="mt-0.5 block text-xs text-text-muted">
                             {tiempoRelativo(n.created_at)}
                           </span>
                         </span>

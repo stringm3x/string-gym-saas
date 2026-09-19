@@ -12,21 +12,24 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   rightIcon?: React.ReactNode;
 }
 
+// Esquina viva (radio-0). El primario es negro sobre ácido, como el logo;
+// el secundario es solo borde: la marca destaca con bordes, no con relleno.
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-green text-bg hover:bg-brand-green/90 active:bg-brand-green/80 disabled:bg-brand-green/40 disabled:text-bg/60",
+    "bg-brand-green text-on-brand hover:bg-brand-green/90 active:bg-brand-green/80 disabled:bg-brand-green/40 disabled:text-on-brand/60",
   secondary:
-    "bg-surface text-text-primary border border-border hover:bg-surface-hover hover:border-text-muted active:bg-surface disabled:opacity-40",
+    "bg-transparent text-text-primary border border-border hover:border-text-secondary active:bg-surface-hover disabled:opacity-40",
   ghost:
-    "bg-transparent text-text-secondary hover:bg-surface hover:text-text-primary active:bg-surface-hover disabled:opacity-40",
+    "bg-transparent text-text-secondary hover:bg-surface-hover hover:text-text-primary active:bg-surface disabled:opacity-40",
   danger:
     "bg-danger text-text-primary hover:bg-danger/90 active:bg-danger/80 disabled:opacity-40",
 };
 
+// md = 44px: área táctil mínima (la caja y el check-in se usan en tablet).
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-xs gap-1.5 rounded-md",
-  md: "h-10 px-4 text-sm gap-2 rounded-lg",
-  lg: "h-12 px-6 text-base gap-2 rounded-lg",
+  sm: "h-9 px-3 text-sm gap-1.5",
+  md: "h-11 px-4 text-sm gap-2",
+  lg: "h-12 px-6 text-base gap-2",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -52,7 +55,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isDisabled}
         aria-busy={loading || undefined}
         className={cn(
-          "inline-flex items-center justify-center font-semibold transition-all duration-150",
+          "inline-flex items-center justify-center font-semibold transition-colors duration-150",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green",
           "disabled:cursor-not-allowed",
           variantStyles[variant],
@@ -84,9 +87,8 @@ function Spinner() {
   return (
     <svg
       className="h-4 w-4 animate-spin"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
       viewBox="0 0 24 24"
+      fill="none"
       aria-hidden="true"
     >
       <circle

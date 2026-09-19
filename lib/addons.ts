@@ -1,20 +1,20 @@
 /**
- * Catálogo de add-ons contratables — funcionalidades extra por encima
- * del plan. A diferencia de los planes (uno a la vez), un gym puede
- * tener varios add-ons activos simultáneamente.
+ * Catálogo de complementos contratables — funcionalidades extra por encima
+ * del plan. A diferencia de los planes (uno a la vez), un gym puede tener
+ * varios complementos activos simultáneamente.
  *
- * En esta fase (6.6) solo existe la infraestructura: el catálogo,
- * el tracking de activaciones y la UI de upsell. Los add-ons reales
- * se construyen en Fase 7+.
+ * El catálogo está VACÍO a propósito: nada que no exista aparece en
+ * pantalla. Los complementos comerciales vigentes (sucursal adicional,
+ * paquete de conversaciones de WhatsApp) todavía no están construidos:
+ * cuando lo estén, se dan de alta aquí y la UI de Configuración → Complementos
+ * y del panel admin los muestra sola. La infraestructura (tabla gym_addons,
+ * AddonsProvider, toggles del admin) se conserva.
  */
 
 import type { Plan } from "@/lib/features";
 
-export type AddonId =
-  | "ia_rutinas"
-  | "chatbot_captacion"
-  | "cfdi_facturacion"
-  | "multisucursal";
+/** Identificador de complemento tal como se guarda en gym_addons.addon_id. */
+export type AddonId = string;
 
 export type AddonEstado = "disponible" | "proximamente" | "en_desarrollo";
 
@@ -34,84 +34,7 @@ export interface AddonDefinition {
   beneficios: string[];
 }
 
-export const ADDONS_CATALOG: AddonDefinition[] = [
-  {
-    id: "ia_rutinas",
-    nombre: "Rutinas inteligentes con IA",
-    descripcionCorta: "Generación automática de rutinas personalizadas",
-    descripcionLarga:
-      "Chatbot conversacional que recolecta variables del cliente (objetivo, físico, lesiones, disponibilidad) y genera rutinas personalizadas con IA. Tus entrenadores aprueban y editan antes de entregar. Seguimiento de adherencia con datos de check-in.",
-    precio: 499,
-    planMinimo: "basico",
-    estado: "en_desarrollo",
-    faseConstruccion: "Fase 8",
-    iconName: "LuSparkles",
-    beneficios: [
-      "Chatbot recolecta variables del cliente",
-      "Rutinas generadas con IA personalizadas",
-      "Aprobación de entrenadores antes de entregar",
-      "Tracking de adherencia con check-ins",
-      "Ajuste progresivo según resultados",
-    ],
-  },
-  {
-    id: "chatbot_captacion",
-    nombre: "Chatbot de captación 24/7",
-    descripcionCorta: "Bot que responde y captura prospectos en WhatsApp/Web",
-    descripcionLarga:
-      "Tu chatbot atiende clientes potenciales 24/7. Responde preguntas frecuentes (horarios, precios, ubicación), captura datos del prospecto y lo mete al pipeline automáticamente. Configurable con la información específica de tu gym.",
-    precio: 399,
-    planMinimo: "pro",
-    estado: "proximamente",
-    faseConstruccion: "Post Fase 8",
-    iconName: "LuBot",
-    beneficios: [
-      "Atiende prospectos 24/7 sin intervención humana",
-      "Responde FAQ configurables por gym",
-      "Captura datos al pipeline automáticamente",
-      "Funciona en WhatsApp y en tu landing web",
-      "Reduce carga de recepción",
-    ],
-  },
-  {
-    id: "cfdi_facturacion",
-    nombre: "CFDI Facturación",
-    descripcionCorta: "Factura tus cobros con CFDI 4.0",
-    descripcionLarga:
-      "Emite facturas CFDI 4.0 timbradas ante el SAT directamente desde el sistema. Tus miembros piden su factura y se genera con los datos del cobro, sin capturar nada dos veces. Descarga de PDF y XML.",
-    precio: 299,
-    planMinimo: "pro",
-    estado: "proximamente",
-    faseConstruccion: "Próximamente",
-    iconName: "LuFileText",
-    beneficios: [
-      "Facturación CFDI 4.0 timbrada ante el SAT",
-      "Factura a partir del cobro registrado",
-      "Descarga de PDF y XML",
-      "Autoservicio de factura para el miembro",
-      "Reduce trabajo manual de contabilidad",
-    ],
-  },
-  {
-    id: "multisucursal",
-    nombre: "Multi-sucursal",
-    descripcionCorta: "Gestiona varias sucursales en una cuenta",
-    descripcionLarga:
-      "Administra todas tus sucursales desde una sola cuenta: miembros, caja e inventario por sucursal, con reportes consolidados del negocio completo. Control de accesos por sucursal para tu equipo.",
-    precio: 999,
-    planMinimo: "escala",
-    estado: "proximamente",
-    faseConstruccion: "Próximamente",
-    iconName: "LuBuilding2",
-    beneficios: [
-      "Varias sucursales en una sola cuenta",
-      "Caja, miembros e inventario por sucursal",
-      "Reportes consolidados del negocio",
-      "Permisos de staff por sucursal",
-      "Comparativos entre sucursales",
-    ],
-  },
-];
+export const ADDONS_CATALOG: AddonDefinition[] = [];
 
 const PLAN_ORDER: Plan[] = ["basico", "pro", "escala"];
 

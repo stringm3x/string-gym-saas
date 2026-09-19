@@ -53,7 +53,7 @@ export function TagSelector({
               type="button"
               onClick={() => toggle(tag.id)}
               className={cn(
-                "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-all duration-150",
+                "border px-2.5 py-0.5 text-xs font-medium transition-all duration-150",
                 isSelected
                   ? "ring-2 ring-brand-green ring-offset-1 ring-offset-bg"
                   : "opacity-50 hover:opacity-80"

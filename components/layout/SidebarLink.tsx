@@ -24,8 +24,8 @@ const badgeStyles: Record<
   NonNullable<SidebarLinkProps["badgeVariant"]>,
   string
 > = {
-  default: "bg-brand-green text-bg",
-  warning: "bg-warning text-bg",
+  default: "bg-brand-green text-on-brand",
+  warning: "bg-warning text-on-brand",
   danger: "bg-danger text-text-primary",
 };
 
@@ -38,6 +38,11 @@ const dotStyles: Record<
   danger: "bg-danger",
 };
 
+/**
+ * Ítem del menú. Activo = fondo lleno (surface-hover) con texto en ácido,
+ * a sangre de lado a lado, sin barra lateral ni redondeo (artboard "Panel
+ * del día"). 44px de alto: se usa en tablet.
+ */
 export function SidebarLink({
   href,
   label,
@@ -55,18 +60,13 @@ export function SidebarLink({
       aria-current={active ? "page" : undefined}
       title={collapsed ? label : undefined}
       className={cn(
-        "group relative flex items-center rounded-lg text-sm font-medium transition-colors duration-150",
-        collapsed ? "justify-center px-0 py-2.5" : "justify-between px-3 py-2.5",
+        "group relative flex h-11 items-center text-sm transition-colors duration-150",
+        collapsed ? "justify-center px-0" : "justify-between px-5",
         active
-          ? "bg-brand-green/[0.08] text-text-primary"
-          : "text-text-secondary hover:bg-text-primary/[0.04] hover:text-text-primary"
+          ? "bg-surface-hover font-medium text-brand-green"
+          : "text-text-secondary hover:bg-surface-hover/60 hover:text-text-primary"
       )}
     >
-      {/* Barra de acento del item activo (solo expandido) */}
-      {active && !collapsed && (
-        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand-green" />
-      )}
-
       <span className={cn("flex items-center", collapsed ? "" : "gap-3")}>
         <span
           className={cn(
@@ -93,7 +93,7 @@ export function SidebarLink({
       {!collapsed && tieneBadge && (
         <span
           className={cn(
-            "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 font-mono text-xs font-bold tabular-nums",
+            "flex h-5 min-w-5 items-center justify-center px-1.5 font-mono text-xs font-bold tabular-nums",
             badgeStyles[badgeVariant]
           )}
         >

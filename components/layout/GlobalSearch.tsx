@@ -79,11 +79,11 @@ export function GlobalSearch({ slug }: { slug: string }) {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Buscar miembros"
-        className="hidden items-center gap-2 rounded-lg border border-border bg-surface py-1.5 pl-3 pr-2 text-sm text-text-muted transition-colors hover:border-brand-green/40 hover:text-text-secondary sm:flex"
+        className="hidden items-center gap-2 border border-border bg-surface py-1.5 pl-3 pr-2 text-sm text-text-muted transition-colors hover:border-brand-green/40 hover:text-text-secondary sm:flex"
       >
         <LuSearch className="h-4 w-4" />
         <span>Buscar miembros…</span>
-        <kbd className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+        <kbd className="rounded border border-border px-1.5 py-0.5 font-mono text-xs text-text-muted">
           ⌘K
         </kbd>
       </button>
@@ -98,10 +98,10 @@ export function GlobalSearch({ slug }: { slug: string }) {
             type="button"
             aria-label="Cerrar búsqueda"
             onClick={cerrar}
-            className="absolute inset-0 bg-bg/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-bg/60"
           />
 
-          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+          <div className="relative w-full max-w-lg overflow-hidden border border-border bg-surface">
             <div className="flex items-center gap-2 border-b border-border px-4">
               <LuSearch className="h-4 w-4 shrink-0 text-text-muted" />
               <input
@@ -112,7 +112,7 @@ export function GlobalSearch({ slug }: { slug: string }) {
                 placeholder="Buscar miembro por nombre o teléfono…"
                 className="w-full bg-transparent py-3.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
               />
-              <kbd className="hidden shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted sm:block">
+              <kbd className="hidden shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-xs text-text-muted sm:block">
                 ESC
               </kbd>
             </div>

@@ -150,7 +150,7 @@ export function AccionesRapidas({
   }
 
   const btnBase =
-    "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40";
+    "inline-flex h-8 items-center gap-1.5 px-3 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-40";
   const btnDefault =
     "text-text-secondary hover:bg-surface hover:text-text-primary";
   const btnActive = "bg-brand-green/10 text-brand-green";
@@ -197,14 +197,14 @@ export function AccionesRapidas({
               className="fixed inset-0 z-10"
               onClick={() => setShowPlantillas(false)}
             />
-            <div className="absolute left-0 top-full z-20 mt-1 w-56 rounded-xl border border-border bg-surface shadow-lg">
+            <div className="absolute left-0 top-full z-20 mt-1 w-56 border border-border bg-surface">
               <div className="p-1">
                 {plantillasFiltradas.map((p) => (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => handleWhatsApp(p)}
-                    className="w-full rounded-lg px-3 py-2 text-left text-xs hover:bg-surface-hover"
+                    className="w-full px-3 py-2 text-left text-xs hover:bg-surface-hover"
                   >
                     <span className="block font-medium text-text-primary">
                       {p.nombre}
@@ -217,7 +217,7 @@ export function AccionesRapidas({
                 <button
                   type="button"
                   onClick={() => handleWhatsApp()}
-                  className="w-full rounded-lg px-3 py-2 text-left text-xs text-text-muted hover:bg-surface-hover"
+                  className="w-full px-3 py-2 text-left text-xs text-text-muted hover:bg-surface-hover"
                 >
                   Abrir sin plantilla
                 </button>

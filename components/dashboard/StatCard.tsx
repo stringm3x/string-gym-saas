@@ -33,13 +33,6 @@ const valueColors = {
   danger: "text-danger",
 };
 
-const iconStyles = {
-  default: "bg-surface-hover text-text-secondary",
-  success: "bg-brand-green/10 text-brand-green",
-  warning: "bg-warning/10 text-warning",
-  danger: "bg-danger/10 text-danger",
-};
-
 const deltaColors = {
   up: "text-brand-green",
   down: "text-danger",
@@ -48,6 +41,11 @@ const deltaColors = {
 
 const deltaArrows = { up: "↑", down: "↓", flat: "·" };
 
+/**
+ * Tarjeta de dato del panel (artboard "Panel del día"): etiqueta en mono,
+ * cifra grande en Ubuntu Mono (alinea los dígitos), una línea de contexto.
+ * Sin ícono en caja de color ni glow: solo borde y ritmo.
+ */
 export function StatCard({
   label,
   value,
@@ -71,23 +69,15 @@ export function StatCard({
 
   return (
     <div
-      className="card-surface card-interactive animate-stat-in group p-5"
+      className="card-surface animate-stat-in flex flex-col gap-2.5 p-5"
       style={{ animationDelay: `${index * 70}ms` }}
     >
-      {/* Glow sutil del color de marca en hover */}
-      <div className="pointer-events-none absolute -right-12 -top-12 h-28 w-28 rounded-full bg-brand-green/10 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100" />
-
-      <div className="relative flex items-start justify-between gap-3">
-        <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-mono text-etiqueta uppercase text-text-secondary">
           {label}
         </p>
         {icon && (
-          <span
-            className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-              iconStyles[variant]
-            )}
-          >
+          <span className="shrink-0 text-text-muted" aria-hidden="true">
             {icon}
           </span>
         )}
@@ -95,30 +85,32 @@ export function StatCard({
 
       <p
         className={cn(
-          "relative mt-3 font-mono text-3xl font-bold tabular-nums",
+          "font-mono text-cifra font-bold tabular-nums",
           valueColors[variant]
         )}
       >
         {display}
       </p>
 
-      <div className="relative mt-1.5 flex items-center gap-2">
-        {delta && (
-          <span
-            className={cn(
-              "inline-flex items-center gap-0.5 rounded-md bg-bg/40 px-1.5 py-0.5 text-xs font-semibold tabular-nums",
-              deltaColors[delta.direction]
-            )}
-          >
-            <span aria-hidden="true">{deltaArrows[delta.direction]}</span>
-            {Math.abs(delta.value).toFixed(0)}%
-          </span>
-        )}
-        {hint && <span className="text-xs text-text-secondary">{hint}</span>}
-      </div>
+      {(delta || hint) && (
+        <div className="flex items-center gap-2 text-sm">
+          {delta && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-0.5 font-mono font-bold tabular-nums",
+                deltaColors[delta.direction]
+              )}
+            >
+              <span aria-hidden="true">{deltaArrows[delta.direction]}</span>
+              {Math.abs(delta.value).toFixed(0)}%
+            </span>
+          )}
+          {hint && <span className="text-text-muted">{hint}</span>}
+        </div>
+      )}
 
       {sparkline && (
-        <div className="relative mt-3">
+        <div className="mt-1">
           <Sparkline data={sparkline} color={sparklineColor} />
         </div>
       )}

@@ -84,7 +84,6 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-border);
-  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -98,47 +97,20 @@ body {
 }
 
 /* ============================================================
-   Sistema de cards unificado (dashboard + hoy y reutilizable)
-   Superficie con profundidad (gradiente), borde de cristal
-   (hairline superior) y glow neón de marca en la variante
-   interactiva. Aplicar .card-surface a todo panel/tarjeta.
+   Tarjeta del sistema: superficie elevada con borde, esquina viva y
+   sin sombra (la marca usa bordes, no sombras suaves). La variante
+   interactiva solo cambia el borde al acento en hover/foco.
    ============================================================ */
 @layer components {
   .card-surface {
-    @apply relative overflow-hidden rounded-2xl border border-border;
-    background-image: linear-gradient(
-      to bottom right,
-      var(--color-surface),
-      color-mix(in srgb, var(--color-surface) 40%, transparent)
-    );
+    @apply relative border border-border bg-surface;
   }
-  /* Filo de cristal: hairline luminoso en el borde superior */
-  .card-surface::before {
-    content: "";
-    @apply pointer-events-none absolute inset-x-0 top-0 h-px;
-    /* Fallback para navegadores sin color-mix (tablets viejas de recepción). */
-    background-image: linear-gradient(
-      to right,
-      transparent,
-      rgba(255, 255, 255, 0.1),
-      transparent
-    );
-    background-image: linear-gradient(
-      to right,
-      transparent,
-      color-mix(in srgb, var(--color-text-primary) 10%, transparent),
-      transparent
-    );
-  }
-  /* Variante interactiva: elevación + glow de marca en hover */
   .card-interactive {
-    @apply transition-all duration-200;
+    @apply transition-colors duration-150;
   }
-  .card-interactive:hover {
-    transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--color-brand-green) 30%, transparent);
-    box-shadow: 0 10px 20px -6px
-      color-mix(in srgb, var(--color-brand-green) 12%, transparent);
+  .card-interactive:hover,
+  .card-interactive:focus-visible {
+    border-color: var(--color-brand-green);
   }
 }
 

@@ -54,15 +54,32 @@ function SectionLabel({
   collapsed: boolean;
 }) {
   if (collapsed) {
-    return <div className="mx-2 my-2 border-t border-border" />;
+    return <div className="mx-3 my-2 border-t border-border" />;
   }
   return (
-    <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+    <p className="px-5 pb-1 pt-5 font-mono text-etiqueta uppercase text-text-muted">
       {children}
     </p>
   );
 }
 
+/** Monograma S de STRING: negro sobre ácido, como el logo. */
+function Monograma() {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-8 w-8 shrink-0 items-center justify-center bg-brand-green font-display text-lg leading-none text-on-brand"
+    >
+      S
+    </span>
+  );
+}
+
+/**
+ * Menú lateral del panel del gimnasio. Aquí manda el verde de STRING (es lo
+ * que ve el staff); el color del gimnasio vive en portal, kiosco y recibos.
+ * Fondo fondo-elevado, ítems a sangre, activo con fondo lleno.
+ */
 export function Sidebar({
   slug,
   plan,
@@ -106,16 +123,20 @@ export function Sidebar({
   return (
     <aside
       className={`flex h-full shrink-0 flex-col border-r border-border bg-sidebar py-6 transition-[width] duration-200 ${
-        collapsed ? "w-16 px-2" : "w-60 px-3"
+        collapsed ? "w-16" : "w-60"
       }`}
     >
-      {/* Marca */}
-      <div className={collapsed ? "mb-4 flex justify-center" : "mb-4 px-3"}>
+      {/* Marca: logo del gym o monograma S + nombre */}
+      <div
+        className={
+          collapsed
+            ? "mb-4 flex justify-center"
+            : "mb-4 flex items-center gap-3 px-5"
+        }
+      >
         {logoUrl ? (
           <div
-            className={
-              collapsed ? "relative h-8 w-8" : "relative h-10 w-full"
-            }
+            className={collapsed ? "relative h-8 w-8" : "relative h-10 w-full"}
           >
             <Image
               src={logoUrl}
@@ -123,31 +144,25 @@ export function Sidebar({
               fill
               sizes="200px"
               className={
-                collapsed
-                  ? "object-contain"
-                  : "object-contain object-left"
+                collapsed ? "object-contain" : "object-contain object-left"
               }
               unoptimized
               priority
             />
           </div>
-        ) : collapsed ? (
-          <span className="font-display text-xl uppercase leading-none text-text-primary">
-            S<span className="text-brand-green">G</span>
-          </span>
         ) : (
           <>
-            <span className="font-display text-xl uppercase tracking-wide text-text-primary">
-              STRING<span className="text-brand-green">GYM</span>
-            </span>
-            <p className="mt-0.5 truncate text-xs text-text-muted">
-              {gymNombre || "Mi Gym"}
-            </p>
+            <Monograma />
+            {!collapsed && (
+              <span className="truncate text-[15px] font-semibold leading-5 text-text-primary">
+                {gymNombre || "Mi gimnasio"}
+              </span>
+            )}
           </>
         )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden">
+      <nav className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
         {v.hoy && (
           <SidebarLink
             href={`${base}/hoy`}
@@ -160,7 +175,7 @@ export function Sidebar({
         {v.dashboard && (
           <SidebarLink
             href={`${base}/dashboard`}
-            label="Dashboard"
+            label="Panel"
             icon={<LuLayoutDashboard size={18} />}
             active={activeSection === "dashboard"}
             collapsed={collapsed}
@@ -240,7 +255,7 @@ export function Sidebar({
           v.campanas ||
           v.whatsapp ||
           v.opiniones) && (
-          <SectionLabel collapsed={collapsed}>CRM</SectionLabel>
+          <SectionLabel collapsed={collapsed}>Clientes</SectionLabel>
         )}
         {v.prospectos && (
           <SidebarLink
@@ -294,7 +309,7 @@ export function Sidebar({
         )}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-1 pt-3">
+      <div className="mt-auto flex flex-col pt-3">
         <div className="mb-1 border-t border-border" />
         {can("configurar_general") && (
           <SidebarLink
@@ -310,8 +325,8 @@ export function Sidebar({
           onClick={toggle}
           aria-label={collapsed ? "Expandir menú" : "Colapsar menú"}
           title={collapsed ? "Expandir menú" : "Colapsar menú"}
-          className={`flex items-center rounded-lg py-2.5 text-sm font-medium text-text-muted transition-colors hover:bg-text-primary/[0.04] hover:text-text-primary ${
-            collapsed ? "justify-center px-0" : "gap-3 px-3"
+          className={`flex h-11 items-center text-sm text-text-muted transition-colors hover:bg-surface-hover/60 hover:text-text-primary ${
+            collapsed ? "justify-center px-0" : "gap-3 px-5"
           }`}
         >
           {collapsed ? (
@@ -322,6 +337,11 @@ export function Sidebar({
             </>
           )}
         </button>
+        {!collapsed && (
+          <p className="px-5 pt-4 font-mono text-etiqueta uppercase text-text-muted">
+            STRING GYM
+          </p>
+        )}
       </div>
     </aside>
   );

@@ -57,6 +57,10 @@ module.exports = {
         "cuerpo-s": ["14px", { lineHeight: "22px" }],
         etiqueta: ["13px", { lineHeight: "16px", letterSpacing: "0.16em" }],
         dato: ["15px", { lineHeight: "20px", letterSpacing: "0.04em" }],
+        // Título de pantalla de interfaz (Geist, no Anton): 28/32 en los artboards.
+        pagina: ["28px", { lineHeight: "32px" }],
+        // Cifra grande de tarjeta de dato (Ubuntu Mono 40/40 en los artboards).
+        cifra: ["40px", { lineHeight: "40px" }],
       },
       boxShadow: {
         "hard-green": "var(--shadow-hard-green)",

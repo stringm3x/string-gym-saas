@@ -40,7 +40,7 @@ export function AddonDetailModal({
     <Modal open={open} onClose={onClose} title={addon.nombre} size="lg">
       <div className="space-y-5">
         <div className="flex items-start gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-green/10 text-brand-green">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center bg-brand-green/10 text-brand-green">
             <AddonIcon name={addon.iconName} className="h-6 w-6" />
           </span>
           <div className="flex-1">
@@ -51,7 +51,7 @@ export function AddonDetailModal({
         </div>
 
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-text-muted">
+          <p className="mb-2 text-etiqueta uppercase text-text-muted font-mono">
             Qué incluye
           </p>
           <ul className="space-y-2">
@@ -67,9 +67,9 @@ export function AddonDetailModal({
           </ul>
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3">
+        <div className="flex items-center justify-between border border-border bg-surface px-4 py-3">
           <div>
-            <p className="text-xs uppercase tracking-wider text-text-muted">
+            <p className="text-etiqueta uppercase text-text-muted font-mono">
               Precio
             </p>
             <p className="font-mono text-xl font-bold tabular-nums text-text-primary">
@@ -90,7 +90,7 @@ export function AddonDetailModal({
               href={whatsappCancelarAddon(gymNombre, addon.nombre)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-danger/40 hover:text-danger"
+              className="border border-border px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:border-danger/40 hover:text-danger"
             >
               Cancelar add-on
             </a>
@@ -99,7 +99,7 @@ export function AddonDetailModal({
               href={whatsappContratarAddon(gymNombre, addon.nombre, addon.precio)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-brand-green/90"
+              className="bg-brand-green px-4 py-2 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
             >
               Contratar add-on
             </a>
@@ -108,7 +108,7 @@ export function AddonDetailModal({
               href={whatsappNotificarAddon(gymNombre, addon.nombre)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg border border-brand-green/40 px-4 py-2 text-sm font-semibold text-brand-green transition-colors hover:bg-brand-green/10"
+              className="border border-brand-green/40 px-4 py-2 text-sm font-semibold text-brand-green transition-colors hover:bg-brand-green/10"
             >
               Avísame cuando esté listo
             </a>

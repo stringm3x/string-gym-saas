@@ -20,22 +20,22 @@ export default async function ConfiguracionLayout({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+      <div className="flex flex-col gap-1.5">
+        <p className="font-mono text-etiqueta uppercase text-text-muted">
+          Ajustes del gimnasio
+        </p>
+        <h2 className="text-pagina font-semibold text-text-primary">
           Configuración
         </h2>
-        <p className="mt-1 text-sm text-text-secondary">
-          Administra los catálogos del gimnasio.
-        </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-6 lg:self-start">
-          <div className="rounded-xl border border-border bg-surface p-2">
+          <div className="border border-border bg-surface p-2">
             <ConfigNav slug={slug} plan={tenant.plan} role={tenant.role} />
           </div>
         </aside>
-        <div className="min-w-0 rounded-xl border border-border bg-surface p-6">
+        <div className="min-w-0 border border-border bg-surface p-6">
           {children}
         </div>
       </div>

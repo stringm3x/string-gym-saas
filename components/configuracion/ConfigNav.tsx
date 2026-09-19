@@ -70,7 +70,7 @@ export function ConfigNav({ slug, plan, role }: ConfigNavProps) {
       items: [
         { label: "Tags", href: `${base}/tags`, feature: "tags" },
         { label: "Plantillas", href: `${base}/plantillas`, feature: "plantillas_mensaje" },
-        { label: "Add-ons", href: `${base}/addons` },
+        { label: "Complementos", href: `${base}/addons` },
       ],
     },
     {
@@ -91,7 +91,7 @@ export function ConfigNav({ slug, plan, role }: ConfigNavProps) {
         if (items.length === 0) return null;
         return (
           <div key={g.titulo}>
-            <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+            <p className="px-3 pb-1.5 text-etiqueta uppercase text-text-muted font-mono">
               {g.titulo}
             </p>
             <ul className="flex flex-col gap-0.5">
@@ -103,7 +103,7 @@ export function ConfigNav({ slug, plan, role }: ConfigNavProps) {
                       href={i.href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "relative flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150",
+                        "relative flex items-center px-3 py-2 text-sm font-medium transition-colors duration-150",
                         active
                           ? "bg-brand-green/[0.08] text-text-primary"
                           : "text-text-secondary hover:bg-text-primary/[0.04] hover:text-text-primary"

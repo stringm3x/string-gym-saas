@@ -40,13 +40,13 @@ export function FeatureGate({
     <div className="relative">
       <div
         aria-hidden="true"
-        className="pointer-events-none select-none blur-sm opacity-40"
+        className="pointer-events-none select-none opacity-40"
       >
         {children}
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-surface/90 px-6 py-5 text-center shadow-lg backdrop-blur-sm">
+        <div className="flex flex-col items-center gap-3 border border-border bg-surface/90 px-6 py-5 text-center">
           <p className="text-sm text-text-secondary">
             Esta sección está disponible en el plan{" "}
             <span className="font-semibold text-brand-green">
@@ -55,7 +55,7 @@ export function FeatureGate({
           </p>
           <Link
             href={`/${slug}/configuracion/plan`}
-            className="rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-colors duration-150 hover:bg-brand-green/90"
+            className="bg-brand-green px-4 py-2 text-sm font-semibold text-on-brand transition-colors duration-150 hover:bg-brand-green/90"
           >
             Mejorar a {requiredPlanLabel}
           </Link>
