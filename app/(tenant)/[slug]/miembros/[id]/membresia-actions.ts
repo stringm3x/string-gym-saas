@@ -9,8 +9,10 @@ import {
   congelarMembresia,
   descongelarMembresia,
   cambiarPlan,
+  calcularCambioPlan,
   aprobarCongelacion,
   rechazarCongelacion,
+  type CambioPlanCalculo,
 } from "@/lib/queries/miembro-eventos.queries";
 
 async function quienSoy(tenantId: string) {
@@ -95,13 +97,34 @@ export async function rechazarCongelacionAction(
   return { ok: true };
 }
 
+/**
+ * Previsualiza el prorrateo de un cambio de plan (sin escribir nada): el
+ * cajero debe ver la cuenta — días restantes, valor, días del plan nuevo,
+ * saldo a favor si lo hay — antes de poder confirmar.
+ */
+export async function previsualizarCambioPlanAction(
+  miembroId: string,
+  nuevoPlanId: string
+): Promise<{ ok: true; calculo: CambioPlanCalculo } | { ok: false; error: string }> {
+  const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "registrar_pagos")) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
+  if (!nuevoPlanId) return { ok: false, error: "Elige un plan." };
+  return calcularCambioPlan(tenant.id, miembroId, nuevoPlanId);
+}
+
 export async function cambiarPlanAction(
   miembroId: string,
   nuevoPlanId: string
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; notaCredito?: number }> {
   const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "editar_miembros")) {
-    return { ok: false, error: "No tienes permiso para esta acción." };
+  // Antes exigía "editar_miembros" (lo tiene hasta un entrenador, sin acceso
+  // a caja por diseño — D6). Ahora prorratea y puede mover dinero (nota de
+  // crédito), así que exige el mismo permiso que cobrar: es un bypass de
+  // caja si un rol sin acceso a caja puede regalar/quitar días de vigencia.
+  if (!hasPermission(tenant.role, "registrar_pagos")) {
+    return { ok: false, error: "No tienes permiso para cambiar de plan." };
   }
   if (!nuevoPlanId) return { ok: false, error: "Elige un plan." };
 
@@ -113,5 +136,5 @@ export async function cambiarPlanAction(
   if (!r.ok) return { ok: false, error: r.error };
 
   revalidatePath(`/${tenant.slug}/miembros/${miembroId}`);
-  return { ok: true };
+  return { ok: true, notaCredito: r.notaCredito };
 }

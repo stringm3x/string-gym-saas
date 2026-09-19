@@ -412,20 +412,28 @@ export async function createReserva(
 /**
  * Cancela una reserva. Devuelve la sesion_id para que el caller pueda promover
  * la lista de espera de esa sesión.
+ *
+ * `miembroId` es opcional a propósito: el staff (panel) y la API v1 (API key
+ * del tenant) representan al gym completo y deben poder cancelar la reserva
+ * de cualquier socio, así que llaman sin pasarlo. Un caller que representa a
+ * UN socio (portal, bot de WhatsApp) debe pasar su propio miembroId — sin
+ * esto, cualquier socio autenticado podía cancelar la reserva de otro con
+ * solo adivinar/obtener su reservaId (el WHERE solo filtraba por tenant_id).
  */
 export async function cancelarReserva(
   tenantId: string,
   reservaId: string,
-  client?: Db
+  client?: Db,
+  miembroId?: string
 ): Promise<{ ok: boolean; sesionId?: string; error?: string }> {
   const supabase = client ?? (await createClient());
-  const { data, error } = await supabase
+  let q = supabase
     .from("clases_reservas")
     .update({ estado: "cancelada" })
     .eq("tenant_id", tenantId)
-    .eq("id", reservaId)
-    .select("sesion_id")
-    .single();
+    .eq("id", reservaId);
+  if (miembroId) q = q.eq("miembro_id", miembroId);
+  const { data, error } = await q.select("sesion_id").single();
   if (error || !data) return { ok: false, error: error?.message };
   return { ok: true, sesionId: data.sesion_id };
 }

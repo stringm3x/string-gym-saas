@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 
+// La única policy de UPDATE sobre `gyms` es owner_id = auth.uid(): un
+// gerente afecta 0 filas sin error (ver gyms.queries.ts).
+const ERROR_SOLO_OWNER =
+  "No se guardó: por ahora solo el dueño puede cambiar esto.";
+
 export interface MpStatus {
   connected: boolean;
   email: string | null;
@@ -27,15 +32,17 @@ export async function saveMpCredentials(
   creds: { token: string; email: string | null; userId: string | null }
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("gyms")
     .update({
       mp_access_token: creds.token,
       mp_email: creds.email,
       mp_user_id: creds.userId,
     })
-    .eq("id", tenantId);
+    .eq("id", tenantId)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: ERROR_SOLO_OWNER };
   return { ok: true };
 }
 
@@ -43,7 +50,7 @@ export async function clearMpCredentials(
   tenantId: string
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("gyms")
     .update({
       mp_access_token: null,
@@ -51,8 +58,10 @@ export async function clearMpCredentials(
       mp_user_id: null,
       mp_public_key: null,
     })
-    .eq("id", tenantId);
+    .eq("id", tenantId)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: ERROR_SOLO_OWNER };
   return { ok: true };
 }
 

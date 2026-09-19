@@ -20,6 +20,7 @@ const ERROR_MSG: Record<CheckInQrError, string> = {
   MEMBRESIA_VENCIDA: "Membresía vencida",
   MEMBRESIA_CONGELADA: "Membresía congelada",
   SIN_VISITAS: "Sin visitas disponibles",
+  CHECKIN_RECIENTE: "Ya registró su entrada hace un momento",
   ERROR: "No se pudo registrar el check-in",
 };
 

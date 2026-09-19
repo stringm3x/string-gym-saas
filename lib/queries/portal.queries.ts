@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSesionesByRango } from "@/lib/queries/clases.queries";
 import type { ClaseSesion } from "@/lib/types/clases";
 import type { Plan } from "@/lib/features";
+import { hoyISO, isoMasDias } from "@/lib/utils/dates";
 
 const OTP_TTL_MIN = 10;
 const SESSION_TTL_DIAS = 30;
@@ -309,7 +310,7 @@ export async function getProximasReservasPortal(
     .eq("miembro_id", miembroId)
     .in("estado", ["confirmada", "en_lista_espera"]);
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyISO();
   return ((data ?? []) as unknown as ReservaRaw[])
     .filter((r) => r.sesion && r.sesion.fecha >= hoy)
     .map((r) => ({
@@ -339,10 +340,8 @@ export async function getClasesDisponiblesPortal(
   dias = 14
 ): Promise<ClaseSesion[]> {
   const admin = createAdminClient();
-  const hoy = new Date().toISOString().slice(0, 10);
-  const hasta = new Date(Date.now() + dias * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  const hoy = hoyISO();
+  const hasta = isoMasDias(dias);
   const sesiones = await getSesionesByRango(tenantId, hoy, hasta, admin);
   return sesiones.filter((s) => s.estado === "programada");
 }

@@ -3,7 +3,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFeature, type Plan } from "@/lib/features";
 import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
-import { createCheckin, visitasAgotadas } from "@/lib/queries/checkins.queries";
+import {
+  createCheckin,
+  visitasAgotadas,
+  checkinReciente,
+} from "@/lib/queries/checkins.queries";
 import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
 import { randomUUID } from "node:crypto";
 import {
@@ -22,6 +26,7 @@ export type KioscoError =
   | "MEMBRESIA_VENCIDA"
   | "MEMBRESIA_CONGELADA"
   | "SIN_VISITAS"
+  | "CHECKIN_RECIENTE"
   | "NO_DISPONIBLE"
   | "ERROR";
 
@@ -80,6 +85,11 @@ export async function checkInKioscoAction(
   }
   if (await visitasAgotadas(gym.id, miembro.id, admin)) {
     return { success: false, error: "SIN_VISITAS", nombre: miembro.nombre };
+  }
+  // Mismo QR sostenido frente al lector o doble tap: el lock del cliente se
+  // libera a los 3s, esto cubre el hueco del lado del servidor.
+  if (await checkinReciente(gym.id, miembro.id, admin)) {
+    return { success: false, error: "CHECKIN_RECIENTE", nombre: miembro.nombre };
   }
   if (
     miembro.fecha_vencimiento &&
@@ -179,12 +189,18 @@ export async function identificarMiembroKioscoAction(
 /**
  * Genera un código de autorización para una compra. El total y el stock se
  * recalculan en el servidor; el staff cobra y descuenta stock al autorizar.
+ *
+ * Revalida dueño con el qr_token (mismo patrón que actualizarTelefonoKioscoAction,
+ * bloque-04b): antes solo cruzaba tenant_id + miembroId, confiando en el id
+ * que manda el cliente — cualquiera con el miembroId de otro socio del mismo
+ * gym podía generar un código de compra a su nombre.
  */
 export async function crearCodigoCompraAction(
   slug: string,
   miembroId: string,
   items: { producto_id: string; cantidad: number }[],
-  metodo: KioscoMetodo
+  metodo: KioscoMetodo,
+  token: string
 ): Promise<CodigoResult> {
   if (!METODOS.includes(metodo)) {
     return { ok: false, error: "Método de pago inválido." };
@@ -197,15 +213,14 @@ export async function crearCodigoCompraAction(
   if (!res.gym) return { ok: false, error: res.error };
   const gym = res.gym;
 
-  // El miembro debe pertenecer al gym (defensa: viene del cliente).
   const admin = createAdminClient();
-  const { data: miembro } = await admin
-    .from("miembros")
-    .select("id")
-    .eq("tenant_id", gym.id)
-    .eq("id", miembroId)
-    .maybeSingle();
-  if (!miembro) return { ok: false, error: "Miembro no válido." };
+  const miembro = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
+  if (!miembro || miembro.id !== miembroId) {
+    return {
+      ok: false,
+      error: "No se pudo verificar tu identidad. Vuelve a escanear tu QR.",
+    };
+  }
 
   const productos = await getProductosKiosco(gym.id);
   const porId = new Map(productos.map((p) => [p.id, p]));
@@ -314,12 +329,16 @@ async function planValido(gymId: string, planId: string) {
 /**
  * Genera un código de autorización para renovar membresía en efectivo o
  * transferencia. El staff cobra y extiende el vencimiento al autorizar.
+ *
+ * Revalida dueño con el qr_token — mismo motivo y patrón que
+ * crearCodigoCompraAction.
  */
 export async function crearCodigoMembresiaAction(
   slug: string,
   miembroId: string,
   planId: string,
-  metodo: "efectivo" | "transferencia"
+  metodo: "efectivo" | "transferencia",
+  token: string
 ): Promise<CodigoResult> {
   if (metodo !== "efectivo" && metodo !== "transferencia") {
     return { ok: false, error: "Método de pago inválido." };
@@ -330,13 +349,13 @@ export async function crearCodigoMembresiaAction(
   const gym = res.gym;
 
   const admin = createAdminClient();
-  const { data: miembro } = await admin
-    .from("miembros")
-    .select("id")
-    .eq("tenant_id", gym.id)
-    .eq("id", miembroId)
-    .maybeSingle();
-  if (!miembro) return { ok: false, error: "Miembro no válido." };
+  const miembro = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
+  if (!miembro || miembro.id !== miembroId) {
+    return {
+      ok: false,
+      error: "No se pudo verificar tu identidad. Vuelve a escanear tu QR.",
+    };
+  }
 
   const plan = await planValido(gym.id, planId);
   if (!plan) return { ok: false, error: "Ese plan no está disponible." };
@@ -362,24 +381,38 @@ export async function crearCodigoMembresiaAction(
  * Inicia la renovación con MercadoPago desde el kiosco. Crea `pagos_externos`
  * (pending) con miembroId+planId; el webhook de la Fase 7.9 confirma el pago
  * y extiende el vencimiento automáticamente.
+ *
+ * Revalida dueño con el qr_token — mismo motivo que las otras dos acciones
+ * de autorización del kiosco, pero de mayor impacto aquí: sin esto, dispara
+ * una extensión REAL de membresía de otro socio en cuanto el webhook de MP
+ * confirma el pago (no requiere que el staff autorice nada).
  */
 export async function renovarMembresiaMpKioscoAction(
   slug: string,
   miembroId: string,
-  planId: string
+  planId: string,
+  token: string
 ): Promise<RenovarMpResult> {
   const res = await gymAutoservicio(slug);
   if (!res.gym) return { ok: false, error: res.error };
   const gym = res.gym;
 
   const admin = createAdminClient();
+  const miembroQr = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
+  if (!miembroQr || miembroQr.id !== miembroId) {
+    return {
+      ok: false,
+      error: "No se pudo verificar tu identidad. Vuelve a escanear tu QR.",
+    };
+  }
+  // getMiembroByQrToken no trae email (lo usa el checkout de MP); una
+  // segunda lectura acotada, ya con la identidad confirmada arriba.
   const { data: miembro } = await admin
     .from("miembros")
-    .select("id, email")
+    .select("email")
     .eq("tenant_id", gym.id)
     .eq("id", miembroId)
     .maybeSingle();
-  if (!miembro) return { ok: false, error: "Miembro no válido." };
 
   const plan = await planValido(gym.id, planId);
   if (!plan) return { ok: false, error: "Ese plan no está disponible." };
@@ -405,7 +438,7 @@ export async function renovarMembresiaMpKioscoAction(
     failureUrl: kioscoUrl,
     pendingUrl: kioscoUrl,
     externalReference: refId,
-    payerEmail: (miembro.email as string | null) || undefined,
+    payerEmail: (miembro?.email as string | null) || undefined,
   });
 
   if (!pref.ok) {
@@ -442,11 +475,20 @@ export async function renovarMembresiaMpKioscoAction(
 /**
  * Actualiza el teléfono de un miembro desde el kiosco (público, sin sesión).
  * Scoped por gym (slug) + id del miembro. No lanza; valida 10 dígitos.
+ *
+ * Revalida dueño con el qr_token (línea de bloque-04): antes solo filtraba
+ * por tenant_id + miembroId, confiando en el id que mandaba el cliente. Con
+ * cualquier miembroId válido del mismo gym (no es adivinable, pero si algún
+ * día se filtrara por cualquier vía) se podía pisar el teléfono de OTRO
+ * socio y de ahí encadenar el OTP del portal — cambiar teléfono, recibir el
+ * código, entrar a la cuenta ajena. Exigir el mismo token que se escaneó
+ * cierra el hueco sin depender de qué tan obtenible sea el id hoy.
  */
 export async function actualizarTelefonoKioscoAction(
   slug: string,
   miembroId: string,
-  telefono: string
+  telefono: string,
+  token: string
 ): Promise<{ ok: boolean; error?: string }> {
   const digits = (telefono || "").replace(/\D/g, "");
   if (digits.length !== 10) {
@@ -460,6 +502,14 @@ export async function actualizarTelefonoKioscoAction(
     .eq("slug", slug)
     .maybeSingle();
   if (!gym) return { ok: false, error: "Gimnasio no encontrado." };
+
+  const miembro = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
+  if (!miembro || miembro.id !== miembroId) {
+    return {
+      ok: false,
+      error: "No se pudo verificar tu identidad. Vuelve a escanear tu QR.",
+    };
+  }
 
   const { error } = await admin
     .from("miembros")

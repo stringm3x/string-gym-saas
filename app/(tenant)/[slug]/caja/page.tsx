@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   listPagosDelDia,
   getResumenCaja,
@@ -9,6 +10,7 @@ import { listPromociones } from "@/lib/queries/promociones.queries";
 import { listProductosParaVenta } from "@/lib/queries/productos.queries";
 import { getTenant } from "@/lib/tenant";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
 import { getGymFull } from "@/lib/queries/gyms.queries";
 import { listStaffParaCheckin } from "@/lib/queries/staff.queries";
 import { listCajas } from "@/lib/queries/cajas.queries";
@@ -35,7 +37,7 @@ import { AutorizacionesPendientes } from "@/components/caja/AutorizacionesPendie
 import { PagosExternosPendientes } from "@/components/caja/PagosExternosPendientes";
 import { CortePanel } from "@/components/caja/CortePanel";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { LuStore } from "react-icons/lu";
+import { LuStore, LuTriangleAlert } from "react-icons/lu";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -83,6 +85,14 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     getTenant(),
   ]);
 
+  // La Server Action de cobro ya rechaza sin este permiso (bloque-04), pero
+  // sin guard aquí un entrenador con la URL a mano igual veía y usaba el
+  // formulario de cobro completo — el sidebar solo oculta el link, no
+  // protege la ruta.
+  if (!hasPermission(tenant.role, "registrar_pagos")) {
+    redirect(`/${slug}/checkins`);
+  }
+
   const categoria = parseCategoria(sp.cat);
 
   const canMp = hasFeature(tenant.plan, "mercadopago");
@@ -119,15 +129,33 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     cajas[0] ??
     null;
 
+  const cajaRequiereCuadre = cajaActiva?.requiere_cuadre ?? false;
+  const checkinRequerido = (gym?.caja_checkin_pin ?? false) && cajaRequiereCuadre;
+
+  // Se resuelve antes del batch de abajo: listPagosDelDia necesita
+  // corte?.abierto_at para que "Movimientos del turno" arranque donde
+  // arrancan los totales del turno (ver comentario en esa función).
+  const corte =
+    cajaActiva && cajaRequiereCuadre
+      ? await getCorteAbierto(tenant.id, cajaActiva.id)
+      : null;
+
   const [
     pagos,
     resumen,
     codigosPendientes,
     pagosMpPendientes,
     cajasAbiertas,
+    staffParaCheckin,
   ] = await Promise.all([
     cajaActiva
-      ? listPagosDelDia(tenant.id, categoria, 50, cajaActiva.id)
+      ? listPagosDelDia(
+          tenant.id,
+          categoria,
+          50,
+          cajaActiva.id,
+          corte?.abierto_at
+        )
       : Promise.resolve([]),
     cajaActiva
       ? getResumenCaja(tenant.id, categoria, cajaActiva.id)
@@ -139,14 +167,6 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     canAutoservicio ? getCodigosPendientes(tenant.id) : Promise.resolve([]),
     canMp ? listPagosExternosPendientes(tenant.id) : Promise.resolve([]),
     cajas.length > 1 ? listCajasAbiertas(tenant.id) : Promise.resolve([]),
-  ]);
-
-  const cajaRequiereCuadre = cajaActiva?.requiere_cuadre ?? false;
-  const checkinRequerido = (gym?.caja_checkin_pin ?? false) && cajaRequiereCuadre;
-  const [corte, staffParaCheckin] = await Promise.all([
-    cajaActiva && cajaRequiereCuadre
-      ? getCorteAbierto(tenant.id, cajaActiva.id)
-      : Promise.resolve(null),
     checkinRequerido ? listStaffParaCheckin(tenant.id) : Promise.resolve([]),
   ]);
 
@@ -273,6 +293,20 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
             ) : undefined
           }
         />
+      )}
+
+      {cajaActiva && cajaRequiereCuadre && !corte && (
+        <div className="flex items-start gap-3 border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-text-primary">
+          <LuTriangleAlert
+            className="mt-0.5 h-4 w-4 shrink-0 text-warning"
+            aria-hidden="true"
+          />
+          <p>
+            Esta caja no tiene turno activo ahorita. Lo que cobres{" "}
+            <strong>no va a entrar al corte</strong>. Ábrelo en el panel de
+            la derecha, o cobra igual y cuádralo a mano después.
+          </p>
+        </div>
       )}
 
       {cajaActiva && (

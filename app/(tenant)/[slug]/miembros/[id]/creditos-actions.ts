@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
 import { createPlanPago, pagarCuota } from "@/lib/queries/creditos.queries";
 import { planPagoInputSchema } from "@/lib/validations/creditos.schema";
 
@@ -15,6 +16,12 @@ export async function crearPlanPagoAction(
   const tenant = await getTenant();
   if (!hasFeature(tenant.plan, "creditos")) {
     return { ok: false, error: "Tu plan no incluye Créditos." };
+  }
+  // Crea un compromiso de cobro real — mismo permiso que cualquier otro
+  // movimiento de dinero (registrar_pagos); antes solo se checaba el plan,
+  // así que un entrenador sin acceso a caja podía crearlo igual.
+  if (!hasPermission(tenant.role, "registrar_pagos")) {
+    return { ok: false, error: "No tienes permiso para cobrar." };
   }
 
   const parsed = planPagoInputSchema.safeParse(input);
@@ -39,6 +46,9 @@ export async function pagarCuotaAction(
   const tenant = await getTenant();
   if (!hasFeature(tenant.plan, "creditos")) {
     return { ok: false, error: "Tu plan no incluye Créditos." };
+  }
+  if (!hasPermission(tenant.role, "registrar_pagos")) {
+    return { ok: false, error: "No tienes permiso para cobrar." };
   }
   if (!METODOS.includes(metodo)) {
     return { ok: false, error: "Método de pago inválido." };

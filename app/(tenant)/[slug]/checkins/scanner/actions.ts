@@ -6,6 +6,7 @@ import {
   createCheckin,
   bloqueaVencidos,
   visitasAgotadas,
+  checkinReciente,
 } from "@/lib/queries/checkins.queries";
 import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
 import { hoyISO } from "@/lib/utils/dates";
@@ -16,6 +17,7 @@ export type CheckInQrError =
   | "MEMBRESIA_VENCIDA"
   | "MEMBRESIA_CONGELADA"
   | "SIN_VISITAS"
+  | "CHECKIN_RECIENTE"
   | "ERROR";
 
 export type CheckInQrResult =
@@ -48,6 +50,11 @@ export async function checkInPorQrAction(
   }
   if (await visitasAgotadas(tenant.id, miembro.id)) {
     return { success: false, error: "SIN_VISITAS", nombre: miembro.nombre };
+  }
+  // Mismo QR sostenido frente al lector o doble tap: el lock del cliente se
+  // libera a los 2.5s, esto cubre el hueco del lado del servidor.
+  if (await checkinReciente(tenant.id, miembro.id)) {
+    return { success: false, error: "CHECKIN_RECIENTE", nombre: miembro.nombre };
   }
   if (
     miembro.fecha_vencimiento &&

@@ -22,6 +22,7 @@ const ERROR_MSG: Record<KioscoError, string> = {
   MEMBRESIA_VENCIDA: "Membresía vencida",
   MEMBRESIA_CONGELADA: "Membresía congelada",
   SIN_VISITAS: "Sin visitas disponibles",
+  CHECKIN_RECIENTE: "Ya registraste tu entrada",
   NO_DISPONIBLE: "No disponible",
   ERROR: "No se pudo registrar",
 };
@@ -31,6 +32,7 @@ export function KioscoEntrada({ slug }: { slug: string }) {
   const [token, setToken] = useState("");
   const [pending, start] = useTransition();
   const [result, setResult] = useState<KioscoResult | null>(null);
+  const [tokenUsado, setTokenUsado] = useState("");
   const [telInput, setTelInput] = useState("");
   const [savingTel, startSaveTel] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,6 +47,7 @@ export function KioscoEntrada({ slug }: { slug: string }) {
     if (timerRef.current) clearTimeout(timerRef.current);
     setResult(null);
     setTelInput("");
+    setTokenUsado("");
     lockRef.current = false;
     focusInput();
   }
@@ -61,6 +64,7 @@ export function KioscoEntrada({ slug }: { slug: string }) {
     start(async () => {
       const r = await checkInKioscoAction(slug, t);
       setResult(r);
+      setTokenUsado(t);
       setToken("");
       if (timerRef.current) clearTimeout(timerRef.current);
       // Si hay que pedir el teléfono, NO auto-reseteamos: esperamos al miembro.
@@ -73,7 +77,7 @@ export function KioscoEntrada({ slug }: { slug: string }) {
 
   function guardarTelefono(miembroId: string) {
     startSaveTel(async () => {
-      await actualizarTelefonoKioscoAction(slug, miembroId, telInput);
+      await actualizarTelefonoKioscoAction(slug, miembroId, telInput, tokenUsado);
       reset();
     });
   }
@@ -152,7 +156,9 @@ export function KioscoEntrada({ slug }: { slug: string }) {
             {result.nombre && (
               <p className="text-2xl text-text-secondary">{result.nombre}</p>
             )}
-            <p className="text-lg text-text-muted">Pasa a recepción.</p>
+            {result.error !== "CHECKIN_RECIENTE" && (
+              <p className="text-lg text-text-muted">Pasa a recepción.</p>
+            )}
           </>
         )}
       </div>

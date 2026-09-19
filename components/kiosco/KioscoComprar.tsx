@@ -32,6 +32,7 @@ export function KioscoComprar({ slug }: { slug: string }) {
   const [miembro, setMiembro] = useState<{ id: string; nombre: string } | null>(
     null
   );
+  const [tokenUsado, setTokenUsado] = useState("");
   const [productos, setProductos] = useState<KioscoProducto[]>([]);
   const [mpDisponible, setMpDisponible] = useState(false);
   const [cant, setCant] = useState<Record<string, number>>({});
@@ -58,6 +59,7 @@ export function KioscoComprar({ slug }: { slug: string }) {
         return;
       }
       setMiembro(r.miembro);
+      setTokenUsado(token);
       setProductos(r.productos);
       setMpDisponible(r.mpDisponible);
       setCant({});
@@ -80,7 +82,13 @@ export function KioscoComprar({ slug }: { slug: string }) {
     if (items.length === 0 || !miembro) return;
     setError(null);
     start(async () => {
-      const r = await crearCodigoCompraAction(slug, miembro.id, items, metodo);
+      const r = await crearCodigoCompraAction(
+        slug,
+        miembro.id,
+        items,
+        metodo,
+        tokenUsado
+      );
       if (!r.ok) {
         setError(r.error);
         return;
@@ -93,6 +101,7 @@ export function KioscoComprar({ slug }: { slug: string }) {
   function reset() {
     setPaso("scan");
     setMiembro(null);
+    setTokenUsado("");
     setProductos([]);
     setCant({});
     setCodigo(null);

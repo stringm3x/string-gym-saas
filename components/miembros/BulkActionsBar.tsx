@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
 import { compilarPlantilla } from "@/lib/utils/plantilla";
 import { formatFecha } from "@/lib/utils/format";
+import { normalizarTelefonoMx } from "@/lib/utils/whatsapp";
 import { bulkAsignarTagAction } from "@/app/(tenant)/[slug]/miembros/actions";
 import type { MiembroConTags } from "@/lib/queries/miembros.queries";
 import type { Tag } from "@/lib/queries/tags.queries";
@@ -206,7 +207,7 @@ export function BulkActionsBar({
                       : undefined,
                   })
                 : "";
-              const tel = m.telefono?.replace(/\D/g, "");
+              const tel = m.telefono ? normalizarTelefonoMx(m.telefono) : null;
               const waUrl = tel
                 ? `https://wa.me/${tel}${msg ? `?text=${encodeURIComponent(msg)}` : ""}`
                 : null;

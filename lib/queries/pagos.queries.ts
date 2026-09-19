@@ -14,8 +14,10 @@ import { getCajaDefault, resolverCajaDeVenta } from "@/lib/queries/cajas.queries
  * Si no se especifica cajaId (pagos sin punto de venta físico: portal, kiosco,
  * MercadoPago, cuotas de crédito…), cae en la caja default del gym. Best-effort:
  * un fallo aquí no debe deshacer un cobro que ya se registró de verdad.
+ * Exportada para que contextos sin sesión (el webhook de MercadoPago, con
+ * el client admin) puedan reusarla igual que createPago.
  */
-async function registrarCajaDePagos(
+export async function registrarCajaDePagos(
   supabase: SupabaseClient,
   tenantId: string,
   pagoIds: string[],
@@ -25,17 +27,39 @@ async function registrarCajaDePagos(
   try {
     let caja = cajaId;
     if (!caja) {
-      const def = await getCajaDefault(tenantId);
-      if (!def) return;
+      // El mismo `supabase` que enlaza el pago resuelve la caja — con el
+      // admin del webhook, sin esto getCajaDefault usaba su propio
+      // createClient() de sesión (sin sesión aquí) y RLS lo dejaba en null
+      // siempre, aunque sí hubiera caja default.
+      const def = await getCajaDefault(tenantId, supabase);
+      if (!def) {
+        // El cobro ya se registró (el RPC de arriba ya corrió) — no lo
+        // deshacemos por esto, pero sin caja el pago queda invisible para
+        // cualquier corte. Antes este caso ni se logueaba.
+        console.error(
+          `[pagos] sin caja default para tenant ${tenantId}: pago(s) ${pagoIds.join(
+            ", "
+          )} quedan sin enlazar a ninguna caja. Créala en Configuración → Cajas.`
+        );
+        return;
+      }
       caja = def.id;
     }
-    await supabase.from("pagos_caja").insert(
+    const { error } = await supabase.from("pagos_caja").insert(
       pagoIds.map((pago_id) => ({
         tenant_id: tenantId,
         pago_id,
         caja_id: caja,
       }))
     );
+    if (error) {
+      console.error(
+        `[pagos] no se pudo enlazar pago(s) ${pagoIds.join(
+          ", "
+        )} a la caja ${caja} (tenant ${tenantId}):`,
+        error.message
+      );
+    }
   } catch (err) {
     console.error("[pagos] registrarCajaDePagos:", err);
   }
@@ -347,7 +371,12 @@ export async function createVisitaRapida(
   return { ok: true, id: data.id, token };
 }
 
-/** Marca un pago como anulado (no cuenta en totales; recibo público → 410). */
+/**
+ * Marca un pago como anulado (no cuenta en totales; recibo público → 410).
+ * Si era venta de producto, repone el stock — vía RPC (sql/066), con la
+ * misma atomicidad (lock de fila + una transacción) con la que
+ * registrar_pago lo descuenta al cobrar.
+ */
 export async function anularPago(
   tenantId: string,
   pagoId: string,
@@ -362,13 +391,22 @@ export async function anularPago(
     .eq("id", pagoId)
     .maybeSingle();
 
-  const { error } = await supabase
-    .from("pagos")
-    .update({ anulado_at: new Date().toISOString(), anulado_motivo: motivo ?? null })
-    .eq("tenant_id", tenantId)
-    .eq("id", pagoId);
+  const { error } = await supabase.rpc("anular_pago", {
+    p_tenant_id: tenantId,
+    p_pago_id: pagoId,
+    p_motivo: motivo ?? null,
+  });
 
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    const msg = error.message ?? "";
+    if (msg.includes("PAGO_NO_ENCONTRADO")) {
+      return { ok: false, error: "Pago no encontrado." };
+    }
+    if (msg.includes("YA_ANULADO")) {
+      return { ok: false, error: "Este pago ya estaba anulado." };
+    }
+    return { ok: false, error: msg || "No se pudo anular el pago." };
+  }
 
   // Si el pago extendió la membresía (concepto membresía, con periodo) y esa
   // extensión sigue vigente (nadie renovó después), se revierte: el
@@ -431,6 +469,34 @@ export async function anularPago(
   return { ok: true };
 }
 
+const VENTANA_PAGO_RECIENTE_MIN = 5;
+
+/**
+ * ¿Este socio ya tiene un pago de membresía válido en los últimos
+ * VENTANA_PAGO_RECIENTE_MIN minutos? Aviso de posible doble cobro: dos
+ * pestañas de caja cobrando al mismo socio casi a la vez generaban dos pagos
+ * con una sola extensión de vigencia. No bloquea — el caller decide si avisa
+ * y deja confirmar.
+ */
+export async function pagoMembresiaReciente(
+  tenantId: string,
+  miembroId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const desde = new Date(
+    Date.now() - VENTANA_PAGO_RECIENTE_MIN * 60_000
+  ).toISOString();
+  const { count } = await supabase
+    .from("pagos")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .eq("concepto", "membresia")
+    .is("anulado_at", null)
+    .gte("created_at", desde);
+  return (count ?? 0) > 0;
+}
+
 export async function countVisitasRapidasHoy(tenantId: string): Promise<number> {
   const supabase = await createClient();
   const inicioHoy = hoyCDMX();
@@ -458,17 +524,22 @@ function categoriaAConceptos(cat: CategoriaCaja): string[] | null {
 }
 
 /**
- * Lista pagos del día (filtrable por categoría) con miembro embebido.
+ * Lista pagos del día (filtrable por categoría) con miembro embebido. Con
+ * turno abierto, `desde` debe ser `corte.abierto_at`: si el turno cruzó
+ * medianoche, la lista debe empezar donde empiezan los totales del turno
+ * (resumenCorteEnVivo ya usa abierto_at) — si no, "Movimientos del turno" y
+ * los totales del turno no coinciden. Sin turno, cae a medianoche de México.
  */
 export async function listPagosDelDia(
   tenantId: string,
   categoria: CategoriaCaja = "all",
   limit = 50,
-  cajaId?: string
+  cajaId?: string,
+  desde?: string
 ): Promise<PagoConMiembro[]> {
   const supabase = await createClient();
 
-  const inicioHoy = hoyCDMX();
+  const inicioHoy = desde ?? hoyCDMX().toISOString();
 
   let q = supabase
     .from("pagos")
@@ -476,7 +547,7 @@ export async function listPagosDelDia(
       "id, tenant_id, miembro_id, concepto, monto, metodo_pago, fecha_pago, periodo_inicio, periodo_fin, plan_id, promocion_id, producto_id, folio, es_visita_rapida, nombre_visitante, telefono_visitante, token_publico, anulado_at, reembolsado_at, reembolsado_motivo, ticket_id, created_at, miembros(nombre)"
     )
     .eq("tenant_id", tenantId)
-    .gte("fecha_pago", inicioHoy.toISOString())
+    .gte("fecha_pago", inicioHoy)
     .order("fecha_pago", { ascending: false })
     // Se filtra por caja después de traer (pagos_caja es una tabla aparte),
     // así que se pide de más para no truncar antes de filtrar.

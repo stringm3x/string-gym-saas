@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { PromocionInput } from "@/lib/validations/promocion.schema";
+import { hoyISO } from "@/lib/utils/dates";
 
 export interface Promocion {
   id: string;
@@ -34,7 +35,7 @@ export async function listPromociones(
   }
 
   if (options.soloActivasVigentes) {
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = hoyISO();
     q = q.eq("activo", true);
     // Vigencia: (desde es null o <= hoy) Y (hasta es null o >= hoy)
     q = q.or(`vigencia_desde.is.null,vigencia_desde.lte.${hoy}`);

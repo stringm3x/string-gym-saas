@@ -5,6 +5,13 @@ import {
   DEFAULT_COLOR_FONDO,
 } from "@/lib/validations/marca.schema";
 
+// La única policy de UPDATE sobre `gyms` es `owner_id = auth.uid()`: para
+// un gerente estos updates afectan 0 filas sin `error` (ver el mismo
+// comentario en gyms.queries.ts). Sin `.select()` para contarlas, la UI
+// mostraba éxito sobre un cambio que nunca se guardó.
+const ERROR_SOLO_OWNER =
+  "No se guardó: por ahora solo el dueño puede cambiar esto.";
+
 export interface GymMarca {
   id: string;
   logo_url: string | null;
@@ -41,12 +48,14 @@ export async function updateGymMarca(
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data: rows, error } = await supabase
     .from("gyms")
     .update(data)
-    .eq("id", tenantId);
+    .eq("id", tenantId)
+    .select("id");
 
   if (error) return { ok: false, error: error.message };
+  if (!rows || rows.length === 0) return { ok: false, error: ERROR_SOLO_OWNER };
   return { ok: true };
 }
 
@@ -56,11 +65,13 @@ export async function updateGymLogo(
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("gyms")
     .update({ logo_url: logoUrl })
-    .eq("id", tenantId);
+    .eq("id", tenantId)
+    .select("id");
 
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: ERROR_SOLO_OWNER };
   return { ok: true };
 }

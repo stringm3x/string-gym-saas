@@ -47,6 +47,22 @@ export async function POST(
     return apiError("SESION_CANCELADA", "La sesión está cancelada.", 409, slug);
   }
 
+  // miembro_id viene del body del caller — sin esto, una API key del gym A
+  // podía crear una reserva con el miembro_id de un socio del gym B (única
+  // fuga entre gimnasios de toda la auditoría de permisos).
+  if (input.miembro_id) {
+    const { data: miembro } = await admin
+      .from("miembros")
+      .select("id")
+      .eq("tenant_id", g.ctx.tenantId)
+      .eq("id", input.miembro_id)
+      .maybeSingle();
+    if (!miembro) {
+      g.log(404);
+      return apiError("MIEMBRO_NO_ENCONTRADO", "Miembro no encontrado.", 404, slug);
+    }
+  }
+
   const { reserva, enListaEspera, error } = await reservarConCupo(
     g.ctx.tenantId,
     input.sesion_id,

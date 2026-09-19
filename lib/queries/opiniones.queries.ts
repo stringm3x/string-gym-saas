@@ -114,11 +114,20 @@ export async function updateGooglePlaceId(
   placeId: string
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("gyms")
     .update({ google_place_id: placeId.trim() || null })
-    .eq("id", tenantId);
+    .eq("id", tenantId)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  // La única policy de UPDATE sobre `gyms` es owner_id = auth.uid(): un
+  // gerente afecta 0 filas sin error (ver gyms.queries.ts).
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      error: "No se guardó: por ahora solo el dueño puede cambiar esto.",
+    };
+  }
   return { ok: true };
 }
 

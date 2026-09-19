@@ -6,6 +6,7 @@ import {
   createCheckin,
   bloqueaVencidos,
   visitasAgotadas,
+  checkinReciente,
 } from "@/lib/queries/checkins.queries";
 import {
   searchMiembrosForCheckin,
@@ -38,6 +39,17 @@ export async function registerCheckinAction(
   }
 
   const estado = getEstadoMembresia(miembro.fecha_vencimiento);
+
+  // Check-in duplicado (D-bloque-01): mismo socio hace <2 min — evita que un
+  // doble tap o un QR sostenido frente al lector genere entradas repetidas.
+  if (await checkinReciente(tenant.id, miembroId)) {
+    return {
+      ok: false,
+      error: "Ya registró su entrada hace un momento",
+      bloqueado: true,
+      miembro: { id: miembro.id, nombre: miembro.nombre, estadoMembresia: estado },
+    };
+  }
 
   // Sin visitas (D3): plan por visitas agotado.
   if (await visitasAgotadas(tenant.id, miembroId)) {

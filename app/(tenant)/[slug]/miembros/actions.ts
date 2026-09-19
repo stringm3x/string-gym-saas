@@ -63,6 +63,9 @@ export async function createMiembroAction(
   formData: FormData
 ): Promise<MiembroFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "crear_miembros")) {
+    return { ...emptyState, error: "No tienes permiso para crear miembros." };
+  }
   const raw = parseFormData(formData);
   const { prospecto_id, tag_ids, ...miembroRaw } = raw;
 
@@ -94,6 +97,14 @@ export async function createMiembroAction(
   }
 
   const data = parsed.data;
+
+  // Crear miembro es crear_miembros (lo tiene hasta el entrenador), pero
+  // cobrar la inscripción mueve dinero — mismo criterio que cambiarPlanAction:
+  // exige registrar_pagos aparte, si no un entrenador podía cobrar vía esta
+  // acción aunque no tenga acceso a caja.
+  if (data.cobrar_inscripcion && !hasPermission(tenant.role, "registrar_pagos")) {
+    return { ...emptyState, error: "No tienes permiso para cobrar." };
+  }
 
   // Alerta de posible duplicado — se puede omitir reenviando el form con
   // confirmar_duplicado=true (botón "Registrar de todos modos").
@@ -173,6 +184,9 @@ export async function updateMiembroAction(
   formData: FormData
 ): Promise<MiembroFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "editar_miembros")) {
+    return { ...emptyState, error: "No tienes permiso para editar miembros." };
+  }
   const raw = parseFormData(formData);
   const { tag_ids, prospecto_id: _pid, ...miembroRaw } = raw;
 
@@ -203,6 +217,9 @@ export async function updateNotasLegacyAction(
   notas: string
 ): Promise<{ ok: boolean; error?: string }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "editar_miembros")) {
+    return { ok: false, error: "No tienes permiso para editar miembros." };
+  }
   const result = await dbUpdateMiembroNotas(tenant.id, id, notas);
   if (!result.ok) return { ok: false, error: result.error };
   revalidatePath(`/${tenant.slug}/miembros/${id}`);
@@ -246,6 +263,9 @@ export async function bulkAsignarTagAction(
   if (!miembroIds.length || !tagId)
     return { ok: false, error: "Faltan datos." };
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, "editar_miembros")) {
+    return { ok: false, error: "No tienes permiso para editar miembros." };
+  }
   const result = await bulkAddTagToMiembros(tenant.id, miembroIds, tagId);
   if (!result.ok) return { ok: false, error: result.error };
   revalidatePath(`/${tenant.slug}/miembros`);

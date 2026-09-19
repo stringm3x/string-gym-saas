@@ -52,6 +52,38 @@ export async function visitasAgotadas(
   return v !== null && v !== undefined && v <= 0;
 }
 
+/** Ventana en la que un segundo check-in del mismo socio se rechaza por
+ * duplicado (ver `checkinReciente`). */
+const VENTANA_CHECKIN_RECIENTE_MIN = 2;
+
+/**
+ * ¿Este socio ya tiene un check-in en los últimos `VENTANA_CHECKIN_RECIENTE_MIN`
+ * minutos? `createCheckin` no tenía ninguna guarda: el scanner libera su lock
+ * a los 2.5s y el kiosco a los 3s, así que un QR que se queda quieto frente
+ * al lector (o un doble tap) generaba una entrada — y en plan por visitas,
+ * descontaba una visita — cada pocos segundos. Cada una de las tres puertas
+ * de check-in (manual, scanner, kiosco) la llama antes de `createCheckin`,
+ * igual que ya hacen con `visitasAgotadas`/`congelacionActiva`, para poder
+ * mostrar su propio mensaje.
+ */
+export async function checkinReciente(
+  tenantId: string,
+  miembroId: string,
+  client?: SupabaseClient
+): Promise<boolean> {
+  const supabase = client ?? (await createClient());
+  const desde = new Date(
+    Date.now() - VENTANA_CHECKIN_RECIENTE_MIN * 60_000
+  ).toISOString();
+  const { count } = await supabase
+    .from("checkins")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .gte("fecha_hora", desde);
+  return (count ?? 0) > 0;
+}
+
 /**
  * Registra un check-in del miembro. Retorna { ok, id } o error. Si el plan es
  * por visitas (visitas_restantes no null), descuenta 1 visita (D3).
@@ -78,7 +110,13 @@ export async function createCheckin(
     };
   }
 
-  // Descuento de visita (solo planes por visitas; guardado contra negativos).
+  // Descuento de visita (solo planes por visitas). El UPDATE es atómico y
+  // condicionado a visitas_restantes > 0 en el propio WHERE — Postgres lo
+  // re-evalúa contra el valor vigente al tomar el lock de fila, así que dos
+  // check-ins concurrentes del mismo socio con 1 visita restante ya no
+  // pueden los dos "ganar": el segundo llega, ve 0 y no descuenta. Antes
+  // era un select + update separados sin ninguna guarda (podía dejar el
+  // saldo en negativo) y el error del update no se leía.
   const { data: m } = await supabase
     .from("miembros")
     .select("visitas_restantes")
@@ -86,23 +124,39 @@ export async function createCheckin(
     .eq("id", miembroId)
     .maybeSingle();
   const restantes = m?.visitas_restantes as number | null | undefined;
-  if (restantes !== null && restantes !== undefined && restantes > 0) {
+  if (restantes !== null && restantes !== undefined) {
     const nuevoSaldo = restantes - 1;
-    await supabase
+    const { data: descontado, error: descuentoError } = await supabase
       .from("miembros")
       .update({ visitas_restantes: nuevoSaldo })
       .eq("tenant_id", tenantId)
-      .eq("id", miembroId);
+      .eq("id", miembroId)
+      .gt("visitas_restantes", 0)
+      .select("visitas_restantes");
 
-    // Alerta de visitas bajas (D8): al llegar exactamente al umbral del gym.
-    const { data: g } = await supabase
-      .from("gyms")
-      .select("alerta_visitas_umbral")
-      .eq("id", tenantId)
-      .maybeSingle();
-    const umbral = Number(g?.alerta_visitas_umbral ?? 0);
-    if (umbral > 0 && nuevoSaldo === umbral) {
-      void emitVisitasBajas(tenantId, miembroId, nuevoSaldo);
+    if (descuentoError) {
+      console.error(
+        `[checkin] no se pudo descontar la visita de ${miembroId}:`,
+        descuentoError.message
+      );
+    } else if (!descontado || descontado.length === 0) {
+      // El saldo ya estaba en 0 al llegar aquí (carrera con otro check-in
+      // concurrente del mismo socio). El check-in de arriba ya se registró;
+      // esto solo evita descontar una visita que no había.
+      console.error(
+        `[checkin] visitas_restantes ya estaba en 0 para ${miembroId}; no se descontó`
+      );
+    } else {
+      // Alerta de visitas bajas (D8): al llegar exactamente al umbral del gym.
+      const { data: g } = await supabase
+        .from("gyms")
+        .select("alerta_visitas_umbral")
+        .eq("id", tenantId)
+        .maybeSingle();
+      const umbral = Number(g?.alerta_visitas_umbral ?? 0);
+      if (umbral > 0 && nuevoSaldo === umbral) {
+        void emitVisitasBajas(tenantId, miembroId, nuevoSaldo);
+      }
     }
   }
 

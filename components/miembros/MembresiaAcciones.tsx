@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LuSnowflake, LuSun, LuArrowLeftRight } from "react-icons/lu";
 import { Modal } from "@/components/ui/Modal";
@@ -9,13 +9,27 @@ import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
 import { formatMoneda } from "@/lib/utils/format";
-import { formatearFechaMX, isoMasDias, hoyISO } from "@/lib/utils/dates";
+import { formatearFechaMX, hoyISO } from "@/lib/utils/dates";
 import {
   congelarMembresiaAction,
   descongelarMembresiaAction,
   cambiarPlanAction,
+  previsualizarCambioPlanAction,
 } from "@/app/(tenant)/[slug]/miembros/[id]/membresia-actions";
 import type { PlanMembresia } from "@/lib/queries/planes.queries";
+import type { CambioPlanCalculo } from "@/lib/queries/miembro-eventos.queries";
+
+const MOTIVO_SIN_PRORRATEO_MSG: Record<
+  Extract<CambioPlanCalculo, { tipo: "sin_prorrateo" }>["motivo"],
+  string
+> = {
+  sin_plan_actual: "El socio no tiene un plan actual del que prorratear.",
+  plan_por_visitas:
+    "Su plan actual es por visitas, no por días — no hay saldo que prorratear.",
+  vencido: "Su membresía ya venció — no quedan días pagados que valgan algo.",
+  sin_pago_vigente:
+    "No se encontró el pago de su periodo actual — no se puede calcular cuánto pagó.",
+};
 
 interface Props {
   miembroId: string;
@@ -223,22 +237,47 @@ function CambiarPlanModal({
   const router = useRouter();
   const { success, error: toastError } = useToast();
   const [planId, setPlanId] = useState(planes[0]?.id ?? "");
+  const [calculo, setCalculo] = useState<CambioPlanCalculo | null>(null);
+  const [calculoError, setCalculoError] = useState<string | null>(null);
+  const [isPendingCalculo, startCalculo] = useTransition();
   const [isPending, start] = useTransition();
 
   const plan = planes.find((p) => p.id === planId) ?? null;
-  const nuevaVigencia = plan
-    ? isoMasDias(plan.dias_duracion, hoyISO())
-    : null;
+
+  // La cuenta la calcula el servidor (prorrateo sobre lo que realmente pagó
+  // el socio) — nadie debería confirmar un cambio de plan sin verla.
+  useEffect(() => {
+    if (!planId) {
+      setCalculo(null);
+      return;
+    }
+    setCalculo(null);
+    setCalculoError(null);
+    startCalculo(async () => {
+      const r = await previsualizarCambioPlanAction(miembroId, planId);
+      if (!r.ok) {
+        setCalculoError(r.error);
+        return;
+      }
+      setCalculo(r.calculo);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planId, miembroId]);
 
   function cambiar() {
-    if (!planId) return;
+    if (!planId || !calculo) return;
     start(async () => {
       const r = await cambiarPlanAction(miembroId, planId);
       if (!r.ok) {
         toastError("No se pudo cambiar", r.error ?? "Inténtalo de nuevo");
         return;
       }
-      success("Plan cambiado");
+      success(
+        "Plan cambiado",
+        r.notaCredito
+          ? `Se generó una nota de crédito de ${formatMoneda(r.notaCredito)}.`
+          : undefined
+      );
       onClose();
       router.refresh();
     });
@@ -248,8 +287,10 @@ function CambiarPlanModal({
     <Modal open onClose={onClose} title="Cambiar plan">
       <div className="space-y-4">
         <p className="text-sm text-text-secondary">
-          Cambia el plan del socio. La vigencia se recalcula a hoy + la duración
-          del nuevo plan. No genera cobro.
+          El saldo de los días no consumidos del plan actual (sobre lo que
+          realmente pagó) se convierte en días completos del plan nuevo — lo
+          que no alcanza para un día completo, o lo que sobra después de un
+          periodo entero, se emite como nota de crédito en vez de perderse.
         </p>
         <div className="space-y-2">
           <Label htmlFor="cambiar-plan">Plan</Label>
@@ -266,23 +307,82 @@ function CambiarPlanModal({
             ))}
           </select>
         </div>
-        {plan && nuevaVigencia && (
-          <div className="flex items-center justify-between gap-4 border border-border bg-bg px-4 py-3 text-sm">
-            <span className="text-text-secondary">Nueva vigencia hasta</span>
-            <span className="font-mono text-dato tabular-nums text-text-primary">
-              {formatearFechaMX(nuevaVigencia)}
-            </span>
+
+        {isPendingCalculo && (
+          <p className="text-sm text-text-muted">Calculando…</p>
+        )}
+
+        {calculoError && !isPendingCalculo && (
+          <div className="border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+            {calculoError}
           </div>
         )}
+
+        {calculo && !isPendingCalculo && (
+          <div className="space-y-2 border border-border bg-bg px-4 py-3 text-sm">
+            {calculo.tipo === "sin_prorrateo" ? (
+              <p className="text-text-secondary">
+                {MOTIVO_SIN_PRORRATEO_MSG[calculo.motivo]} Se aplica el
+                cálculo simple: hoy + la duración del plan nuevo.
+              </p>
+            ) : (
+              <>
+                <Fila
+                  label="Días que le quedan"
+                  valor={`${calculo.diasRestantes} día${calculo.diasRestantes === 1 ? "" : "s"}`}
+                />
+                <Fila
+                  label="Valor de esos días"
+                  valor={formatMoneda(calculo.valorDiasRestantes)}
+                />
+                <Fila
+                  label="Días del plan nuevo que recibe"
+                  valor={`${calculo.diasNuevoPlan} día${calculo.diasNuevoPlan === 1 ? "" : "s"}${
+                    calculo.diasCompletos ? " (periodo completo)" : ""
+                  }`}
+                />
+                {calculo.notaCredito > 0 && (
+                  <Fila
+                    label="Saldo a favor (nota de crédito)"
+                    valor={formatMoneda(calculo.notaCredito)}
+                  />
+                )}
+              </>
+            )}
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-2">
+              <span className="text-text-secondary">Nueva vigencia hasta</span>
+              <span className="font-mono text-dato tabular-nums text-text-primary">
+                {formatearFechaMX(calculo.nuevoVencimiento)}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 border-t border-border pt-4">
           <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>
             Cancelar
           </Button>
-          <Button type="button" onClick={cambiar} loading={isPending}>
+          <Button
+            type="button"
+            onClick={cambiar}
+            loading={isPending}
+            disabled={!calculo || isPendingCalculo}
+          >
             Cambiar plan
           </Button>
         </div>
       </div>
     </Modal>
+  );
+}
+
+function Fila({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-text-secondary">{label}</span>
+      <span className="font-mono text-dato tabular-nums text-text-primary">
+        {valor}
+      </span>
+    </div>
   );
 }

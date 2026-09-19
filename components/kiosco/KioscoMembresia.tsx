@@ -40,6 +40,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
   const [pending, start] = useTransition();
 
   const [miembro, setMiembro] = useState<Miembro | null>(null);
+  const [tokenUsado, setTokenUsado] = useState("");
   const [planes, setPlanes] = useState<KioscoPlan[]>([]);
   const [mpDisponible, setMpDisponible] = useState(false);
   const [planSel, setPlanSel] = useState<KioscoPlan | null>(null);
@@ -57,6 +58,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
         return;
       }
       setMiembro(r.miembro);
+      setTokenUsado(token);
       setPlanes(r.planes);
       setMpDisponible(r.mpDisponible);
       setPaso("estado");
@@ -77,7 +79,8 @@ export function KioscoMembresia({ slug }: { slug: string }) {
         slug,
         miembro.id,
         planSel.id,
-        metodo
+        metodo,
+        tokenUsado
       );
       if (!r.ok) {
         setError(r.error);
@@ -92,7 +95,12 @@ export function KioscoMembresia({ slug }: { slug: string }) {
     if (!miembro || !planSel) return;
     setError(null);
     start(async () => {
-      const r = await renovarMembresiaMpKioscoAction(slug, miembro.id, planSel.id);
+      const r = await renovarMembresiaMpKioscoAction(
+        slug,
+        miembro.id,
+        planSel.id,
+        tokenUsado
+      );
       if (!r.ok) {
         setError(r.error);
         return;
@@ -105,6 +113,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
   function reset() {
     setPaso("scan");
     setMiembro(null);
+    setTokenUsado("");
     setPlanes([]);
     setPlanSel(null);
     setCodigo(null);

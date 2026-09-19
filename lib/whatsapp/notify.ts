@@ -13,6 +13,7 @@
  */
 import type { WhatsappEvent } from "./types";
 import { processWhatsappEvent } from "./n8n-handler";
+import { normalizarTelefonoMx } from "@/lib/utils/whatsapp";
 
 export type { WhatsappEvent } from "./types";
 
@@ -29,6 +30,24 @@ function destinoDe(event: WhatsappEvent): string | null {
 }
 
 /**
+ * Devuelve el evento con el teléfono destino normalizado a E.164 MX. Los
+ * eventos se arman con `miembro.telefono`/`gym.telefono` tal como se
+ * guardan (10 dígitos, sin lada); tanto el POST a n8n (cuyo workflow reenvía
+ * ese valor a 360dialog sin tocarlo, ver docs/n8n-workflows) como el envío
+ * directo (n8n-handler.ts → 360dialog.ts) necesitan el número completo.
+ */
+function conDestinoNormalizado(event: WhatsappEvent, numero: string): WhatsappEvent {
+  switch (event.tipo) {
+    case "PROSPECTO_NUEVO":
+    case "RESUMEN_DIARIO":
+    case "MIEMBRO_SIN_ACTIVIDAD":
+      return { ...event, ownerTelefono: numero };
+    default:
+      return { ...event, miembroTelefono: numero };
+  }
+}
+
+/**
  * Dispara una notificación de WhatsApp. Fire-and-forget: nunca lanza; no-op si
  * no hay destinatario ni infra configurada. Devuelve true si el envío (o el
  * POST al webhook de n8n) se aceptó, false si falló — los llamadores
@@ -36,7 +55,9 @@ function destinoDe(event: WhatsappEvent): string | null {
  * los que necesitan saber si realmente salió (ej. campañas) ahora sí pueden.
  */
 export async function notifyWhatsapp(event: WhatsappEvent): Promise<boolean> {
-  if (!destinoDe(event)) return false; // sin destinatario → nada que enviar
+  const destino = destinoDe(event);
+  if (!destino) return false; // sin destinatario → nada que enviar
+  const eventoNormalizado = conDestinoNormalizado(event, normalizarTelefonoMx(destino));
 
   const webhook = process.env.N8N_WEBHOOK_URL;
   if (webhook) {
@@ -46,7 +67,7 @@ export async function notifyWhatsapp(event: WhatsappEvent): Promise<boolean> {
       const res = await fetch(webhook, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(event),
+        body: JSON.stringify(eventoNormalizado),
       });
       return res.ok;
     } catch (err) {
@@ -56,5 +77,5 @@ export async function notifyWhatsapp(event: WhatsappEvent): Promise<boolean> {
   }
 
   // Modo B: 360dialog directo (o no-op si tampoco hay DIALOG360_API_KEY).
-  return processWhatsappEvent(event);
+  return processWhatsappEvent(eventoNormalizado);
 }

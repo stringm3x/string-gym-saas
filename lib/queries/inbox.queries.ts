@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendWhatsappText } from "@/lib/whatsapp/360dialog";
 import { registrarMensaje } from "@/lib/whatsapp/registro";
 import { hoyISO } from "@/lib/utils/dates";
+import { normalizarTelefonoMx } from "@/lib/utils/whatsapp";
 
 export interface ConversacionResumen {
   id: string;
@@ -231,7 +232,13 @@ export async function enviarMensajeManual(
   }
 
   const telefono = conv.telefono as string;
-  const enviado = await sendWhatsappText(telefono, texto, apiKey);
+  // wa_conversaciones.telefono se guarda a 10 dígitos (registro.ts); 360dialog
+  // necesita el número completo con lada.
+  const enviado = await sendWhatsappText(
+    normalizarTelefonoMx(telefono),
+    texto,
+    apiKey
+  );
   if (!enviado) return { ok: false, error: "No se pudo enviar el mensaje." };
 
   await registrarMensaje({

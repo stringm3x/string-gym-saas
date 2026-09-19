@@ -46,10 +46,17 @@ export async function cancelarReservaPortalAction(
   reservaId: string,
   sesionId: string
 ): Promise<{ ok: boolean; error?: string }> {
-  const { gym } = await requirePortal(slug);
+  const { gym, session } = await requirePortal(slug);
   const admin = createAdminClient();
 
-  const { ok, error } = await cancelarReserva(gym.id, reservaId, admin);
+  // Sin esto, cualquier socio autenticado podía cancelar la reserva de OTRO
+  // socio del mismo gym con solo conocer su reservaId (bloque-04, IDOR).
+  const { ok, error } = await cancelarReserva(
+    gym.id,
+    reservaId,
+    admin,
+    session.miembroId
+  );
   if (!ok) return { ok: false, error: error ?? "No se pudo cancelar." };
 
   // Libera cupo → promueve al primero en lista de espera (igual que el staff).

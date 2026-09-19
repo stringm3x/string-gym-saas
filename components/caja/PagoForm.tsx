@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils/cn";
 import { formatFecha, formatMoneda } from "@/lib/utils/format";
@@ -117,6 +118,8 @@ export function PagoForm({
     initial
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const confirmarDuplicadoRef = useRef<HTMLInputElement>(null);
+  const [avisoDuplicado, setAvisoDuplicado] = useState(false);
 
   const [concepto, setConcepto] = useState<Concepto>("membresia");
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
@@ -347,6 +350,10 @@ export function PagoForm({
         setLastPago(null);
       }
       resetPagoForm();
+    } else if (state.duplicado) {
+      // Aviso de posible doble cobro (no un rechazo definitivo): se muestra
+      // en un modal propio, no un window.confirm del navegador.
+      setAvisoDuplicado(true);
     } else if (state.error && Object.keys(state.fieldErrors).length === 0) {
       toastError("No se pudo registrar", state.error);
     }
@@ -407,8 +414,42 @@ export function PagoForm({
     });
   }
 
+  function confirmarDuplicado() {
+    if (confirmarDuplicadoRef.current && formRef.current) {
+      confirmarDuplicadoRef.current.value = "1";
+      formRef.current.requestSubmit();
+    }
+    setAvisoDuplicado(false);
+  }
+
   return (
     <div className="space-y-4">
+      {avisoDuplicado && (
+        <Modal
+          open
+          onClose={() => setAvisoDuplicado(false)}
+          title="Posible doble cobro"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-text-secondary">
+              {state.error ??
+                "Este socio ya tiene un pago de membresía reciente."}
+            </p>
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setAvisoDuplicado(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="button" onClick={confirmarDuplicado}>
+                Cobrar de todos modos
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {lastPago && (
         <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-bg px-4 py-3">
           <p className="text-sm text-text-primary">
@@ -827,6 +868,12 @@ export function PagoForm({
       )}
 
       {/* Hidden fields */}
+      <input
+        type="hidden"
+        name="confirmar_pago_duplicado"
+        ref={confirmarDuplicadoRef}
+        defaultValue=""
+      />
       <input type="hidden" name="monto" value={montoFinal} />
       <input type="hidden" name="credito_aplicado" value={creditoAplicado} />
       <input type="hidden" name="periodo_inicio" value={periodoInicio} />
