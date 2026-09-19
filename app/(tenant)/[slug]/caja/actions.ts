@@ -49,6 +49,12 @@ export async function registerPagoAction(
   formData: FormData
 ): Promise<PagoResult> {
   const tenant = await getTenant();
+  // Única acción de cobro del archivo sin este check (bloque-04): sin él, y
+  // sin guard tampoco en caja/page.tsx, un entrenador con la URL a mano
+  // podía cobrar pese a que su rol dice "sin caja ni finanzas" (D6).
+  if (!hasPermission(tenant.role, "registrar_pagos")) {
+    return { ok: false, error: "No tienes permiso para cobrar.", fieldErrors: {} };
+  }
 
   const cantidadRaw = formData.get("cantidad_producto");
   const raw = {
@@ -282,6 +288,11 @@ export async function registrarVisitaRapidaAction(
   formData: FormData
 ): Promise<PagoResult> {
   const tenant = await getTenant();
+  // Mismo hueco que registerPagoAction (bloque-04): también cobra, también
+  // sin check.
+  if (!hasPermission(tenant.role, "registrar_pagos")) {
+    return { ok: false, error: "No tienes permiso para cobrar.", fieldErrors: {} };
+  }
 
   const raw = {
     nombre_visitante: String(formData.get("nombre_visitante") ?? ""),

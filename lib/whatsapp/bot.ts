@@ -128,7 +128,10 @@ async function ejecutarHerramienta(
     case "cancelar_reserva": {
       if (!miembro) return { error: "El miembro no está registrado en el gym." };
       const reservaId = String(input.reserva_id ?? "");
-      const r = await cancelarReserva(tenantId, reservaId, admin);
+      // miembro.id acota la cancelación a reservas propias — sin esto, un
+      // reserva_id de otro socio (el LLM lo toma del texto libre del
+      // usuario, sin validar de quién es) permitía cancelar reservas ajenas.
+      const r = await cancelarReserva(tenantId, reservaId, admin, miembro.id);
       return r.ok ? { ok: true } : { ok: false, error: r.error ?? "No se encontró la reserva." };
     }
 

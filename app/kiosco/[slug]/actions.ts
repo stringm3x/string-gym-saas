@@ -452,11 +452,20 @@ export async function renovarMembresiaMpKioscoAction(
 /**
  * Actualiza el teléfono de un miembro desde el kiosco (público, sin sesión).
  * Scoped por gym (slug) + id del miembro. No lanza; valida 10 dígitos.
+ *
+ * Revalida dueño con el qr_token (línea de bloque-04): antes solo filtraba
+ * por tenant_id + miembroId, confiando en el id que mandaba el cliente. Con
+ * cualquier miembroId válido del mismo gym (no es adivinable, pero si algún
+ * día se filtrara por cualquier vía) se podía pisar el teléfono de OTRO
+ * socio y de ahí encadenar el OTP del portal — cambiar teléfono, recibir el
+ * código, entrar a la cuenta ajena. Exigir el mismo token que se escaneó
+ * cierra el hueco sin depender de qué tan obtenible sea el id hoy.
  */
 export async function actualizarTelefonoKioscoAction(
   slug: string,
   miembroId: string,
-  telefono: string
+  telefono: string,
+  token: string
 ): Promise<{ ok: boolean; error?: string }> {
   const digits = (telefono || "").replace(/\D/g, "");
   if (digits.length !== 10) {
@@ -470,6 +479,14 @@ export async function actualizarTelefonoKioscoAction(
     .eq("slug", slug)
     .maybeSingle();
   if (!gym) return { ok: false, error: "Gimnasio no encontrado." };
+
+  const miembro = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
+  if (!miembro || miembro.id !== miembroId) {
+    return {
+      ok: false,
+      error: "No se pudo verificar tu identidad. Vuelve a escanear tu QR.",
+    };
+  }
 
   const { error } = await admin
     .from("miembros")

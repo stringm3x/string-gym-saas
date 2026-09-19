@@ -48,6 +48,10 @@ export default async function HoyPage({ params }: PageProps) {
   const canClases = hasFeature(tenant.plan, "clases");
   const hoy = hoyYMD();
 
+  // Entrenador ve /hoy (tiene ver_pantalla_hoy) pero su rol es "sin caja ni
+  // finanzas" (D6) — sin esto veía la cifra de Ingresos y un botón directo a
+  // Caja, aunque no pudiera cobrar de verdad (bloque-04).
+  const canCobrar = hasPermission(tenant.role, "registrar_pagos");
   const canOpiniones = hasFeature(tenant.plan, "opiniones");
   const [alertas, checkins, ingresos, sesionesHoy, sinTelefono, opinionesSem] =
     await Promise.all([
@@ -143,25 +147,29 @@ export default async function HoyPage({ params }: PageProps) {
           >
             Registrar entrada
           </Link>
-          <Link
-            href={`/${slug}/caja`}
-            className="inline-flex h-11 items-center bg-brand-green px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
-          >
-            Cobrar
-          </Link>
+          {canCobrar && (
+            <Link
+              href={`/${slug}/caja`}
+              className="inline-flex h-11 items-center bg-brand-green px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
+            >
+              Cobrar
+            </Link>
+          )}
         </div>
       </div>
 
       {/* Cifras del día */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard index={0} label="Check-ins" value={checkins.hoy} />
-        <StatCard
-          index={1}
-          label="Ingresos"
-          value={ingresos.hoy}
-          format="currency"
-          variant={ingresos.hoy > 0 ? "success" : "default"}
-        />
+        {canCobrar && (
+          <StatCard
+            index={1}
+            label="Ingresos"
+            value={ingresos.hoy}
+            format="currency"
+            variant={ingresos.hoy > 0 ? "success" : "default"}
+          />
+        )}
         <StatCard
           index={2}
           label="Vencen hoy"

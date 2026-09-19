@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   listPagosDelDia,
   getResumenCaja,
@@ -9,6 +10,7 @@ import { listPromociones } from "@/lib/queries/promociones.queries";
 import { listProductosParaVenta } from "@/lib/queries/productos.queries";
 import { getTenant } from "@/lib/tenant";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
 import { getGymFull } from "@/lib/queries/gyms.queries";
 import { listStaffParaCheckin } from "@/lib/queries/staff.queries";
 import { listCajas } from "@/lib/queries/cajas.queries";
@@ -82,6 +84,14 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     searchParams,
     getTenant(),
   ]);
+
+  // La Server Action de cobro ya rechaza sin este permiso (bloque-04), pero
+  // sin guard aquí un entrenador con la URL a mano igual veía y usaba el
+  // formulario de cobro completo — el sidebar solo oculta el link, no
+  // protege la ruta.
+  if (!hasPermission(tenant.role, "registrar_pagos")) {
+    redirect(`/${slug}/checkins`);
+  }
 
   const categoria = parseCategoria(sp.cat);
 
