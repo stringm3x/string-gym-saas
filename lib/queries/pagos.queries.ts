@@ -14,8 +14,10 @@ import { getCajaDefault, resolverCajaDeVenta } from "@/lib/queries/cajas.queries
  * Si no se especifica cajaId (pagos sin punto de venta físico: portal, kiosco,
  * MercadoPago, cuotas de crédito…), cae en la caja default del gym. Best-effort:
  * un fallo aquí no debe deshacer un cobro que ya se registró de verdad.
+ * Exportada para que contextos sin sesión (el webhook de MercadoPago, con
+ * el client admin) puedan reusarla igual que createPago.
  */
-async function registrarCajaDePagos(
+export async function registrarCajaDePagos(
   supabase: SupabaseClient,
   tenantId: string,
   pagoIds: string[],
@@ -25,7 +27,11 @@ async function registrarCajaDePagos(
   try {
     let caja = cajaId;
     if (!caja) {
-      const def = await getCajaDefault(tenantId);
+      // El mismo `supabase` que enlaza el pago resuelve la caja — con el
+      // admin del webhook, sin esto getCajaDefault usaba su propio
+      // createClient() de sesión (sin sesión aquí) y RLS lo dejaba en null
+      // siempre, aunque sí hubiera caja default.
+      const def = await getCajaDefault(tenantId, supabase);
       if (!def) {
         // El cobro ya se registró (el RPC de arriba ya corrió) — no lo
         // deshacemos por esto, pero sin caja el pago queda invisible para

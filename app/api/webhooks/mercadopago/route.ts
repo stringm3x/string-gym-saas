@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyAndProcessWebhook } from "@/lib/mercadopago/webhook";
 import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
 import { createNotification } from "@/lib/utils/notifications";
+import { generarTokenRecibo } from "@/lib/utils/tokens";
+import { registrarCajaDePagos } from "@/lib/queries/pagos.queries";
 
 export const runtime = "nodejs";
 
@@ -22,6 +24,32 @@ interface ExtMetadata {
 }
 
 type Admin = ReturnType<typeof createAdminClient>;
+
+/**
+ * Log visible para los casos que responden 200 (reintentar no los arregla)
+ * pero que igual necesitan que alguien se entere: MP_NO_CONECTADO en
+ * particular significa que un socio ya pagó y el gym no tiene credenciales
+ * para recibirlo — ese dinero queda en el limbo si esto queda enterrado.
+ * Solo va a logs de servidor por ahora (no hay aviso in-app en esta rama).
+ */
+async function logWebhookSilencioso(
+  admin: Admin,
+  motivo: string,
+  detalle: { tenantId?: string | null; dataId?: string | null }
+): Promise<void> {
+  let gym = detalle.tenantId ?? "?";
+  if (detalle.tenantId) {
+    const { data } = await admin
+      .from("gyms")
+      .select("slug")
+      .eq("id", detalle.tenantId)
+      .maybeSingle();
+    if (data?.slug) gym = data.slug as string;
+  }
+  console.error(
+    `[mp-webhook] ${motivo} — gym=${gym} mp_payment_id=${detalle.dataId ?? "?"}`
+  );
+}
 
 /**
  * Revierte un pago de MercadoPago tras un reembolso o contracargo (B2c): marca
@@ -84,8 +112,12 @@ async function revertirPagoMp(
 
 /**
  * Webhook público de MercadoPago. Verifica la firma, obtiene el pago y
- * confirma/actualiza la fila de pagos_externos. Siempre responde 200 salvo
- * firma inválida (401), para que MP no reintente sobre errores irrecuperables.
+ * confirma/actualiza la fila de pagos_externos. Responde 401 con firma
+ * inválida, 500 si falta configurar el secreto o si falla confirmar el pago
+ * (para que MP reintente — un cobro real no debe quedar sin registrar sin
+ * que nadie se entere) y 200 en el resto de los casos (incluyendo los que
+ * no tiene sentido reintentar: tipo de notificación ignorado, fila no
+ * encontrada, gym sin MP conectado, pago no encontrado en MP).
  */
 export async function POST(request: NextRequest) {
   const url = new URL(request.url);
@@ -96,20 +128,41 @@ export async function POST(request: NextRequest) {
     return new NextResponse(null, { status: 200 });
   }
 
+  const admin = createAdminClient();
+
   const result = await verifyAndProcessWebhook(request);
   if (!result.ok) {
     if (result.error === "FIRMA_INVALIDA") {
       return new NextResponse(null, { status: 401 });
     }
-    // race / gym desconectado / pago no encontrado → 200 (no reintentar).
+    if (result.error === "WEBHOOK_SECRET_FALTANTE") {
+      // Falla de configuración del servidor, no del webhook en sí — MP debe
+      // reintentar. Con 200 aquí, un cobro real ya aprobado por MP se
+      // quedaría sin registrar para siempre y sin que nadie se entere.
+      console.error(
+        "[mp-webhook] MERCADOPAGO_WEBHOOK_SECRET no configurado; rechazando con 500 para que MP reintente."
+      );
+      return new NextResponse(null, { status: 500 });
+    }
+    // DATOS_INCOMPLETOS / MP_NO_CONECTADO / PAGO_NO_ENCONTRADO: el código de
+    // respuesta se queda en 200 — reintentar no arregla ninguno de los tres
+    // (el request sigue incompleto, el gym sigue sin MP conectado, o MP
+    // sigue sin encontrar ese pago). Pero silencioso no es lo mismo que sin
+    // consecuencia: MP_NO_CONECTADO en particular puede significar que el
+    // socio ya pagó y el gym no tiene cómo recibirlo — sin este log, un 200
+    // lo enterraba sin que nadie se enterara.
+    await logWebhookSilencioso(admin, result.error, {
+      tenantId: result.tenantId,
+      dataId: result.dataId,
+    });
     return new NextResponse(null, { status: 200 });
   }
 
-  const admin = createAdminClient();
   const { data: ext } = await admin
     .from("pagos_externos")
     .select("id, status, monto, metadata, pago_id")
     .eq("tenant_id", result.tenantId)
+    .eq("proveedor", "mercadopago")
     .eq("external_id", result.externalReference ?? "")
     .maybeSingle();
 
@@ -164,58 +217,49 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data: pago } = await admin
-      .from("pagos")
-      .insert({
-        tenant_id: result.tenantId,
-        miembro_id: miembroId,
-        concepto: "membresia",
-        monto: result.monto || Number(ext.monto),
-        metodo_pago: mapMetodo(result.metodo),
-        fecha_pago: new Date().toISOString(),
-        plan_id: planId,
-        periodo_inicio: periodoInicio,
-        periodo_fin: periodoFin,
-      })
-      .select("id")
-      .single();
-
-    // Extender el vencimiento del miembro (paridad con el cobro manual).
-    // Incluye el plan cobrado + saldo de visitas si el plan es por visitas (D3).
-    if (miembroId && periodoFin) {
-      const updatePayload: Record<string, unknown> = {
-        fecha_vencimiento: periodoFin,
-      };
-      if (planId) {
-        updatePayload.plan_id = planId;
-        const { data: plan } = await admin
-          .from("planes_membresia")
-          .select("tipo, visitas")
-          .eq("id", planId)
-          .maybeSingle();
-        updatePayload.visitas_restantes =
-          plan?.tipo === "visitas" || plan?.tipo === "paquete"
-            ? (plan?.visitas ?? null)
-            : null;
+    // Confirmación atómica (sql/067): registrar_pago (mismo RPC del cobro
+    // manual — stock/membresía/visitas en una sola transacción) + marcar
+    // pagos_externos como aprobado, los dos o ninguno. Antes era un insert
+    // directo en `pagos` sin pasar por el RPC ni por pagos_caja, sin checar
+    // errores, con el guard de idempotencia separado del insert — dos
+    // entregas casi simultáneas del webhook (MP sí las manda) podían crear
+    // dos pagos para un solo cobro real.
+    const montoPago = result.monto || Number(ext.monto);
+    const metodoPago = mapMetodo(result.metodo);
+    const { data: pagoId, error: confirmError } = await admin.rpc(
+      "confirmar_pago_externo",
+      {
+        p_pagos_externos_id: ext.id,
+        p_tenant_id: result.tenantId,
+        p_monto: montoPago,
+        p_metodo_pago: metodoPago,
+        p_token: generarTokenRecibo(),
+        p_miembro_id: miembroId,
+        p_periodo_inicio: periodoInicio,
+        p_periodo_fin: periodoFin,
+        p_plan_id: planId,
       }
-      await admin
-        .from("miembros")
-        .update(updatePayload)
-        .eq("tenant_id", result.tenantId)
-        .eq("id", miembroId);
+    );
+
+    if (confirmError || !pagoId) {
+      console.error(
+        `[mp-webhook] no se pudo confirmar el pago externo ${ext.id} (tenant ${result.tenantId}):`,
+        confirmError?.message
+      );
+      // MP debe reintentar: el cobro ya es real en su lado, pero no quedó
+      // registrado de nuestro lado. Con 200 aquí, MP no vuelve a avisar y
+      // el pago se queda pending para siempre sin que nadie se entere.
+      return new NextResponse(null, { status: 500 });
     }
 
-    await admin
-      .from("pagos_externos")
-      .update({
-        status: "approved",
-        metodo: result.metodo,
-        pago_id: pago?.id ?? null,
-      })
-      .eq("id", ext.id);
+    // Enlace a caja: sin punto de venta físico, cae en la caja default del
+    // gym — best-effort, igual que cualquier otro cobro sin caja explícita
+    // (createPago). El pago ya se registró de verdad arriba; si esto falla
+    // no se revierte, pero queda log visible (mismo criterio que en caja
+    // presencial: un gym sin caja default no debe bloquear el cobro).
+    await registrarCajaDePagos(admin, result.tenantId, [pagoId as string]);
 
     // Notificación in-app al gym (Fase 7.3).
-    const montoPago = result.monto || Number(ext.monto);
     await createNotification(
       result.tenantId,
       "pago",

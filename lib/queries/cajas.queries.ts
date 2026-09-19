@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface Caja {
   id: string;
@@ -39,9 +40,15 @@ export async function listCajasTodas(tenantId: string): Promise<Caja[]> {
 }
 
 /** La caja donde caen los pagos sin punto de venta físico (portal, kiosco,
- * MercadoPago, cuotas de crédito…). Siempre existe (se crea con el gym). */
-export async function getCajaDefault(tenantId: string): Promise<Caja | null> {
-  const supabase = await createClient();
+ * MercadoPago, cuotas de crédito…). Siempre existe (se crea con el gym).
+ * Acepta un client opcional para reusar el admin en contextos sin sesión
+ * (ej. el webhook de MercadoPago) — sin esto, createClient() no ve nada por
+ * RLS fuera de una sesión de usuario y siempre devuelve null. */
+export async function getCajaDefault(
+  tenantId: string,
+  client?: SupabaseClient
+): Promise<Caja | null> {
+  const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("cajas")
     .select("*")

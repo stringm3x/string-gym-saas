@@ -12,7 +12,16 @@ export type WebhookResult =
       metodo: string | null;
       externalReference: string | null;
     }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      /** tenantId/dataId, cuando ya se alcanzaron a leer del query — para que
+       * el caller pueda loguear a qué gym/pago corresponde un fallo que hoy
+       * responde 200 (MP_NO_CONECTADO, PAGO_NO_ENCONTRADO, DATOS_INCOMPLETOS)
+       * y de otro modo quedaría enterrado sin que nadie se entere. */
+      tenantId?: string | null;
+      dataId?: string | null;
+    };
 
 /**
  * Verifica la firma del webhook de MercadoPago y obtiene el pago.
@@ -51,16 +60,32 @@ export async function verifyAndProcessWebhook(
   }
 
   if (!tenantId || !dataId) {
-    return { ok: false, error: "DATOS_INCOMPLETOS" };
+    return { ok: false, error: "DATOS_INCOMPLETOS", tenantId, dataId };
   }
 
   // 2. Token del gym para consultar el pago.
   const token = await getMpAccessToken(tenantId);
-  if (!token) return { ok: false, error: "MP_NO_CONECTADO" };
+  if (!token) return { ok: false, error: "MP_NO_CONECTADO", tenantId, dataId };
 
   // 3. Obtener el pago desde MercadoPago.
   try {
     const pago = await new Payment(getMpClient(token)).get({ id: dataId });
+    // TODO(bloque-03): quitar este log una vez confirmados con un checkout
+    // real los valores de payment_type_id para tarjeta/OXXO/SPEI — mapMetodo
+    // (route.ts) está construido sobre supuestos de la documentación, no
+    // sobre datos observados. Si el mapeo está mal, los cobros entran al
+    // corte en la categoría equivocada y el arqueo no cuadra.
+    console.error(
+      `[mp-webhook] payload crudo de Payment.get (para confirmar mapMetodo):`,
+      JSON.stringify({
+        id: pago.id,
+        status: pago.status,
+        payment_type_id: pago.payment_type_id,
+        payment_method_id: pago.payment_method_id,
+        transaction_amount: pago.transaction_amount,
+        external_reference: pago.external_reference,
+      })
+    );
     return {
       ok: true,
       tenantId,
@@ -71,6 +96,6 @@ export async function verifyAndProcessWebhook(
       externalReference: pago.external_reference ?? null,
     };
   } catch {
-    return { ok: false, error: "PAGO_NO_ENCONTRADO" };
+    return { ok: false, error: "PAGO_NO_ENCONTRADO", tenantId, dataId };
   }
 }
