@@ -469,7 +469,7 @@ export async function countMiembrosVencenHoy(
   tenantId: string
 ): Promise<number> {
   const supabase = await createClient();
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyISO();
 
   const { count, error } = await supabase
     .from("miembros")

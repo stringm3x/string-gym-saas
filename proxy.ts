@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { StaffRol } from "@/lib/types/staff";
+import { hoyCDMX } from "@/lib/utils/dates";
 
 function isLocalHost(hostname: string): boolean {
   return hostname.startsWith("localhost") || hostname.startsWith("127.0.0.1");
@@ -172,10 +173,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // hoyCDMX() (no new Date().toDateString(), que es UTC en el server): sin
+  // esto la prueba se corta a las 18:00 hora de México del último día en vez
+  // de a medianoche.
   const pruebaVencida =
     gym.estado === "prueba" &&
     !!gym.prueba_hasta &&
-    new Date(gym.prueba_hasta) < new Date(new Date().toDateString());
+    new Date(gym.prueba_hasta) < hoyCDMX();
   const bloqueado = gym.estado === "suspendido" || pruebaVencida;
 
   if (bloqueado && !isSuspendidaRoute) {

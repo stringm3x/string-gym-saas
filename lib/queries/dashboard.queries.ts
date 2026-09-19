@@ -174,18 +174,16 @@ export async function listMiembrosPorVencer(
   diasAdelante = 7
 ): Promise<MiembroPorVencer[]> {
   const supabase = await createClient();
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const en = new Date(hoy);
-  en.setDate(en.getDate() + diasAdelante);
+  const hoy = hoyISO();
+  const en = isoMasDias(diasAdelante);
 
   const { data, error } = await supabase
     .from("miembros")
     .select("id, nombre, telefono, fecha_vencimiento")
     .eq("tenant_id", tenantId)
     .eq("archivado", false)
-    .gte("fecha_vencimiento", hoy.toISOString().slice(0, 10))
-    .lte("fecha_vencimiento", en.toISOString().slice(0, 10))
+    .gte("fecha_vencimiento", hoy)
+    .lte("fecha_vencimiento", en)
     .order("fecha_vencimiento", { ascending: true })
     .limit(10);
 

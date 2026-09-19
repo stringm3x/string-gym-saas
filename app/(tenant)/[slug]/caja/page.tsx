@@ -119,15 +119,33 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     cajas[0] ??
     null;
 
+  const cajaRequiereCuadre = cajaActiva?.requiere_cuadre ?? false;
+  const checkinRequerido = (gym?.caja_checkin_pin ?? false) && cajaRequiereCuadre;
+
+  // Se resuelve antes del batch de abajo: listPagosDelDia necesita
+  // corte?.abierto_at para que "Movimientos del turno" arranque donde
+  // arrancan los totales del turno (ver comentario en esa función).
+  const corte =
+    cajaActiva && cajaRequiereCuadre
+      ? await getCorteAbierto(tenant.id, cajaActiva.id)
+      : null;
+
   const [
     pagos,
     resumen,
     codigosPendientes,
     pagosMpPendientes,
     cajasAbiertas,
+    staffParaCheckin,
   ] = await Promise.all([
     cajaActiva
-      ? listPagosDelDia(tenant.id, categoria, 50, cajaActiva.id)
+      ? listPagosDelDia(
+          tenant.id,
+          categoria,
+          50,
+          cajaActiva.id,
+          corte?.abierto_at
+        )
       : Promise.resolve([]),
     cajaActiva
       ? getResumenCaja(tenant.id, categoria, cajaActiva.id)
@@ -139,14 +157,6 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     canAutoservicio ? getCodigosPendientes(tenant.id) : Promise.resolve([]),
     canMp ? listPagosExternosPendientes(tenant.id) : Promise.resolve([]),
     cajas.length > 1 ? listCajasAbiertas(tenant.id) : Promise.resolve([]),
-  ]);
-
-  const cajaRequiereCuadre = cajaActiva?.requiere_cuadre ?? false;
-  const checkinRequerido = (gym?.caja_checkin_pin ?? false) && cajaRequiereCuadre;
-  const [corte, staffParaCheckin] = await Promise.all([
-    cajaActiva && cajaRequiereCuadre
-      ? getCorteAbierto(tenant.id, cajaActiva.id)
-      : Promise.resolve(null),
     checkinRequerido ? listStaffParaCheckin(tenant.id) : Promise.resolve([]),
   ]);
 

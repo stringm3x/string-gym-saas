@@ -148,7 +148,20 @@ async function pagoIdsEnCaja(
   return new Set((data ?? []).map((r) => r.pago_id as string));
 }
 
-/** Suma de pagos no anulados de una caja, por método, en [desde, hasta). */
+/**
+ * Suma de pagos no anulados de una caja, por método, en [desde, hasta).
+ *
+ * Efectivo cuenta bruto (se cobró y entró al cajón este turno), incluso si
+ * después se reembolsa: la salida de efectivo se descuenta aparte, abajo, vía
+ * `reembolsosEfectivo` (que puede caer en OTRO turno distinto al de la venta
+ * original — lo que importa para el cuadre físico es cuándo salió el
+ * efectivo, no cuándo se vendió). Tarjeta y transferencia no tienen ese
+ * mecanismo de salida física — no hay "cajón" que cuadrar — así que un pago
+ * ya reembolsado por esos medios se excluye directamente de una vez, igual
+ * que ya hace "Cobrado hoy" (getResumenCaja en pagos.queries.ts). Antes esto
+ * no se filtraba y un reembolso con tarjeta dejaba el corte contando una
+ * venta que ya se devolvió.
+ */
 async function totalesEnRango(
   supabase: SupabaseClient,
   tenantId: string,
@@ -158,7 +171,7 @@ async function totalesEnRango(
 ): Promise<CorteTotales> {
   const { data } = await supabase
     .from("pagos")
-    .select("id, monto, metodo_pago")
+    .select("id, monto, metodo_pago, reembolsado_at")
     .eq("tenant_id", tenantId)
     .is("anulado_at", null)
     .gte("fecha_pago", desde)
@@ -182,10 +195,12 @@ async function totalesEnRango(
   };
   for (const p of candidatos) {
     if (!idsDeEstaCaja.has(p.id as string)) continue;
+    const esEfectivo = p.metodo_pago === "efectivo";
+    if (!esEfectivo && p.reembolsado_at) continue;
     const m = Number(p.monto);
     t.total += m;
     t.cantidad += 1;
-    if (p.metodo_pago === "efectivo") t.efectivo += m;
+    if (esEfectivo) t.efectivo += m;
     else if (p.metodo_pago === "tarjeta") t.tarjeta += m;
     else if (p.metodo_pago === "transferencia") t.transferencia += m;
   }
@@ -323,7 +338,12 @@ async function isCajaDefault(
   return !!data?.es_default;
 }
 
-/** Suma de pagos no anulados de una caja por concepto en [desde, hasta). */
+/**
+ * Suma de pagos no anulados de una caja por concepto en [desde, hasta). Misma
+ * regla de reembolsos que totalesEnRango: efectivo cuenta bruto (la salida
+ * se descuenta aparte del cajón), tarjeta/transferencia/otro ya reembolsados
+ * se excluyen — consistente con esa función y con "Cobrado hoy".
+ */
 async function totalesPorConceptoEnRango(
   supabase: SupabaseClient,
   tenantId: string,
@@ -334,7 +354,7 @@ async function totalesPorConceptoEnRango(
   const [{ data }, costoProductos] = await Promise.all([
     supabase
       .from("pagos")
-      .select("id, concepto, monto")
+      .select("id, concepto, monto, metodo_pago, reembolsado_at")
       .eq("tenant_id", tenantId)
       .is("anulado_at", null)
       .gte("fecha_pago", desde)
@@ -360,6 +380,7 @@ async function totalesPorConceptoEnRango(
 
   for (const p of candidatos) {
     if (!idsEnCaja.has(p.id as string)) continue;
+    if (p.metodo_pago !== "efectivo" && p.reembolsado_at) continue;
     const concepto = p.concepto as string;
     const key: keyof Omit<CorteTotalesPorConcepto, "gananciaProductos"> =
       concepto === "membresia" || concepto === "visita" || concepto === "producto"

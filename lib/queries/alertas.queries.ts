@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { countStockBajo } from "./productos.queries";
 import { countProspectosSinContactar } from "./prospectos.queries";
-import { hoyISO } from "@/lib/utils/dates";
+import { hoyISO, isoMasDias } from "@/lib/utils/dates";
 
 export type AlertaTipo =
   | "vencimiento_hoy"
@@ -21,7 +21,7 @@ export interface Alerta {
 
 async function countVencimientoHoy(tenantId: string): Promise<number> {
   const supabase = await createClient();
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyISO();
 
   const { count, error } = await supabase
     .from("miembros")
@@ -36,18 +36,16 @@ async function countVencimientoHoy(tenantId: string): Promise<number> {
 
 async function countVencimientoProximo(tenantId: string): Promise<number> {
   const supabase = await createClient();
-  const manana = new Date();
-  manana.setDate(manana.getDate() + 1);
-  const en7 = new Date();
-  en7.setDate(en7.getDate() + 7);
+  const manana = isoMasDias(1);
+  const en7 = isoMasDias(7);
 
   const { count, error } = await supabase
     .from("miembros")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
     .eq("archivado", false)
-    .gte("fecha_vencimiento", manana.toISOString().slice(0, 10))
-    .lte("fecha_vencimiento", en7.toISOString().slice(0, 10));
+    .gte("fecha_vencimiento", manana)
+    .lte("fecha_vencimiento", en7);
 
   if (error) return 0;
   return count ?? 0;

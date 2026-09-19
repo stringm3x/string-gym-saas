@@ -10,6 +10,7 @@ import {
 } from "@/lib/queries/miembros.queries";
 import { csvRowSchema } from "@/lib/validations/import.schema";
 import { parseCSV } from "@/lib/utils/csv-parser";
+import { hoyISO } from "@/lib/utils/dates";
 import type {
   CSVRow,
   ImportPreview,
@@ -162,7 +163,7 @@ export async function importarMiembrosAction(
   if (!rows.length) return base;
 
   const planesMap = await getPlanesMap(tenant.id);
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyISO();
 
   // Re-validar en servidor (defensa) y resolver planes.
   const bulkRows: BulkMiembroRow[] = [];
