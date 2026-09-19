@@ -2,40 +2,48 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LuLayoutDashboard,
+  LuBuilding2,
+  LuInbox,
+  LuScrollText,
+  LuUserCog,
+} from "react-icons/lu";
 
 const NAV = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/tenants", label: "Tenants" },
-  { href: "/admin/solicitudes", label: "Solicitudes" },
-  { href: "/admin/eventos", label: "Audit log" },
-  { href: "/admin/cuenta", label: "Mi cuenta" },
+  { href: "/admin", label: "Panel", icon: LuLayoutDashboard },
+  { href: "/admin/tenants", label: "Gimnasios", icon: LuBuilding2 },
+  { href: "/admin/solicitudes", label: "Solicitudes", icon: LuInbox },
+  { href: "/admin/eventos", label: "Bitácora", icon: LuScrollText },
+  { href: "/admin/cuenta", label: "Mi cuenta", icon: LuUserCog },
 ];
 
+// Misma regla que SidebarLink del gym: activo = fondo lleno + texto ácido.
 export function AdminNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex-1 space-y-0.5 px-3 py-4">
+    <nav className="flex flex-1 flex-col">
       {NAV.map((item) => {
         const active =
           item.href === "/admin"
             ? pathname === "/admin"
             : pathname.startsWith(item.href);
+        const Icon = item.icon;
         return (
           <Link
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+            className={`flex h-11 items-center gap-3 px-5 text-sm transition-colors ${
               active
-                ? "bg-bg font-medium text-text-primary"
-                : "text-text-secondary hover:bg-bg hover:text-text-primary"
+                ? "bg-surface-hover font-medium text-brand-green"
+                : "text-text-secondary hover:bg-surface-hover/60 hover:text-text-primary"
             }`}
           >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                active ? "bg-brand-green" : "bg-transparent"
-              }`}
+            <Icon
+              size={18}
+              className={active ? "text-brand-green" : "text-text-muted"}
             />
             {item.label}
           </Link>

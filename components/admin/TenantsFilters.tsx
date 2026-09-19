@@ -3,8 +3,9 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-const SELECT_CLASS =
-  "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-brand-green focus:outline-none";
+// Mismo campo crudo que el resto del sistema: 44px, radio de 4px, fondo bg.
+const FIELD =
+  "h-11 rounded border border-border bg-bg px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
 
 export function TenantsFilters() {
   const router = useRouter();
@@ -27,21 +28,23 @@ export function TenantsFilters() {
           e.preventDefault();
           apply({ search });
         }}
-        className="flex-1 min-w-[220px]"
+        className="min-w-[220px] flex-1"
       >
         <input
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nombre, slug o email…"
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+          placeholder="Buscar por nombre, slug o correo…"
+          aria-label="Buscar gimnasio"
+          className={`${FIELD} w-full`}
         />
       </form>
 
       <select
         value={params.get("estado") ?? ""}
         onChange={(e) => apply({ estado: e.target.value })}
-        className={SELECT_CLASS}
+        aria-label="Estado"
+        className={FIELD}
       >
         <option value="">Estado: todos</option>
         <option value="activo">Activo</option>
@@ -53,7 +56,8 @@ export function TenantsFilters() {
       <select
         value={params.get("plan") ?? ""}
         onChange={(e) => apply({ plan: e.target.value })}
-        className={SELECT_CLASS}
+        aria-label="Plan"
+        className={FIELD}
       >
         <option value="">Plan: todos</option>
         <option value="basico">Básico</option>
@@ -64,7 +68,8 @@ export function TenantsFilters() {
       <select
         value={params.get("antiguedad") ?? ""}
         onChange={(e) => apply({ antiguedad: e.target.value })}
-        className={SELECT_CLASS}
+        aria-label="Antigüedad"
+        className={FIELD}
       >
         <option value="">Antigüedad: todas</option>
         <option value="mes">Último mes</option>
@@ -75,7 +80,8 @@ export function TenantsFilters() {
       <select
         value={params.get("orden") ?? "recientes"}
         onChange={(e) => apply({ orden: e.target.value })}
-        className={SELECT_CLASS}
+        aria-label="Orden"
+        className={FIELD}
       >
         <option value="recientes">Más recientes</option>
         <option value="nombre">Nombre (A-Z)</option>

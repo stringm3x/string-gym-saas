@@ -22,16 +22,22 @@ export default async function TenantsPage({
   });
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary">Tenants</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          {rows.length} {rows.length === 1 ? "gym registrado" : "gyms registrados"}
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-1.5">
+        <p className="font-mono text-etiqueta uppercase text-text-muted">
+          Panel interno
+        </p>
+        <h1 className="text-pagina font-semibold text-text-primary">Gimnasios</h1>
+        <p className="text-sm text-text-secondary">
+          <span className="font-mono tabular-nums">{rows.length}</span>{" "}
+          {rows.length === 1 ? "gimnasio registrado" : "gimnasios registrados"}
         </p>
       </div>
 
-      <TenantsFilters />
-      <TenantsTable rows={rows} />
+      <div className="flex flex-col gap-4">
+        <TenantsFilters />
+        <TenantsTable rows={rows} />
+      </div>
     </div>
   );
 }

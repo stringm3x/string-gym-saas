@@ -13,12 +13,17 @@ export default async function SolicitudesPage({
   const solicitudes = await getSolicitudes({ estado });
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary">Solicitudes</h1>
-        <p className="mt-1 text-sm text-text-secondary">
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-1.5">
+        <p className="font-mono text-etiqueta uppercase text-text-muted">
+          Panel interno
+        </p>
+        <h1 className="text-pagina font-semibold text-text-primary">
+          Solicitudes
+        </h1>
+        <p className="text-sm text-text-secondary">
           Solicitudes de prueba desde el pre-registro. Actívalas para crear el
-          gym y su owner, o márcalas como contactadas/descartadas.
+          gimnasio y su dueño, o márcalas como contactadas o descartadas.
         </p>
       </div>
 

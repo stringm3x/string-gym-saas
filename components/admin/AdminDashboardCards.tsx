@@ -26,12 +26,14 @@ function Card({
           ? "text-danger"
           : "text-text-primary";
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="text-[11px] uppercase tracking-wide text-text-muted">
+    <div className="flex flex-col gap-2.5 border border-border bg-surface p-5">
+      <p className="font-mono text-etiqueta uppercase text-text-secondary">
         {label}
       </p>
-      <p className={`mt-1 text-2xl font-semibold ${valueColor}`}>{value}</p>
-      {hint && <p className="mt-0.5 text-[11px] text-text-muted">{hint}</p>}
+      <p className={`font-mono text-cifra font-bold tabular-nums ${valueColor}`}>
+        {value}
+      </p>
+      {hint && <p className="text-sm text-text-muted">{hint}</p>}
     </div>
   );
 }
@@ -44,7 +46,7 @@ export function AdminDashboardCards({
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
       <Card
-        label="Tenants activos"
+        label="Gimnasios activos"
         value={String(metrics.activos)}
         accent="green"
       />
@@ -74,7 +76,7 @@ export function AdminDashboardCards({
         value={String(metrics.nuevosEsteMes)}
       />
       <Card
-        label="Churn este mes"
+        label="Rotación este mes"
         value={String(metrics.churnEsteMes)}
         hint="cancelaciones"
         accent={metrics.churnEsteMes > 0 ? "danger" : undefined}

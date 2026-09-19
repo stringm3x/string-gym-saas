@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/Button";
 import {
   cambiarPasswordAction,
   cerrarTodasSesionesAction,
@@ -16,7 +17,7 @@ export function CuentaActions() {
       const r = await cambiarPasswordAction();
       setMsg(
         r.ok
-          ? { ok: true, text: "Te enviamos un email para cambiar tu contraseña." }
+          ? { ok: true, text: "Te enviamos un correo para cambiar tu contraseña." }
           : { ok: false, text: r.error ?? "Error" }
       );
     });
@@ -30,35 +31,31 @@ export function CuentaActions() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {msg && (
         <p
-          className={`rounded-lg border px-3 py-2 text-xs ${
+          role="status"
+          className={`border px-4 py-3 text-sm ${
             msg.ok
-              ? "border-brand-green/30 bg-brand-green/10 text-brand-green"
-              : "border-danger/30 bg-danger/10 text-danger"
+              ? "border-brand-green/40 bg-brand-green/10 text-brand-green"
+              : "border-danger/40 bg-danger/10 text-danger"
           }`}
         >
           {msg.text}
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={cambiarPassword}
-          className="rounded-lg bg-brand-green px-3 py-2 text-xs font-semibold text-bg hover:bg-brand-green/90 disabled:opacity-50"
-        >
+      <div className="flex flex-wrap gap-3">
+        <Button type="button" disabled={pending} onClick={cambiarPassword}>
           Cambiar contraseña
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="danger"
           disabled={pending}
           onClick={cerrarSesiones}
-          className="rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
         >
           Cerrar todas las sesiones
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -11,7 +11,9 @@ import {
 } from "@/lib/queries/admin.queries";
 import { PLAN_LABEL } from "@/lib/admin/pricing";
 import type { Plan } from "@/lib/features";
+import { Badge } from "@/components/ui/Badge";
 import { TenantActionsPanel } from "@/components/admin/TenantActionsPanel";
+import { TenantEstadoBadge } from "@/components/admin/TenantsTable";
 import { PagosManualesTable } from "@/components/admin/PagosManualesTable";
 import { NotasInternas } from "@/components/admin/NotasInternas";
 import { AuditLogTable } from "@/components/admin/AuditLogTable";
@@ -23,13 +25,6 @@ const MXN = new Intl.NumberFormat("es-MX", {
   maximumFractionDigits: 0,
 });
 
-const ESTADO_STYLE: Record<string, string> = {
-  activo: "border-brand-green/30 bg-brand-green/10 text-brand-green",
-  prueba: "border-warning/30 bg-warning/10 text-warning",
-  suspendido: "border-danger/30 bg-danger/10 text-danger",
-  cancelado: "border-border bg-bg text-text-muted",
-};
-
 function fecha(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("es-MX", {
@@ -40,13 +35,25 @@ function fecha(iso: string | null) {
   });
 }
 
+// Fecha numérica corta para la tarjeta de cifra (cabe a 40px mono).
+function fechaNumerica(iso: string) {
+  return new Date(iso).toLocaleDateString("es-MX", {
+    timeZone: TZ_MX,
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  });
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="text-[11px] uppercase tracking-wide text-text-muted">
+    <div className="flex flex-col gap-2.5 border border-border bg-surface p-5">
+      <p className="font-mono text-etiqueta uppercase text-text-secondary">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold text-text-primary">{value}</p>
+      <p className="font-mono text-cifra font-bold tabular-nums text-text-primary">
+        {value}
+      </p>
     </div>
   );
 }
@@ -70,80 +77,88 @@ export default async function TenantDetailPage({
   ]);
 
   return (
-    <div className="space-y-6">
-      <Link
-        href="/admin/tenants"
-        className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary"
-      >
-        <LuArrowLeft className="h-3.5 w-3.5" /> Tenants
-      </Link>
-
-      {/* Info general */}
-      <div className="space-y-2">
+    <div className="flex flex-col gap-7">
+      {/* Encabezado */}
+      <div className="flex flex-col gap-1.5">
+        <Link
+          href="/admin/tenants"
+          className="inline-flex h-9 items-center gap-1.5 self-start font-mono text-etiqueta uppercase text-text-muted transition-colors hover:text-text-primary"
+        >
+          <LuArrowLeft className="h-3.5 w-3.5" /> Gimnasios
+        </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold text-text-primary">
+          <h1 className="text-pagina font-semibold text-text-primary">
             {tenant.nombre}
           </h1>
-          <span
-            className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${
-              ESTADO_STYLE[tenant.estado] ?? ESTADO_STYLE.cancelado
-            }`}
-          >
-            {tenant.estado}
-          </span>
+          <TenantEstadoBadge estado={tenant.estado} />
           {tenant.es_fundador && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-medium text-warning">
+            <Badge variant="warning">
               <LuStar className="h-3 w-3" /> Fundador
-            </span>
+            </Badge>
           )}
         </div>
         <p className="text-sm text-text-secondary">
-          /{tenant.slug} · {PLAN_LABEL[tenant.plan as Plan] ?? tenant.plan} ·{" "}
-          {MXN.format(tenant.mrr)}/mes · alta {fecha(tenant.created_at)}
+          <span className="font-mono">/{tenant.slug}</span> ·{" "}
+          {PLAN_LABEL[tenant.plan as Plan] ?? tenant.plan} ·{" "}
+          <span className="font-mono tabular-nums">{MXN.format(tenant.mrr)}</span>
+          /mes · alta{" "}
+          <span className="font-mono tabular-nums">{fecha(tenant.created_at)}</span>
         </p>
-        <p className="text-xs text-text-muted">
-          Owner: {tenant.owner_email ?? "—"}
-          {tenant.telefono && ` · Tel: ${tenant.telefono}`}
-          {tenant.dominio_custom && ` · Dominio: ${tenant.dominio_custom}`}
-          {tenant.estado === "prueba" &&
-            tenant.prueba_hasta &&
-            ` · Prueba hasta ${fecha(tenant.prueba_hasta)}`}
+        <p className="text-sm text-text-muted">
+          Dueño: {tenant.owner_email ?? "—"}
+          {tenant.telefono && (
+            <>
+              {" · Tel: "}
+              <span className="font-mono tabular-nums">{tenant.telefono}</span>
+            </>
+          )}
+          {tenant.estado === "prueba" && tenant.prueba_hasta && (
+            <>
+              {" · Prueba hasta "}
+              <span className="font-mono tabular-nums">
+                {fecha(tenant.prueba_hasta)}
+              </span>
+            </>
+          )}
         </p>
       </div>
 
-      {/* Métricas */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Cifras */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Metric label="Miembros" value={String(metrics.miembros)} />
         <Metric label="Prospectos" value={String(metrics.prospectos)} />
-        <Metric label="Pagos 30d" value={MXN.format(metrics.pagosUltimoMes)} />
+        <Metric label="Pagos 30 días" value={MXN.format(metrics.pagosUltimoMes)} />
         <Metric
           label="Último check-in"
           value={
-            metrics.ultimoCheckin
-              ? fecha(metrics.ultimoCheckin)
-              : "—"
+            metrics.ultimoCheckin ? fechaNumerica(metrics.ultimoCheckin) : "—"
           }
         />
       </div>
 
       {/* Acciones + paneles */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h2 className="mb-3 text-sm font-semibold text-text-primary">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="flex flex-col gap-3">
+          <h2 className="text-base font-semibold text-text-primary">
             Acciones administrativas
           </h2>
           <TenantActionsPanel tenant={tenant} addons={addons} />
         </div>
 
-        <div className="space-y-6">
+        <div className="flex flex-col gap-4">
           <PagosManualesTable tenantId={tenantId} pagos={pagos} />
           <NotasInternas tenantId={tenantId} notas={notas} />
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-text-primary">
-              Audit log del tenant
-            </h3>
+          <section className="card-surface">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <h3 className="text-base font-semibold text-text-primary">
+                Bitácora del gimnasio
+              </h3>
+              <span className="font-mono text-etiqueta tabular-nums text-text-muted">
+                {events.length}
+              </span>
+            </div>
             <AuditLogTable events={events} />
-          </div>
+          </section>
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ADDONS_CATALOG } from "@/lib/addons";
 import type { TenantDetail, TenantAddon } from "@/lib/queries/admin.queries";
+import { Button } from "@/components/ui/Button";
 import {
   cambiarPlanAction,
   marcarFundadorAction,
@@ -17,14 +18,9 @@ import {
   type ActionResult,
 } from "@/app/admin/(panel)/tenants/[tenantId]/actions";
 
-const INPUT =
-  "w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
-const BTN =
-  "rounded-lg bg-brand-green px-3 py-2 text-xs font-semibold text-bg transition-colors hover:bg-brand-green/90 disabled:cursor-not-allowed disabled:opacity-50";
-const BTN_GHOST =
-  "rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50";
-const BTN_DANGER =
-  "rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger transition-colors hover:bg-danger/10 disabled:opacity-50";
+// Campo crudo del sistema: 44px, radio de 4px, fondo bg.
+const FIELD =
+  "h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
 
 function Card({
   title,
@@ -34,10 +30,12 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      <h3 className="mb-3 text-sm font-semibold text-text-primary">{title}</h3>
-      {children}
-    </div>
+    <section className="card-surface">
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <h3 className="text-base font-semibold text-text-primary">{title}</h3>
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
   );
 }
 
@@ -81,10 +79,11 @@ export function TenantActionsPanel({
     <div className="space-y-4">
       {msg && (
         <p
-          className={`rounded-lg border px-3 py-2 text-xs ${
+          role="status"
+          className={`border px-4 py-3 text-sm ${
             msg.ok
-              ? "border-brand-green/30 bg-brand-green/10 text-brand-green"
-              : "border-danger/30 bg-danger/10 text-danger"
+              ? "border-brand-green/40 bg-brand-green/10 text-brand-green"
+              : "border-danger/40 bg-danger/10 text-danger"
           }`}
         >
           {msg.text}
@@ -93,11 +92,12 @@ export function TenantActionsPanel({
 
       {/* Plan */}
       <Card title="Plan">
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={plan}
             onChange={(e) => setPlan(e.target.value)}
-            className={`${INPUT} max-w-[140px]`}
+            aria-label="Plan"
+            className={`${FIELD} max-w-[140px]`}
           >
             <option value="basico">Básico</option>
             <option value="pro">Pro</option>
@@ -107,63 +107,64 @@ export function TenantActionsPanel({
             value={planMotivo}
             onChange={(e) => setPlanMotivo(e.target.value)}
             placeholder="Motivo (opcional)"
-            className={`${INPUT} flex-1 min-w-[160px]`}
+            aria-label="Motivo del cambio de plan"
+            className={`${FIELD} min-w-[160px] flex-1`}
           />
-          <button
+          <Button
             type="button"
             disabled={pending || plan === tenant.plan}
             onClick={() =>
               run(() => cambiarPlanAction(tenant.id, { plan, motivo: planMotivo }))
             }
-            className={BTN}
           >
             Cambiar plan
-          </button>
+          </Button>
         </div>
       </Card>
 
       {/* Cliente fundador */}
       <Card title="Cliente fundador">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-text-secondary">
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm text-text-secondary">
             {tenant.es_fundador
               ? "Marcado como fundador."
               : "No es cliente fundador."}
           </p>
-          <button
+          <Button
             type="button"
+            variant={tenant.es_fundador ? "secondary" : "primary"}
             disabled={pending}
             onClick={() =>
               run(() => marcarFundadorAction(tenant.id, !tenant.es_fundador))
             }
-            className={tenant.es_fundador ? BTN_GHOST : BTN}
           >
             {tenant.es_fundador ? "Quitar fundador" : "Marcar fundador"}
-          </button>
+          </Button>
         </div>
       </Card>
 
       {/* Convertir a plan pagado */}
       {tenant.estado === "prueba" && (
         <Card title="Convertir a plan pagado">
-          <p className="mb-3 text-xs text-text-secondary">
-            Este tenant está en prueba
+          <p className="mb-4 text-sm text-text-secondary">
+            Este gimnasio está en prueba
             {tenant.prueba_hasta && (
               <>
                 {" "}
                 hasta{" "}
-                <span className="text-text-primary">
+                <span className="font-mono tabular-nums text-text-primary">
                   {new Date(tenant.prueba_hasta).toLocaleDateString("es-MX")}
                 </span>
               </>
             )}
             . Actívalo con un plan pagado para que deje de estar en prueba.
           </p>
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               value={planActivar}
               onChange={(e) => setPlanActivar(e.target.value)}
-              className={`${INPUT} max-w-[140px]`}
+              aria-label="Plan a activar"
+              className={`${FIELD} max-w-[140px]`}
             >
               <option value="basico">Básico</option>
               <option value="pro">Pro</option>
@@ -173,15 +174,16 @@ export function TenantActionsPanel({
               value={motivoActivar}
               onChange={(e) => setMotivoActivar(e.target.value)}
               placeholder="Motivo (opcional)"
-              className={`${INPUT} flex-1 min-w-[160px]`}
+              aria-label="Motivo de la activación"
+              className={`${FIELD} min-w-[160px] flex-1`}
             />
-            <button
+            <Button
               type="button"
               disabled={pending}
               onClick={() => {
                 if (
                   !confirm(
-                    `¿Activar este tenant con el plan ${planActivar}? Dejará de estar en prueba.`
+                    `¿Activar este gimnasio con el plan ${planActivar}? Dejará de estar en prueba.`
                   )
                 )
                   return;
@@ -191,93 +193,95 @@ export function TenantActionsPanel({
                       plan: planActivar,
                       motivo: motivoActivar,
                     }),
-                  "Tenant activado con plan pagado"
+                  "Gimnasio activado con plan pagado"
                 );
               }}
-              className={BTN}
             >
               Activar plan pagado
-            </button>
+            </Button>
           </div>
         </Card>
       )}
 
       {/* Estado */}
-      <Card title="Estado del tenant">
-        <p className="mb-3 text-xs text-text-secondary">
-          Estado actual: <span className="capitalize">{tenant.estado}</span>
+      <Card title="Estado del gimnasio">
+        <p className="mb-4 text-sm text-text-secondary">
+          Estado actual: <span className="capitalize text-text-primary">{tenant.estado}</span>
           {tenant.suspension_motivo && (
             <span className="text-text-muted"> — {tenant.suspension_motivo}</span>
           )}
         </p>
 
         {tenant.estado === "prueba" && (
-          <div className="mb-3 flex flex-wrap items-end gap-2">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
             <input
               type="number"
               min={1}
               max={90}
               value={dias}
               onChange={(e) => setDias(Number(e.target.value))}
-              className={`${INPUT} max-w-[90px]`}
+              aria-label="Días a extender"
+              className={`${FIELD} max-w-[90px] font-mono tabular-nums`}
             />
-            <button
+            <Button
               type="button"
               disabled={pending}
               onClick={() => run(() => extenderPruebaAction(tenant.id, dias))}
-              className={BTN}
             >
               Extender prueba
-            </button>
+            </Button>
           </div>
         )}
 
         {(tenant.estado === "suspendido" || tenant.estado === "cancelado") && (
-          <button
+          <Button
             type="button"
             disabled={pending}
             onClick={() => run(() => reactivarTenantAction(tenant.id))}
-            className={`${BTN} mb-3`}
+            className="mb-4"
           >
-            Reactivar tenant
-          </button>
+            Reactivar gimnasio
+          </Button>
         )}
 
         {(tenant.estado === "activo" || tenant.estado === "prueba") && (
           <div className="space-y-3">
-            <div className="flex flex-wrap items-end gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 value={suspMotivo}
                 onChange={(e) => setSuspMotivo(e.target.value)}
                 placeholder="Motivo de suspensión"
-                className={`${INPUT} flex-1 min-w-[160px]`}
+                aria-label="Motivo de suspensión"
+                className={`${FIELD} min-w-[160px] flex-1`}
               />
-              <button
+              <Button
                 type="button"
+                variant="danger"
                 disabled={pending}
                 onClick={() => {
-                  if (!confirm("¿Suspender este tenant? El owner perderá acceso."))
+                  if (!confirm("¿Suspender este gimnasio? El dueño perderá acceso."))
                     return;
                   run(() => suspenderTenantAction(tenant.id, suspMotivo));
                 }}
-                className={BTN_DANGER}
               >
                 Suspender
-              </button>
+              </Button>
             </div>
 
-            <div className="flex flex-wrap items-end gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 value={cancelMotivo}
                 onChange={(e) => setCancelMotivo(e.target.value)}
                 placeholder="Motivo de cancelación"
-                className={`${INPUT} flex-1 min-w-[160px]`}
+                aria-label="Motivo de cancelación"
+                className={`${FIELD} min-w-[160px] flex-1`}
               />
-              <button
+              <Button
                 type="button"
+                variant="danger"
                 disabled={pending}
                 onClick={() => {
-                  if (!confirm("¿Cancelar definitivamente este tenant?")) return;
+                  if (!confirm("¿Cancelar definitivamente este gimnasio?")) return;
                   if (
                     !confirm(
                       "CONFIRMACIÓN FINAL: esta acción es irreversible. ¿Continuar?"
@@ -291,70 +295,75 @@ export function TenantActionsPanel({
                     })
                   );
                 }}
-                className={BTN_DANGER}
               >
-                Cancelar tenant
-              </button>
+                Cancelar gimnasio
+              </Button>
             </div>
           </div>
         )}
       </Card>
 
-      {/* Add-ons */}
-      <Card title="Add-ons">
-        <ul className="space-y-2">
-          {ADDONS_CATALOG.map((def) => {
-            const activo = activeAddonIds.has(def.id);
-            return (
-              <li
-                key={def.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-text-primary">
-                    {def.nombre}
-                  </p>
-                  <p className="text-[11px] text-text-muted">
-                    ${def.precio}/mes · {activo ? "activo" : "inactivo"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() =>
-                    run(() => toggleAddonAction(tenant.id, def.id, !activo))
-                  }
-                  className={activo ? BTN_GHOST : BTN}
+      {/* Complementos: el catálogo está vacío a propósito; no se muestra vacío */}
+      {ADDONS_CATALOG.length > 0 && (
+        <Card title="Complementos">
+          <ul className="divide-y divide-border border border-border">
+            {ADDONS_CATALOG.map((def) => {
+              const activo = activeAddonIds.has(def.id);
+              return (
+                <li
+                  key={def.id}
+                  className="flex items-center justify-between gap-4 px-4 py-3"
                 >
-                  {activo ? "Desactivar" : "Activar"}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-text-primary">
+                      {def.nombre}
+                    </p>
+                    <p className="text-xs text-text-muted">
+                      <span className="font-mono tabular-nums">
+                        ${def.precio}/mes
+                      </span>{" "}
+                      · {activo ? "activo" : "inactivo"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant={activo ? "secondary" : "primary"}
+                    size="sm"
+                    disabled={pending}
+                    onClick={() =>
+                      run(() => toggleAddonAction(tenant.id, def.id, !activo))
+                    }
+                  >
+                    {activo ? "Desactivar" : "Activar"}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
 
-      {/* Reset password owner */}
-      <Card title="Owner">
-        <div className="flex items-center justify-between gap-3">
-          <p className="truncate text-xs text-text-secondary">
+      {/* Contraseña del dueño */}
+      <Card title="Dueño">
+        <div className="flex items-center justify-between gap-4">
+          <p className="truncate text-sm text-text-secondary">
             {tenant.owner_email ?? "—"}
           </p>
-          <button
+          <Button
             type="button"
+            variant="secondary"
             disabled={pending}
             onClick={() => {
-              if (!confirm("¿Enviar email de recuperación de contraseña al owner?"))
+              if (!confirm("¿Enviar correo de recuperación de contraseña al dueño?"))
                 return;
               run(
                 () => resetPasswordOwnerAction(tenant.id),
-                "Email de recuperación enviado"
+                "Correo de recuperación enviado"
               );
             }}
-            className={BTN_GHOST}
           >
-            Resetear password
-          </button>
+            Restablecer contraseña
+          </Button>
         </div>
       </Card>
     </div>

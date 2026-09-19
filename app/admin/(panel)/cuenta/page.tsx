@@ -20,32 +20,45 @@ export default async function CuentaPage() {
   if (!admin) redirect("/admin/login");
 
   return (
-    <div className="max-w-lg space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary">Mi cuenta</h1>
-        <p className="mt-1 text-sm text-text-secondary">
+    <div className="flex max-w-lg flex-col gap-7">
+      <div className="flex flex-col gap-1.5">
+        <p className="font-mono text-etiqueta uppercase text-text-muted">
+          Panel interno
+        </p>
+        <h1 className="text-pagina font-semibold text-text-primary">Mi cuenta</h1>
+        <p className="text-sm text-text-secondary">
           Datos de tu sesión de administrador.
         </p>
       </div>
 
-      <dl className="divide-y divide-border rounded-xl border border-border bg-surface">
-        <div className="flex justify-between px-4 py-3 text-sm">
-          <dt className="text-text-muted">Nombre</dt>
-          <dd className="text-text-primary">{admin.nombre ?? "—"}</dd>
+      <dl className="card-surface divide-y divide-border">
+        <div className="flex min-h-11 items-center justify-between gap-4 px-5 py-3">
+          <dt className="font-mono text-etiqueta uppercase text-text-secondary">
+            Nombre
+          </dt>
+          <dd className="text-sm text-text-primary">{admin.nombre ?? "—"}</dd>
         </div>
-        <div className="flex justify-between px-4 py-3 text-sm">
-          <dt className="text-text-muted">Email</dt>
-          <dd className="text-text-primary">{admin.email}</dd>
+        <div className="flex min-h-11 items-center justify-between gap-4 px-5 py-3">
+          <dt className="font-mono text-etiqueta uppercase text-text-secondary">
+            Correo
+          </dt>
+          <dd className="text-sm text-text-primary">{admin.email}</dd>
         </div>
-        <div className="flex justify-between px-4 py-3 text-sm">
-          <dt className="text-text-muted">Rol</dt>
-          <dd className="capitalize text-text-primary">
+        <div className="flex min-h-11 items-center justify-between gap-4 px-5 py-3">
+          <dt className="font-mono text-etiqueta uppercase text-text-secondary">
+            Rol
+          </dt>
+          <dd className="text-sm capitalize text-text-primary">
             {admin.role.replace("_", " ")}
           </dd>
         </div>
-        <div className="flex justify-between px-4 py-3 text-sm">
-          <dt className="text-text-muted">Último acceso</dt>
-          <dd className="text-text-primary">{fechaHora(admin.ultimo_acceso)}</dd>
+        <div className="flex min-h-11 items-center justify-between gap-4 px-5 py-3">
+          <dt className="font-mono text-etiqueta uppercase text-text-secondary">
+            Último acceso
+          </dt>
+          <dd className="font-mono text-dato tabular-nums text-text-primary">
+            {fechaHora(admin.ultimo_acceso)}
+          </dd>
         </div>
       </dl>
 

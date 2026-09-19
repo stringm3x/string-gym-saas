@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Label } from "@/components/ui/Label";
 import { registrarPagoManualAction } from "@/app/admin/(panel)/tenants/[tenantId]/actions";
 import type { TenantPagoManual } from "@/lib/queries/admin.queries";
 
@@ -10,8 +12,11 @@ const MXN = new Intl.NumberFormat("es-MX", {
   currency: "MXN",
   maximumFractionDigits: 0,
 });
-const INPUT =
-  "w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
+
+// Campo crudo del sistema: 44px, radio de 4px, fondo bg.
+const FIELD =
+  "h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
+const TH = "px-4 py-3 font-normal";
 
 function hoy() {
   return new Date().toISOString().slice(0, 10);
@@ -60,115 +65,145 @@ export function PagosManualesTable({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text-primary">
+    <section className="card-surface">
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <h3 className="text-base font-semibold text-text-primary">
           Pagos manuales
         </h3>
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={() => setOpen((o) => !o)}
-          className="rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+          aria-expanded={open}
         >
           {open ? "Cerrar" : "Registrar pago"}
-        </button>
+        </Button>
       </div>
 
       {open && (
-        <div className="space-y-2 rounded-xl border border-border bg-surface p-4">
-          <div className="grid grid-cols-2 gap-2">
-            <select
-              value={concepto}
-              onChange={(e) => setConcepto(e.target.value)}
-              className={INPUT}
-            >
-              <option value="mensualidad">Mensualidad</option>
-              <option value="anualidad">Anualidad</option>
-              <option value="setup">Setup</option>
-              <option value="migracion">Migración</option>
-              <option value="otro">Otro</option>
-            </select>
-            <select
-              value={metodo}
-              onChange={(e) => setMetodo(e.target.value)}
-              className={INPUT}
-            >
-              <option value="transferencia">Transferencia</option>
-              <option value="efectivo">Efectivo</option>
-              <option value="deposito">Depósito</option>
-              <option value="otro">Otro</option>
-            </select>
-            <input
-              type="number"
-              min={0}
-              value={monto}
-              onChange={(e) => setMonto(e.target.value)}
-              placeholder="Monto"
-              className={INPUT}
-            />
-            <input
-              type="date"
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
-              className={INPUT}
-            />
-            <input
-              value={referencia}
-              onChange={(e) => setReferencia(e.target.value)}
-              placeholder="Referencia (opcional)"
-              className={INPUT}
-            />
-            <input
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              placeholder="Notas (opcional)"
-              className={INPUT}
-            />
+        <div className="space-y-4 border-b border-border p-5">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="pago-concepto">Concepto</Label>
+              <select
+                id="pago-concepto"
+                value={concepto}
+                onChange={(e) => setConcepto(e.target.value)}
+                className={FIELD}
+              >
+                <option value="mensualidad">Mensualidad</option>
+                <option value="anualidad">Anualidad</option>
+                <option value="setup">Setup</option>
+                <option value="migracion">Migración</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pago-metodo">Método</Label>
+              <select
+                id="pago-metodo"
+                value={metodo}
+                onChange={(e) => setMetodo(e.target.value)}
+                className={FIELD}
+              >
+                <option value="transferencia">Transferencia</option>
+                <option value="efectivo">Efectivo</option>
+                <option value="deposito">Depósito</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pago-monto">Monto</Label>
+              <input
+                id="pago-monto"
+                type="number"
+                min={0}
+                value={monto}
+                onChange={(e) => setMonto(e.target.value)}
+                placeholder="0"
+                className={`${FIELD} font-mono tabular-nums`}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pago-fecha">Fecha</Label>
+              <input
+                id="pago-fecha"
+                type="date"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className={`${FIELD} font-mono tabular-nums`}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pago-referencia">Referencia</Label>
+              <input
+                id="pago-referencia"
+                value={referencia}
+                onChange={(e) => setReferencia(e.target.value)}
+                placeholder="Opcional"
+                className={FIELD}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pago-notas">Notas</Label>
+              <input
+                id="pago-notas"
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                placeholder="Opcional"
+                className={FIELD}
+              />
+            </div>
           </div>
-          {err && <p className="text-xs text-danger">{err}</p>}
-          <button
+          {err && (
+            <p role="alert" className="text-sm text-danger">
+              {err}
+            </p>
+          )}
+          <Button
             type="button"
-            disabled={pending || !monto}
+            disabled={!monto}
+            loading={pending}
             onClick={submit}
-            className="rounded-lg bg-brand-green px-3 py-2 text-xs font-semibold text-bg hover:bg-brand-green/90 disabled:opacity-50"
           >
             {pending ? "Guardando…" : "Guardar pago"}
-          </button>
+          </Button>
         </div>
       )}
 
       {pagos.length === 0 ? (
-        <p className="rounded-xl border border-border bg-surface px-4 py-6 text-center text-xs text-text-secondary">
+        <p className="px-5 py-8 text-center text-sm text-text-secondary">
           Sin pagos registrados.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full text-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-surface text-left uppercase tracking-wide text-text-muted">
-                <th className="px-3 py-2 font-medium">Fecha</th>
-                <th className="px-3 py-2 font-medium">Concepto</th>
-                <th className="px-3 py-2 font-medium">Método</th>
-                <th className="px-3 py-2 font-medium">Ref.</th>
-                <th className="px-3 py-2 text-right font-medium">Monto</th>
+              <tr className="border-b border-border text-left font-mono text-etiqueta uppercase text-text-muted">
+                <th className={TH}>Fecha</th>
+                <th className={TH}>Concepto</th>
+                <th className={TH}>Método</th>
+                <th className={TH}>Ref.</th>
+                <th className={`${TH} text-right`}>Monto</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {pagos.map((p) => (
-                <tr key={p.id} className="border-b border-border last:border-0">
-                  <td className="px-3 py-2 text-text-secondary">
+                <tr key={p.id}>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-dato tabular-nums text-text-secondary">
                     {p.fecha_pago}
                   </td>
-                  <td className="px-3 py-2 capitalize text-text-primary">
+                  <td className="px-4 py-3 capitalize text-text-primary">
                     {p.concepto}
                   </td>
-                  <td className="px-3 py-2 capitalize text-text-secondary">
+                  <td className="px-4 py-3 capitalize text-text-secondary">
                     {p.metodo}
                   </td>
-                  <td className="px-3 py-2 text-text-muted">
+                  <td className="px-4 py-3 font-mono text-xs text-text-muted">
                     {p.referencia ?? "—"}
                   </td>
-                  <td className="px-3 py-2 text-right text-text-primary">
+                  <td className="px-4 py-3 text-right font-mono text-dato tabular-nums text-text-primary">
                     {MXN.format(p.monto)}
                   </td>
                 </tr>
@@ -177,6 +212,6 @@ export function PagosManualesTable({
           </table>
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -31,11 +31,14 @@ export default async function EventosPage({
   ]);
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary">Audit log</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          Todas las acciones administrativas, con filtros y exportación.
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-1.5">
+        <p className="font-mono text-etiqueta uppercase text-text-muted">
+          Panel interno
+        </p>
+        <h1 className="text-pagina font-semibold text-text-primary">Bitácora</h1>
+        <p className="text-sm text-text-secondary">
+          Todas las acciones administrativas, con filtros y exportación a CSV.
         </p>
       </div>
 

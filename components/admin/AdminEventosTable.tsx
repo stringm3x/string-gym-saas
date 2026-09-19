@@ -2,14 +2,18 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
-import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
+import { LuChevronLeft, LuChevronRight, LuSearch } from "react-icons/lu";
 import type { EventoLogRow } from "@/lib/queries/admin.queries";
 import { ACCION_LABEL } from "@/components/admin/AuditLogTable";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { exportEventosCsv } from "@/app/admin/(panel)/eventos/actions";
 import { TZ_MX } from "@/lib/utils/dates";
 
-const SELECT =
-  "rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-brand-green focus:outline-none";
+// Campo crudo del sistema: 44px, radio de 4px, fondo bg.
+const FIELD =
+  "h-11 rounded border border-border bg-bg px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
+const TH = "px-4 py-3 font-normal";
 
 function fechaHora(iso: string) {
   return new Date(iso).toLocaleString("es-MX", {
@@ -50,6 +54,9 @@ export function AdminEventosTable({
   const [err, setErr] = useState<string | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const hayFiltros = ["accion", "tenant", "desde", "hasta"].some((k) =>
+    params.get(k)
+  );
 
   function setParam(next: Record<string, string>) {
     const sp = new URLSearchParams(params.toString());
@@ -79,20 +86,21 @@ export function AdminEventosTable({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "audit-log.csv";
+      a.download = "bitacora.csv";
       a.click();
       URL.revokeObjectURL(url);
     });
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={params.get("accion") ?? ""}
           onChange={(e) => setParam({ accion: e.target.value })}
-          className={SELECT}
+          aria-label="Acción"
+          className={FIELD}
         >
           <option value="">Acción: todas</option>
           {Object.entries(ACCION_LABEL).map(([k, label]) => (
@@ -105,9 +113,10 @@ export function AdminEventosTable({
         <select
           value={params.get("tenant") ?? ""}
           onChange={(e) => setParam({ tenant: e.target.value })}
-          className={SELECT}
+          aria-label="Gimnasio"
+          className={FIELD}
         >
-          <option value="">Tenant: todos</option>
+          <option value="">Gimnasio: todos</option>
           {tenants.map((t) => (
             <option key={t.id} value={t.id}>
               {t.nombre}
@@ -119,62 +128,80 @@ export function AdminEventosTable({
           type="date"
           value={params.get("desde") ?? ""}
           onChange={(e) => setParam({ desde: e.target.value })}
-          className={SELECT}
+          className={`${FIELD} font-mono tabular-nums`}
           aria-label="Desde"
         />
         <input
           type="date"
           value={params.get("hasta") ?? ""}
           onChange={(e) => setParam({ hasta: e.target.value })}
-          className={SELECT}
+          className={`${FIELD} font-mono tabular-nums`}
           aria-label="Hasta"
         />
 
-        <button
+        <Button
           type="button"
+          variant="secondary"
           onClick={exportar}
-          disabled={exporting}
-          className="ml-auto rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary hover:text-text-primary disabled:opacity-50"
+          loading={exporting}
+          className="ml-auto"
         >
           {exporting ? "Exportando…" : "Exportar CSV"}
-        </button>
+        </Button>
       </div>
 
-      {err && <p className="text-xs text-danger">{err}</p>}
+      {err && (
+        <p role="alert" className="text-sm text-danger">
+          {err}
+        </p>
+      )}
 
       {/* Tabla */}
       {rows.length === 0 ? (
-        <p className="rounded-xl border border-border bg-surface px-4 py-8 text-center text-sm text-text-secondary">
-          No hay eventos con estos filtros.
-        </p>
+        <EmptyState
+          icon={<LuSearch />}
+          title="Sin acciones"
+          description="Ninguna acción administrativa coincide con estos filtros."
+          action={
+            hayFiltros ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.push("/admin/eventos")}
+              >
+                Quitar filtros
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full text-xs">
+        <div className="overflow-x-auto border border-border bg-surface">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-surface text-left uppercase tracking-wide text-text-muted">
-                <th className="px-3 py-2 font-medium">Fecha</th>
-                <th className="px-3 py-2 font-medium">Admin</th>
-                <th className="px-3 py-2 font-medium">Acción</th>
-                <th className="px-3 py-2 font-medium">Tenant</th>
-                <th className="px-3 py-2 font-medium">Detalle</th>
+              <tr className="border-b border-border text-left font-mono text-etiqueta uppercase text-text-muted">
+                <th className={TH}>Fecha</th>
+                <th className={TH}>Admin</th>
+                <th className={TH}>Acción</th>
+                <th className={TH}>Gimnasio</th>
+                <th className={TH}>Detalle</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {rows.map((e) => (
-                <tr key={e.id} className="border-b border-border last:border-0">
-                  <td className="whitespace-nowrap px-3 py-2 text-text-secondary">
+                <tr key={e.id}>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-dato tabular-nums text-text-secondary">
                     {fechaHora(e.created_at)}
                   </td>
-                  <td className="px-3 py-2 text-text-secondary">
+                  <td className="px-4 py-3 text-text-secondary">
                     {e.admin_email}
                   </td>
-                  <td className="px-3 py-2 text-text-primary">
+                  <td className="px-4 py-3 text-text-primary">
                     {ACCION_LABEL[e.accion] ?? e.accion}
                   </td>
-                  <td className="px-3 py-2 text-text-secondary">
+                  <td className="px-4 py-3 text-text-secondary">
                     {e.tenant_nombre ?? "—"}
                   </td>
-                  <td className="px-3 py-2 text-text-muted">
+                  <td className="px-4 py-3 text-xs text-text-muted">
                     {resumenMeta(e.metadata) || "—"}
                   </td>
                 </tr>
@@ -185,27 +212,32 @@ export function AdminEventosTable({
       )}
 
       {/* Paginación */}
-      <div className="flex items-center justify-between text-xs text-text-secondary">
-        <span>
-          {total} evento{total === 1 ? "" : "s"} · página {page}/{totalPages}
+      <div className="flex items-center justify-between gap-4">
+        <span className="font-mono text-xs tabular-nums text-text-secondary">
+          {total} {total === 1 ? "acción" : "acciones"} · página {page}/
+          {totalPages}
         </span>
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             disabled={page <= 1}
             onClick={() => setParam({ page: String(page - 1) })}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 disabled:opacity-40"
+            leftIcon={<LuChevronLeft className="h-4 w-4" />}
           >
-            <LuChevronLeft className="h-3.5 w-3.5" /> Anterior
-          </button>
-          <button
+            Anterior
+          </Button>
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             disabled={page >= totalPages}
             onClick={() => setParam({ page: String(page + 1) })}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 disabled:opacity-40"
+            rightIcon={<LuChevronRight className="h-4 w-4" />}
           >
-            Siguiente <LuChevronRight className="h-3.5 w-3.5" />
-          </button>
+            Siguiente
+          </Button>
         </div>
       </div>
     </div>
