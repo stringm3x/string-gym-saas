@@ -104,7 +104,7 @@ export function ProductosManager({ productos, cajas }: ProductosManagerProps) {
       </div>
 
       {productos.length === 0 ? (
-        <EmptyState
+        <EmptyState ilustracion="mancuerna"
           icon={<LuPackage />}
           title="Todavía no hay productos"
           description="Da de alta lo que vendes en mostrador (proteína, ropa, accesorios) con precio y stock, y cóbralo desde caja."

@@ -166,7 +166,7 @@ export function CalendarioSemanal({
       </div>
 
       {sesiones.length === 0 && (
-        <EmptyState
+        <EmptyState ilustracion="tablero"
           icon={<LuCalendarDays />}
           title="Sin sesiones esta semana"
           description="Cambia de semana con las flechas, o crea clases con horario y cupo para que se generen sus sesiones."

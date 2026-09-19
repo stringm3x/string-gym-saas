@@ -80,7 +80,7 @@ export default async function CortesPage({ params, searchParams }: PageProps) {
       )}
 
       {cortes.length === 0 ? (
-        <EmptyState
+        <EmptyState ilustracion="reloj"
           icon={<LuClipboardList />}
           title="Sin cortes todavía"
           description="Cuando cierres tu primer turno de caja, el corte queda guardado aquí con sus totales por método de pago."

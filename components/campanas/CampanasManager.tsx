@@ -62,7 +62,7 @@ export function CampanasManager({
           </span>
         </div>
         {campanas.length === 0 ? (
-          <EmptyState
+          <EmptyState ilustracion="telefono"
             icon={<LuMegaphone />}
             title="Sin campañas todavía"
             description="Manda un mensaje de WhatsApp a un grupo de miembros de una sola vez: activos, por vencer, vencidos o sin actividad."

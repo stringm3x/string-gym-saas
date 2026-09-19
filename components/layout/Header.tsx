@@ -21,7 +21,7 @@ export function Header({
   notificacionesNoLeidas,
 }: HeaderProps) {
   return (
-    <header className="flex h-16 items-center justify-between gap-3 border-b border-border px-4 sm:px-8">
+    <header className="flex h-16 items-center justify-between gap-3 border-b-2 border-brand-green px-4 sm:px-8">
       <div className="min-w-0">
         <h1 className="truncate text-base font-semibold text-text-primary">
           {gymNombre}

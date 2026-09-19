@@ -1,4 +1,5 @@
 import { ToastProvider } from "@/components/ui/Toast";
+import { Grano } from "@/components/arte/Grano";
 import { hasFeature } from "@/lib/features";
 import {
   getPortalColorAcento,
@@ -34,6 +35,7 @@ export default async function PortalLayout({
   return (
     <ToastProvider>
       {marcaCss && <style dangerouslySetInnerHTML={{ __html: marcaCss }} />}
+      <Grano opacidad={0.15} />
       <div className="min-h-screen bg-bg text-text-primary">{children}</div>
     </ToastProvider>
   );

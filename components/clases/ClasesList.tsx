@@ -53,7 +53,7 @@ export function ClasesList({
       </div>
 
       {clases.length === 0 ? (
-        <EmptyState
+        <EmptyState ilustracion="tablero"
           icon={<LuCalendarDays />}
           title="Sin clases todavía"
           description="Crea la primera con su horario y cupo; a partir de ahí se generan las sesiones que tus miembros pueden reservar."

@@ -4,6 +4,7 @@ import { getMiembroByQrTokenPublic } from "@/lib/queries/qr.queries";
 import { generarQRDataUrl } from "@/lib/utils/qr-generator";
 import { Badge } from "@/components/ui/Badge";
 import { hasFeature, type Plan } from "@/lib/features";
+import { MarcasRegistro } from "@/components/arte/MarcasRegistro";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,7 @@ export default async function QrPublicPage({
 
         {/* QR sobre blanco puro: los lectores lo prefieren */}
         <div className="relative w-fit">
+          <MarcasRegistro className="text-paper-ink/50" />
           <div className="bg-white p-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={qr} alt="Código QR de acceso" className="h-60 w-60" />

@@ -20,6 +20,8 @@ import { PortalHeader } from "@/components/portal/PortalHeader";
 import { OpinionForm } from "@/components/portal/OpinionForm";
 import { PlanNutricionCard } from "@/components/nutricion/PlanNutricionCard";
 import { Badge } from "@/components/ui/Badge";
+import { Mancuerna } from "@/components/arte/Ilustraciones";
+import { Brochada } from "@/components/arte/Brochada";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -150,6 +152,10 @@ export default async function PortalHomePage({ params }: PageProps) {
       <main className="mx-auto flex max-w-md flex-col gap-4 px-4 py-6">
         {/* Membresía */}
         <section className="flex flex-col gap-5 border border-border bg-surface p-6">
+          {/* Ilustración de marca sobre papel, a sangre en la tarjeta */}
+          <div className="-mx-6 -mt-6 h-28 overflow-hidden border-b border-border">
+            <Mancuerna className="h-full w-full" />
+          </div>
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-1.5">
               <p className="font-mono text-etiqueta uppercase text-text-secondary">
@@ -163,13 +169,15 @@ export default async function PortalHomePage({ params }: PageProps) {
           </div>
 
           <div className="flex items-end gap-3">
-            <span
-              className={`font-display text-[88px] leading-[76px] ${
-                vigente ? "text-text-primary" : "text-danger"
-              }`}
-            >
-              {cifra}
-            </span>
+            <Brochada forma="corta" className={vigente ? "" : "[&>svg]:hidden"}>
+              <span
+                className={`font-display text-[88px] leading-[76px] ${
+                  vigente ? "text-text-primary" : "text-danger"
+                }`}
+              >
+                {cifra}
+              </span>
+            </Brochada>
             <span className="pb-1 text-base text-text-secondary">{cifraLabel}</span>
           </div>
 
