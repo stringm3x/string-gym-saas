@@ -50,6 +50,15 @@ export async function getCreditoDisponible(
 /**
  * Consume `monto` del crédito del miembro (FIFO: notas más viejas primero).
  * Devuelve cuánto se aplicó realmente (nunca más que el saldo disponible).
+ *
+ * Cada nota se reclama con el mismo patrón atómico que autorizarCodigo en
+ * kiosco.queries.ts: el UPDATE lleva el saldo leído como guarda en el WHERE
+ * (`.eq("saldo", saldo)`), no un select-y-luego-update por separado. Si dos
+ * cajeros aplican la misma nota casi al mismo tiempo, Postgres serializa el
+ * segundo UPDATE contra el valor ya escrito por el primero: el WHERE deja de
+ * matchear, 0 filas afectadas, y esa nota se salta en vez de que el segundo
+ * cajero sobreescriba ciegamente el resultado del primero (que es lo que
+ * pasaba antes: dos escrituras basadas en la misma lectura, la última gana).
  */
 export async function aplicarCredito(
   tenantId: string,
@@ -71,17 +80,21 @@ export async function aplicarCredito(
   for (const nota of notas ?? []) {
     if (restante <= 0) break;
     const saldo = Number(nota.saldo);
+    if (saldo <= 0) continue;
     const usar = Math.min(saldo, restante);
     const nuevoSaldo = saldo - usar;
-    const { error: updErr } = await supabase
+    const { data: claimed, error: updErr } = await supabase
       .from("notas_credito")
       .update({
         saldo: nuevoSaldo,
         estado: nuevoSaldo <= 0 ? "usada" : "activa",
       })
       .eq("tenant_id", tenantId)
-      .eq("id", nota.id as string);
+      .eq("id", nota.id as string)
+      .eq("saldo", nota.saldo as number)
+      .select("id");
     if (updErr) return { ok: false, error: updErr.message };
+    if (!claimed || claimed.length === 0) continue; // otro cajero ya la tocó
     restante -= usar;
     aplicado += usar;
   }

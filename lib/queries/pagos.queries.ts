@@ -463,6 +463,34 @@ export async function anularPago(
   return { ok: true };
 }
 
+const VENTANA_PAGO_RECIENTE_MIN = 5;
+
+/**
+ * ¿Este socio ya tiene un pago de membresía válido en los últimos
+ * VENTANA_PAGO_RECIENTE_MIN minutos? Aviso de posible doble cobro: dos
+ * pestañas de caja cobrando al mismo socio casi a la vez generaban dos pagos
+ * con una sola extensión de vigencia. No bloquea — el caller decide si avisa
+ * y deja confirmar.
+ */
+export async function pagoMembresiaReciente(
+  tenantId: string,
+  miembroId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const desde = new Date(
+    Date.now() - VENTANA_PAGO_RECIENTE_MIN * 60_000
+  ).toISOString();
+  const { count } = await supabase
+    .from("pagos")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .eq("concepto", "membresia")
+    .is("anulado_at", null)
+    .gte("created_at", desde);
+  return (count ?? 0) > 0;
+}
+
 export async function countVisitasRapidasHoy(tenantId: string): Promise<number> {
   const supabase = await createClient();
   const inicioHoy = hoyCDMX();

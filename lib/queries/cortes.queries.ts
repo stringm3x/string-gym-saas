@@ -479,7 +479,7 @@ export async function cerrarCorte(
   const esperado = fondo + t.efectivo - t.reembolsosEfectivo;
   const diferencia = input.efectivoContado - esperado;
 
-  const { error } = await supabase
+  const { data: cerrado, error } = await supabase
     .from("cortes_caja")
     .update({
       estado: "cerrado",
@@ -501,9 +501,21 @@ export async function cerrarCorte(
     })
     .eq("tenant_id", tenantId)
     .eq("id", corteId)
-    .eq("estado", "abierto"); // guard contra doble cierre
+    .eq("estado", "abierto") // guard contra doble cierre
+    .select("id");
 
   if (error) return { ok: false, error: error.message };
+  // El SELECT de arriba (líneas 455-464) ya vio "abierto", pero un cierre
+  // simultáneo pudo ganar la carrera entre ese SELECT y este UPDATE: con
+  // PostgREST, un UPDATE que no matchea ninguna fila no es un error, así que
+  // sin este chequeo se devolvía ok:true con una "diferencia" calculada sobre
+  // un turno que ya no se pudo cerrar — nada se guardó.
+  if (!cerrado || cerrado.length === 0) {
+    return {
+      ok: false,
+      error: "Este turno ya lo cerró alguien más justo ahora. Actualiza la pantalla.",
+    };
+  }
   return { ok: true, diferencia };
 }
 
