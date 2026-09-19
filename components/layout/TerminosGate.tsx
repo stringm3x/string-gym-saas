@@ -36,7 +36,7 @@ export function TerminosGate() {
       aria-modal="true"
       aria-labelledby="terminos-title"
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-bg/70 backdrop-blur-sm" />
 
       <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
         <div className="flex flex-col items-center gap-3 border-b border-border px-6 py-6 text-center">

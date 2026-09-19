@@ -10,6 +10,7 @@ import {
 } from "react-icons/lu";
 import { redirect } from "next/navigation";
 import { getTenant } from "@/lib/tenant";
+import { hasFeature } from "@/lib/features";
 import { hasPermission } from "@/lib/permissions";
 import {
   getMiembrosStats,
@@ -36,7 +37,8 @@ import { CheckinsSemanaChart } from "@/components/dashboard/CheckinsSemanaChart"
 import { RetencionCard } from "@/components/dashboard/RetencionCard";
 import { MembresiasDonut } from "@/components/dashboard/MembresiasDonut";
 
-const COLOR_ACENTO_DEFAULT = "#4fe05a";
+// Sigue el token de marca (que el layout ya sobreescribe para gyms Pro+).
+const COLOR_ACENTO_DEFAULT = "var(--color-brand-green)";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -80,7 +82,12 @@ export default async function DashboardPage({ params }: PageProps) {
 
   const canNegocio = hasPermission(tenant.role, "ver_dashboard_ingresos");
 
-  const colorAcento = marca?.color_acento ?? COLOR_ACENTO_DEFAULT;
+  // El color del gym en las gráficas es parte de personalizacion_colores
+  // (Pro+), igual que en el layout. Sin la feature, verde STRING.
+  const colorAcento =
+    hasFeature(tenant.plan, "personalizacion_colores") && marca?.color_acento
+      ? marca.color_acento
+      : COLOR_ACENTO_DEFAULT;
 
   // Calcular delta del mes vs mes anterior
   const deltaMes = (() => {

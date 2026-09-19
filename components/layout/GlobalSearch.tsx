@@ -98,7 +98,7 @@ export function GlobalSearch({ slug }: { slug: string }) {
             type="button"
             aria-label="Cerrar búsqueda"
             onClick={cerrar}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-bg/60 backdrop-blur-sm"
           />
 
           <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">

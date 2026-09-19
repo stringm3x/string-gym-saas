@@ -265,7 +265,7 @@ export function BulkActionsBar({
                       href={waUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 rounded-lg bg-[#25D366]/10 px-3 py-1.5 text-xs font-medium text-[#25D366] transition-colors hover:bg-[#25D366]/20"
+                      className="shrink-0 rounded-lg bg-whatsapp/10 px-3 py-1.5 text-xs font-medium text-whatsapp transition-colors hover:bg-whatsapp/20"
                     >
                       Abrir
                     </a>

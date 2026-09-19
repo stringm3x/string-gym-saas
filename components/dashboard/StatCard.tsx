@@ -58,7 +58,7 @@ export function StatCard({
   hint,
   index = 0,
   sparkline,
-  sparklineColor = "#4fe05a",
+  sparklineColor = "var(--color-brand-green)",
 }: StatCardProps) {
   const animated = useCountUp(value);
 

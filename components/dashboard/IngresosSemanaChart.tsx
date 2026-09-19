@@ -10,7 +10,7 @@ import {
 import { money } from "@/lib/utils/creditos-calc";
 import type { IngresoSemana } from "@/lib/queries/dashboard-charts.queries";
 
-const AXIS = "#8a958d";
+const AXIS = "var(--color-text-muted)";
 
 interface TipProps {
   active?: boolean;
@@ -58,7 +58,7 @@ export function IngresosSemanaChart({
               tick={{ fontSize: 11, fill: AXIS }}
             />
             <Tooltip
-              cursor={{ fill: "rgba(255,255,255,0.04)" }}
+              cursor={{ fill: "var(--color-text-primary)", fillOpacity: 0.04 }}
               content={<Tip />}
             />
             <Bar dataKey="monto" radius={[4, 4, 0, 0]} fill={color} />

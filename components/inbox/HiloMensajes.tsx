@@ -116,12 +116,12 @@ function Burbuja({ mensaje }: { mensaje: MensajeInbox }) {
   let badge: string | null = null;
   if (!entrante) {
     if (mensaje.tipo === "bot") {
-      estilo = "bg-[#166534] text-white"; // verde oscuro
-      tsColor = "text-white/60";
+      estilo = "bg-bubble-bot text-text-primary";
+      tsColor = "text-text-primary/60";
       badge = "Bot";
     } else if (mensaje.tipo === "template") {
-      estilo = "bg-[#1e3a8a] text-white"; // azul oscuro
-      tsColor = "text-white/60";
+      estilo = "bg-bubble-auto text-text-primary";
+      tsColor = "text-text-primary/60";
       badge = "Auto";
     } else {
       estilo = "bg-brand-green text-bg"; // manual (verde marca)
@@ -139,7 +139,7 @@ function Burbuja({ mensaje }: { mensaje: MensajeInbox }) {
         )}
       >
         {badge && (
-          <span className="mb-1 inline-block rounded bg-black/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+          <span className="mb-1 inline-block rounded bg-bg/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
             {badge}
           </span>
         )}

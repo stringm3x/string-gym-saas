@@ -19,6 +19,8 @@ import {
   DEFAULT_COLOR_ACENTO,
   DEFAULT_COLOR_SIDEBAR,
   DEFAULT_COLOR_FONDO,
+  COLOR_TINTA,
+  COLOR_TINTA_SOBRE_ACENTO,
 } from "@/lib/validations/marca.schema";
 import { PLAN_LABELS } from "@/lib/features";
 import { STRING_SOPORTE_WHATSAPP } from "@/lib/constants";
@@ -34,12 +36,12 @@ const PRESETS = [
   "#ec4899",
 ];
 
-const SIDEBAR_PRESETS = ["#141414", "#0a0a0a", "#1e293b", "#1c1917", "#0c1220"];
-const FONDO_PRESETS = ["#0a0a0a", "#111827", "#0f172a", "#1a1a1a", "#0c0a09"];
+const SIDEBAR_PRESETS = [DEFAULT_COLOR_SIDEBAR, DEFAULT_COLOR_FONDO, "#1e293b", "#1c1917", "#0c1220"];
+const FONDO_PRESETS = [DEFAULT_COLOR_FONDO, "#111827", "#0f172a", "#1a1a1a", "#0c0a09"];
 
 // Temas curados: paletas cohesivas (acento + sidebar + fondo) de un clic.
 const TEMAS = [
-  { nombre: "STRING", acento: "#50ff05", sidebar: "#141414", fondo: "#0a0a0a" },
+  { nombre: "STRING", acento: DEFAULT_COLOR_ACENTO, sidebar: DEFAULT_COLOR_SIDEBAR, fondo: DEFAULT_COLOR_FONDO },
   { nombre: "Medianoche", acento: "#3b82f6", sidebar: "#0f172a", fondo: "#0b1120" },
   { nombre: "Esmeralda", acento: "#10b981", sidebar: "#0c1a14", fondo: "#071310" },
   { nombre: "Vino", acento: "#fb7185", sidebar: "#1a0f13", fondo: "#140b0e" },
@@ -48,8 +50,8 @@ const TEMAS = [
 ] as const;
 
 // Referencias de texto que usa el sistema, para chequear legibilidad.
-const TEXTO_CLARO = "#e8ede9"; // texto sobre sidebar/fondo
-const TEXTO_BOTON = "#0a0a0a"; // texto oscuro sobre el acento (botones)
+const TEXTO_CLARO = COLOR_TINTA; // texto sobre sidebar/fondo
+const TEXTO_BOTON = COLOR_TINTA_SOBRE_ACENTO; // texto oscuro sobre el acento (botones)
 
 const initialState: MarcaFormState = { ok: false, error: null, fieldErrors: {} };
 
@@ -227,7 +229,7 @@ export function MarcaFormClient({
                             style={{ backgroundColor: t.sidebar }}
                           />
                           <span
-                            className="h-3.5 w-3.5 rounded-full ring-1 ring-black/20"
+                            className="h-3.5 w-3.5 rounded-full ring-1 ring-bg/20"
                             style={{ backgroundColor: t.acento }}
                           />
                         </span>

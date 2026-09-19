@@ -5,10 +5,12 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import type { MembresiasBreakdown } from "@/lib/queries/dashboard-charts.queries";
 
 const COLORS = {
-  activos: "#4fe05a",
-  porVencer: "#f5a524",
-  vencidos: "#ff5c5c",
+  activos: "var(--color-brand-green)",
+  porVencer: "var(--color-warning)",
+  vencidos: "var(--color-danger)",
 };
+/** Anillo cuando no hay socios que graficar. */
+const COLOR_VACIO = "var(--color-border)";
 
 export function MembresiasDonut({
   data,
@@ -42,7 +44,7 @@ export function MembresiasDonut({
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={conDatos.length ? conDatos : [{ label: "—", value: 1, color: "#2a2f2b" }]}
+                data={conDatos.length ? conDatos : [{ label: "—", value: 1, color: COLOR_VACIO }]}
                 dataKey="value"
                 nameKey="label"
                 innerRadius={46}
@@ -52,7 +54,7 @@ export function MembresiasDonut({
                 isAnimationActive={false}
                 onClick={(_, i) => conDatos[i] && ir(conDatos[i].filtro)}
               >
-                {(conDatos.length ? conDatos : [{ color: "#2a2f2b" }]).map(
+                {(conDatos.length ? conDatos : [{ color: COLOR_VACIO }]).map(
                   (s, i) => (
                     <Cell
                       key={i}

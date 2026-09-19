@@ -73,7 +73,7 @@ export default async function QrPublicPage({
           </div>
           {invalido && (
             <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-danger/80">
-              <span className="px-3 text-center text-sm font-semibold text-white">
+              <span className="px-3 text-center text-sm font-semibold text-text-primary">
                 {estadoLabel}
               </span>
             </div>

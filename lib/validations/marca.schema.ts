@@ -2,9 +2,14 @@ import { z } from "zod";
 
 export const HEX_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
-export const DEFAULT_COLOR_ACENTO = "#50ff05";
-export const DEFAULT_COLOR_SIDEBAR = "#141414";
-export const DEFAULT_COLOR_FONDO = "#0a0a0a";
+// Mismos valores que :root en app/globals.css (tokens de marca STRING).
+export const DEFAULT_COLOR_ACENTO = "#50ff05"; // acido
+export const DEFAULT_COLOR_SIDEBAR = "#0f1310"; // fondo-elevado
+export const DEFAULT_COLOR_FONDO = "#000000"; // fondo
+/** Texto del sistema sobre fondo/sidebar (tinta). Para chequeos de contraste. */
+export const COLOR_TINTA = "#ffffff";
+/** Texto sobre el color de acento (negro sobre verde, como el logo). */
+export const COLOR_TINTA_SOBRE_ACENTO = "#000000";
 
 export const marcaColoresSchema = z.object({
   color_acento: z

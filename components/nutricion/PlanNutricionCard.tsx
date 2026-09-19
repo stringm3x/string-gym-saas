@@ -80,7 +80,7 @@ export function PlanNutricionCard({
                     type="button"
                     onClick={onArchivar}
                     disabled={archivando}
-                    className="rounded-lg bg-danger px-2.5 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                    className="rounded-lg bg-danger px-2.5 py-1.5 text-xs font-semibold text-text-primary transition-opacity hover:opacity-90 disabled:opacity-50"
                   >
                     {archivando ? "Archivando…" : "Confirmar"}
                   </button>

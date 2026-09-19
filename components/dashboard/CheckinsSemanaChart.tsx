@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import type { CheckinDia } from "@/lib/queries/dashboard-charts.queries";
 
-const AXIS = "#8a958d";
+const AXIS = "var(--color-text-muted)";
 
 interface TipProps {
   active?: boolean;
@@ -29,18 +29,6 @@ function Tip({ active, payload }: TipProps) {
       </p>
     </div>
   );
-}
-
-/** Convierte un hex a rgba con la opacidad dada (para intensidad variable). */
-function conAlpha(hex: string, alpha: number): string {
-  const h = hex.replace("#", "");
-  const n = parseInt(
-    h.length === 3
-      ? h.split("").map((c) => c + c).join("")
-      : h,
-    16
-  );
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
 
 export function CheckinsSemanaChart({
@@ -77,14 +65,17 @@ export function CheckinsSemanaChart({
               tick={{ fontSize: 12, fill: AXIS }}
             />
             <Tooltip
-              cursor={{ fill: "rgba(255,255,255,0.04)" }}
+              cursor={{ fill: "var(--color-text-primary)", fillOpacity: 0.04 }}
               content={<Tip />}
             />
             <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
               {data.map((d, i) => (
                 <Cell
                   key={i}
-                  fill={conAlpha(color, 0.35 + 0.65 * (d.cantidad / max))}
+                  fill={color}
+                  // Intensidad variable vía opacidad SVG: acepta hex del gym o
+                  // var(--…) del tema sin depender de color-mix.
+                  fillOpacity={0.35 + 0.65 * (d.cantidad / max)}
                 />
               ))}
             </Bar>

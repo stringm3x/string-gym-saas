@@ -5,7 +5,7 @@ import { LuTrendingUp, LuTrendingDown } from "react-icons/lu";
 import type { Retencion } from "@/lib/queries/dashboard-charts.queries";
 
 export function RetencionCard({ data }: { data: Retencion }) {
-  const color = data.sube ? "#4fe05a" : "#ff5c5c";
+  const color = data.sube ? "var(--color-brand-green)" : "var(--color-danger)";
 
   return (
     <div className="card-surface p-5">

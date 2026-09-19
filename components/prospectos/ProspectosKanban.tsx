@@ -17,7 +17,7 @@ import type { PlanMembresia } from "@/lib/queries/planes.queries";
 
 const COLUMNS: { estado: ProspectoEstado; label: string; colorClass: string }[] = [
   { estado: "nuevo", label: "Nuevo", colorClass: "text-text-secondary" },
-  { estado: "contactado", label: "Contactado", colorClass: "text-[var(--color-gold)]" },
+  { estado: "contactado", label: "Contactado", colorClass: "text-gold" },
   { estado: "agendado", label: "Agendado", colorClass: "text-warning" },
   { estado: "convertido", label: "Convertido", colorClass: "text-brand-green" },
   { estado: "descartado", label: "Descartado", colorClass: "text-text-muted" },

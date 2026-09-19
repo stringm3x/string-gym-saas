@@ -25,9 +25,9 @@ export function Recibo({ pago }: ReciboProps) {
     : "—";
 
   return (
-    <div className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-gray-900 shadow-sm print:shadow-none print:border-0">
+    <div className="mx-auto max-w-md rounded-2xl border border-paper-line bg-white p-8 text-paper-ink shadow-sm print:shadow-none print:border-0">
       {/* Gym header */}
-      <div className="border-b border-gray-200 pb-5">
+      <div className="border-b border-paper-line pb-5">
         {pago.gym_logo_url ? (
           <Image
             src={pago.gym_logo_url}
@@ -38,41 +38,41 @@ export function Recibo({ pago }: ReciboProps) {
             className="mb-2 h-14 w-auto max-w-[200px] object-contain object-left"
           />
         ) : (
-          <p className="font-display text-2xl font-bold uppercase tracking-wide text-gray-900">
+          <p className="font-display text-2xl font-bold uppercase tracking-wide text-paper-ink">
             {pago.gym_nombre || "GYM"}
           </p>
         )}
         {pago.gym_telefono && (
-          <p className="mt-1 text-sm text-gray-500">Tel: {pago.gym_telefono}</p>
+          <p className="mt-1 text-sm text-paper-ink-faint">Tel: {pago.gym_telefono}</p>
         )}
         {pago.gym_direccion && (
-          <p className="text-sm text-gray-500">{pago.gym_direccion}</p>
+          <p className="text-sm text-paper-ink-faint">{pago.gym_direccion}</p>
         )}
         {pago.gym_rfc && (
-          <p className="text-sm text-gray-500">RFC: {pago.gym_rfc}</p>
+          <p className="text-sm text-paper-ink-faint">RFC: {pago.gym_rfc}</p>
         )}
       </div>
 
       {/* Recibo header */}
       <div className="mt-5 flex items-start justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          <p className="text-xs font-semibold uppercase tracking-widest text-paper-ink-faint">
             Recibo de pago
           </p>
-          <p className="mt-1 text-3xl font-bold tabular-nums text-gray-900">
+          <p className="mt-1 text-3xl font-bold tabular-nums text-paper-ink">
             {folioStr}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-gray-400">Fecha</p>
-          <p className="text-sm font-medium text-gray-700">
+          <p className="text-xs text-paper-ink-faint">Fecha</p>
+          <p className="text-sm font-medium text-paper-ink-soft">
             {formatFecha(pago.fecha_pago)}
           </p>
         </div>
       </div>
 
       {/* Detalle */}
-      <div className="mt-6 space-y-3 rounded-xl bg-gray-50 p-4">
+      <div className="mt-6 space-y-3 rounded-xl bg-paper p-4">
         <Row
           label="Cliente"
           value={pago.miembro_nombre ?? "Sin miembro"}
@@ -94,17 +94,17 @@ export function Recibo({ pago }: ReciboProps) {
       </div>
 
       {/* Total */}
-      <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-5">
-        <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+      <div className="mt-6 flex items-center justify-between border-t border-paper-line pt-5">
+        <p className="text-sm font-semibold uppercase tracking-wide text-paper-ink-faint">
           Total
         </p>
-        <p className="font-mono text-3xl font-bold tabular-nums text-gray-900">
+        <p className="font-mono text-3xl font-bold tabular-nums text-paper-ink">
           {formatMoneda(pago.monto)}
         </p>
       </div>
 
       {/* Footer */}
-      <p className="mt-6 text-center text-xs text-gray-400">
+      <p className="mt-6 text-center text-xs text-paper-ink-faint">
         Gracias por tu preferencia · {pago.gym_nombre}
       </p>
     </div>
@@ -114,8 +114,8 @@ export function Recibo({ pago }: ReciboProps) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <span className="text-xs text-gray-500">{label}</span>
-      <span className="text-right text-sm font-medium text-gray-800">
+      <span className="text-xs text-paper-ink-faint">{label}</span>
+      <span className="text-right text-sm font-medium text-paper-ink">
         {value}
       </span>
     </div>

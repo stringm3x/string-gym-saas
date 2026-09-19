@@ -61,7 +61,7 @@ export function Modal({
         type="button"
         aria-label="Cerrar"
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-bg/60 backdrop-blur-sm"
       />
 
       {/* Card */}

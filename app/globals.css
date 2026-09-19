@@ -2,37 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Tokens del sistema de marca STRING (tokens.json v1, tema oscuro).
+   Los nombres de código se conservan por compatibilidad; a la derecha
+   va el token de marca al que corresponde cada uno. Los valores salen
+   del sistema de marca y no se ajustan aquí.
+   ============================================================ */
 :root {
   /* Fondo y superficies */
-  --color-bg: #0a0a0a;
-  --color-surface: #141414;
-  --color-surface-hover: #1c1c1c;
-  --color-border: #262626;
+  --color-bg: #000000; /* fondo */
+  --color-surface: #0f1310; /* fondo-elevado */
+  /* Estado activo/hover sobre fondo-elevado. No está en tokens.json: es el
+     valor que usan los artboards para el ítem activo del sidebar. */
+  --color-surface-hover: #1a211a;
+  --color-border: #242b24; /* linea */
 
-  /* Fondo del sidebar — personalizable por gyms Pro+ (default = bg) */
-  --color-sidebar: #0a0a0a;
+  /* Fondo del sidebar — personalizable por gyms Pro+ (default = fondo-elevado) */
+  --color-sidebar: #0f1310;
 
-  /* Fondo del área de contenido — personalizable por gyms Pro+ (default = bg) */
-  --color-bg-content: #0a0a0a;
+  /* Fondo del área de contenido — personalizable por gyms Pro+ (default = fondo) */
+  --color-bg-content: #000000;
 
   /* Marca */
-  --color-brand-green: #50ff05;
-  --color-brand-gray: #a1a1aa;
+  --color-brand-green: #50ff05; /* acido — personalizable Pro+ */
+  --color-brand-green-deep: #2f7a05; /* acido-profundo: verde sobre superficie clara */
+  --color-on-brand: #000000; /* texto sobre acido (negro sobre verde, como el logo) */
 
-  /* Estados */
+  /* Bloque papel (tema claro de la marca): recibos, impresión, bloques editoriales */
+  --color-paper: #f7f5ef; /* papel */
+  --color-paper-ink: #111111; /* tinta-papel */
+  --color-paper-ink-soft: #3d443e; /* tinta-suave (claro) */
+  --color-paper-ink-faint: #61695f; /* tinta-tenue (claro) */
+  --color-paper-line: #d9d9d0; /* linea (claro) */
+
+  /* Texto */
+  --color-text-primary: #ffffff; /* tinta */
+  --color-text-secondary: #a8b3a6; /* tinta-suave */
+  --color-text-muted: #7c8a7d; /* tinta-tenue */
+
+  /* Estados funcionales. No forman parte de la paleta de marca (tres
+     colores): los usa la operación para vencido/por vencer/cuadre. */
   --color-warning: #f5a524;
   --color-danger: #ff3131;
-  --color-orange: #f97316;
-  --color-gold: #f6c75e;
   /* Verde de "correcto/cuadrado" — distinto del verde de marca (acción/
      selección) para que un cuadre correcto se lea como confirmación, no
      como el mismo acento que ya está en botones y chips seleccionados. */
   --color-success: #22c55e;
+  /* Herencia: el sistema de marca lo retira. Sigue aquí hasta decidir qué
+     sustituye a los badges de promoción/VIP que lo usan. */
+  --color-gold: #f6c75e;
+  /* Verde de WhatsApp: solo en el botón "Enviar por WhatsApp" (convención). */
+  --color-whatsapp: #25d366;
+  /* Burbujas del inbox por tipo de mensaje. Solo nombran los valores que ya
+     existían; el azul queda fuera de la paleta y se revisa en la pasada del inbox. */
+  --color-bubble-bot: #166534;
+  --color-bubble-auto: #1e3a8a;
 
-  /* Texto */
-  --color-text-primary: #fafafa;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #6b6b70;
+  /* Sombras duras: desplazamiento sólido, sin difuminado */
+  --shadow-hard-green: 8px 8px 0 #50ff05; /* sombra-acido */
+  --shadow-hard-ink: 8px 8px 0 #111111; /* sombra-tinta */
 }
 
 * {
@@ -88,10 +116,17 @@ body {
   .card-surface::before {
     content: "";
     @apply pointer-events-none absolute inset-x-0 top-0 h-px;
+    /* Fallback para navegadores sin color-mix (tablets viejas de recepción). */
     background-image: linear-gradient(
       to right,
       transparent,
       rgba(255, 255, 255, 0.1),
+      transparent
+    );
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in srgb, var(--color-text-primary) 10%, transparent),
       transparent
     );
   }

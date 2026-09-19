@@ -44,7 +44,7 @@ export function MarcaPreview({
                   />
                 </div>
               ) : (
-                <span className="truncate text-xs font-bold uppercase tracking-wide text-white">
+                <span className="truncate text-xs font-bold uppercase tracking-wide text-text-primary">
                   {gymNombre || "Mi Gym"}
                 </span>
               )}
@@ -65,12 +65,12 @@ export function MarcaPreview({
             </div>
 
             <div className="flex items-center gap-2 px-2 py-1.5">
-              <LuLayoutDashboard className="h-3.5 w-3.5 text-white/50" />
-              <span className="text-[11px] text-white/50">Dashboard</span>
+              <LuLayoutDashboard className="h-3.5 w-3.5 text-text-primary/50" />
+              <span className="text-[11px] text-text-primary/50">Dashboard</span>
             </div>
             <div className="flex items-center gap-2 px-2 py-1.5">
-              <LuUsers className="h-3.5 w-3.5 text-white/50" />
-              <span className="text-[11px] text-white/50">Miembros</span>
+              <LuUsers className="h-3.5 w-3.5 text-text-primary/50" />
+              <span className="text-[11px] text-text-primary/50">Miembros</span>
             </div>
           </div>
 
@@ -98,7 +98,7 @@ export function MarcaPreview({
               type="button"
               disabled
               className="w-fit rounded-lg px-4 py-2 text-xs font-semibold"
-              style={{ backgroundColor: colorAcento, color: "#0a0a0a" }}
+              style={{ backgroundColor: colorAcento, color: "var(--color-on-brand)" }}
             >
               Botón primario
             </button>

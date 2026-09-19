@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils/cn";
 import { Label } from "@/components/ui/Label";
-import { HEX_REGEX } from "@/lib/validations/marca.schema";
+import { HEX_REGEX, DEFAULT_COLOR_ACENTO } from "@/lib/validations/marca.schema";
 
 interface ColorPickerProps {
   value: string;
@@ -48,7 +48,7 @@ export function ColorPicker({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          placeholder="#50ff05"
+          placeholder={DEFAULT_COLOR_ACENTO}
           maxLength={7}
           className={cn(
             "w-32 rounded-lg border bg-surface px-3 py-2 font-mono text-sm text-text-primary focus:outline-none disabled:opacity-50",

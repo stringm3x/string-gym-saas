@@ -164,7 +164,7 @@ export function AutorizacionesPendientes({
             type="button"
             aria-label="Cerrar"
             onClick={() => setConfirmar(null)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-bg/60 backdrop-blur-sm"
           />
           <div className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl">
             <h4 className="text-lg font-semibold text-text-primary">
