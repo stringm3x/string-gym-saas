@@ -6,6 +6,7 @@ import { LuCopy, LuCheck, LuRefreshCw } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa";
 import { Button } from "@/components/ui/Button";
 import { regenerarQrAction } from "@/app/(tenant)/[slug]/miembros/qr-actions";
+import { normalizarTelefonoMx } from "@/lib/utils/whatsapp";
 
 // El origin solo existe en el cliente. Lo leemos con useSyncExternalStore para
 // que SSR e hidratación coincidan (snapshot de servidor vacío) y evitar el
@@ -52,7 +53,7 @@ export function MiembroQrPanel({
   function whatsapp() {
     const msg = `Hola ${nombre}, este es tu código QR de acceso al gym: ${publicUrl()}`;
     const base = telefono
-      ? `https://wa.me/${telefono.replace(/\D/g, "")}`
+      ? `https://wa.me/${normalizarTelefonoMx(telefono)}`
       : "https://wa.me/";
     window.open(`${base}?text=${encodeURIComponent(msg)}`, "_blank");
   }

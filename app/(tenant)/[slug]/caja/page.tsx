@@ -35,7 +35,7 @@ import { AutorizacionesPendientes } from "@/components/caja/AutorizacionesPendie
 import { PagosExternosPendientes } from "@/components/caja/PagosExternosPendientes";
 import { CortePanel } from "@/components/caja/CortePanel";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { LuStore } from "react-icons/lu";
+import { LuStore, LuTriangleAlert } from "react-icons/lu";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -273,6 +273,20 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
             ) : undefined
           }
         />
+      )}
+
+      {cajaActiva && cajaRequiereCuadre && !corte && (
+        <div className="flex items-start gap-3 border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-text-primary">
+          <LuTriangleAlert
+            className="mt-0.5 h-4 w-4 shrink-0 text-warning"
+            aria-hidden="true"
+          />
+          <p>
+            Esta caja no tiene turno activo ahorita. Lo que cobres{" "}
+            <strong>no va a entrar al corte</strong>. Ábrelo en el panel de
+            la derecha, o cobra igual y cuádralo a mano después.
+          </p>
+        </div>
       )}
 
       {cajaActiva && (

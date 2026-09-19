@@ -13,6 +13,7 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import { registrarAccionAction } from "@/app/(tenant)/[slug]/notas/actions";
 import { compilarPlantilla } from "@/lib/utils/plantilla";
+import { normalizarTelefonoMx } from "@/lib/utils/whatsapp";
 import type { PlantillaMensaje, PlantillaCategoria } from "@/lib/queries/plantillas.queries";
 
 const CATEGORIAS_MIEMBRO: PlantillaCategoria[] = [
@@ -95,7 +96,7 @@ export function AccionesRapidas({
     const mensaje = plantilla
       ? compilarPlantilla(plantilla.contenido, context)
       : "";
-    const numero = telefono.replace(/\D/g, "");
+    const numero = normalizarTelefonoMx(telefono);
     const url = mensaje
       ? `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`
       : `https://wa.me/${numero}`;
@@ -119,7 +120,7 @@ export function AccionesRapidas({
     const mensaje = `Hola ${nombre}, aquí puedes entrar a tu portal${gymNombre ? ` de ${gymNombre}` : ""}: ${portalUrl}\n\nAhí ves tu membresía, tus check-ins y puedes renovar o reservar clases.`;
 
     if (telefono) {
-      const numero = telefono.replace(/\D/g, "");
+      const numero = normalizarTelefonoMx(telefono);
       window.open(
         `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`,
         "_blank"

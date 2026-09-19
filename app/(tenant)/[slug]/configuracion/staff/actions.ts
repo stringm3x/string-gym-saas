@@ -321,11 +321,21 @@ export async function toggleCajaCheckinPinAction(
   if (!allowed) return { ok: false, error: "Sin permiso." };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("gyms")
     .update({ caja_checkin_pin: activar })
-    .eq("id", tenant.id);
+    .eq("id", tenant.id)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  // La única policy de UPDATE sobre `gyms` es owner_id = auth.uid(): pese a
+  // que requireOwner() acepta a cualquiera con permiso "gestionar_staff"
+  // (owner y gerente), un gerente afecta 0 filas sin error.
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      error: "No se guardó: por ahora solo el dueño puede cambiar esto.",
+    };
+  }
 
   revalidatePath(`/${tenant.slug}/configuracion/staff`);
   revalidatePath(`/${tenant.slug}/caja`);

@@ -22,6 +22,7 @@ const ERROR_MSG: Record<KioscoError, string> = {
   MEMBRESIA_VENCIDA: "Membresía vencida",
   MEMBRESIA_CONGELADA: "Membresía congelada",
   SIN_VISITAS: "Sin visitas disponibles",
+  CHECKIN_RECIENTE: "Ya registraste tu entrada",
   NO_DISPONIBLE: "No disponible",
   ERROR: "No se pudo registrar",
 };
@@ -152,7 +153,9 @@ export function KioscoEntrada({ slug }: { slug: string }) {
             {result.nombre && (
               <p className="text-2xl text-text-secondary">{result.nombre}</p>
             )}
-            <p className="text-lg text-text-muted">Pasa a recepción.</p>
+            {result.error !== "CHECKIN_RECIENTE" && (
+              <p className="text-lg text-text-muted">Pasa a recepción.</p>
+            )}
           </>
         )}
       </div>

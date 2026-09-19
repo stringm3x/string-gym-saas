@@ -190,7 +190,24 @@ export async function activarSolicitud(id: string): Promise<ActivarResult> {
     return { ok: false, error: gymErr?.message ?? "No se pudo crear el gym." };
   }
 
-  // 3. Miembro de demo (Fase P.2): deja al owner probar Portal/QR/check-in.
+  // 3. Caja default (sql/063_cajas_multiples.sql): todo pago que no viene de
+  // un punto de venta físico (portal, kiosco, cuotas de crédito…) se enlaza
+  // a ella — sin esto ningún pago del gym entra a ningún corte. Best-effort
+  // como el resto del setup posterior al gym: si falla, el dueño puede crear
+  // una caja a mano desde Configuración → Cajas (la página de Caja ya lo
+  // ofrece cuando no encuentra ninguna), pero se deja rastro en el log para
+  // que no pase inadvertido.
+  const { error: cajaErr } = await admin
+    .from("cajas")
+    .insert({ tenant_id: gym.id, nombre: "Recepción", es_default: true });
+  if (cajaErr) {
+    console.error(
+      `[activarSolicitud] no se pudo crear la caja default de ${gym.slug}:`,
+      cajaErr.message
+    );
+  }
+
+  // 4. Miembro de demo (Fase P.2): deja al owner probar Portal/QR/check-in.
   // Best-effort — no bloquea la activación si algo falla. Un gym recién creado
   // aún no tiene planes, así que plan_id suele quedar null. El email = el del
   // owner, para que pueda entrar al portal del demo con su propio correo.
@@ -220,7 +237,7 @@ export async function activarSolicitud(id: string): Promise<ActivarResult> {
     /* best-effort */
   }
 
-  // 4. Marcar solicitud como activada.
+  // 5. Marcar solicitud como activada.
   await admin.from("solicitudes_prueba").update({ estado: "activado" }).eq("id", id);
 
   return {

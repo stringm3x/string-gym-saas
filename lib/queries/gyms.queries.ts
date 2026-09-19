@@ -1,6 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import type { GymConfigInput } from "@/lib/validations/gym.schema";
 
+/**
+ * La única policy de UPDATE sobre `gyms` es `owner_id = auth.uid()`: un
+ * gerente (que sí ve estas pantallas por `hasPermission`) hace un UPDATE que
+ * RLS filtra a 0 filas, sin `error` — Postgres no distingue "bloqueado por
+ * RLS" de "no había nada que actualizar". Sin `.select()` para contar filas,
+ * estas funciones devolvían `ok: true` igual, y la UI mostraba éxito sobre
+ * un cambio que nunca se guardó. Este mensaje hace visible ese caso mientras
+ * se decide si el gerente debe tener su propia policy o dejar de ver estas
+ * pantallas (Fase de roles, aparte).
+ */
+const ERROR_SOLO_OWNER =
+  "No se guardó: por ahora solo el dueño puede cambiar esto.";
+
 export interface GymInfo {
   id: string;
   slug: string;
@@ -63,7 +76,7 @@ export async function updateGymConfig(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("gyms")
     .update({
       nombre: input.nombre,
@@ -73,9 +86,11 @@ export async function updateGymConfig(
       checkin_bloquea_vencidos: input.checkin_bloquea_vencidos,
       congelacion_auto_aprobar: input.congelacion_auto_aprobar,
     })
-    .eq("id", tenantId);
+    .eq("id", tenantId)
+    .select("id");
 
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: ERROR_SOLO_OWNER };
   return { ok: true };
 }
 
@@ -131,12 +146,14 @@ export async function updateWhatsappConfig(
     payload.alerta_visitas_umbral = input.alertaVisitasUmbral;
   }
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("gyms")
     .update(payload)
-    .eq("id", tenantId);
+    .eq("id", tenantId)
+    .select("id");
 
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: ERROR_SOLO_OWNER };
   return { ok: true };
 }
 
@@ -156,17 +173,27 @@ export async function updateClasesMaxNoshows(
   max: number
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("gyms")
     .update({ clases_max_noshows: max })
-    .eq("id", tenantId);
+    .eq("id", tenantId)
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: ERROR_SOLO_OWNER };
   return { ok: true };
 }
 
 /**
  * Marca la aceptación de Términos del gym (Fase 7.3). Idempotente: solo
  * escribe si aún no había aceptado, para conservar el timestamp original.
+ *
+ * A propósito SIN el conteo de filas de las demás funciones de este
+ * archivo: su propio WHERE ya filtra por `acepto_terminos_at is null`, así
+ * que 0 filas es ambiguo (bloqueado por RLS vs. "ya lo había aceptado
+ * alguien más, nada que hacer") y no se puede distinguir sin una lectura
+ * aparte. El caso real que esto cubría —un gerente o recepcionista
+ * aceptando términos sin que se guarde— se cierra en TerminosGate, que
+ * ahora solo se monta para el owner.
  */
 export async function aceptarTerminos(
   tenantId: string

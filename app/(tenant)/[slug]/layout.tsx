@@ -131,7 +131,14 @@ export default async function TenantLayout({
   };
 
   // Gate de Términos (Fase 7.3): bloquea el app hasta que el gym acepte.
-  const debeAceptarTerminos = !gym.acepto_terminos_at;
+  // Solo para el owner: es quien puede aceptar (aceptarTerminos hace UPDATE
+  // sobre gyms, y la única policy es owner_id = auth.uid()). Antes se
+  // montaba para cualquier rol; un gerente o recepcionista que entrara
+  // antes que el dueño aceptaba, el update afectaba 0 filas sin error,
+  // el modal se cerraba, refrescaba y volvía a aparecer — atrapado sin
+  // poder salir salvo cerrando sesión a mano.
+  const debeAceptarTerminos =
+    !gym.acepto_terminos_at && tenant.role === "owner";
 
   return (
     <ToastProvider>

@@ -3,7 +3,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFeature, type Plan } from "@/lib/features";
 import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
-import { createCheckin, visitasAgotadas } from "@/lib/queries/checkins.queries";
+import {
+  createCheckin,
+  visitasAgotadas,
+  checkinReciente,
+} from "@/lib/queries/checkins.queries";
 import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
 import { randomUUID } from "node:crypto";
 import {
@@ -22,6 +26,7 @@ export type KioscoError =
   | "MEMBRESIA_VENCIDA"
   | "MEMBRESIA_CONGELADA"
   | "SIN_VISITAS"
+  | "CHECKIN_RECIENTE"
   | "NO_DISPONIBLE"
   | "ERROR";
 
@@ -80,6 +85,11 @@ export async function checkInKioscoAction(
   }
   if (await visitasAgotadas(gym.id, miembro.id, admin)) {
     return { success: false, error: "SIN_VISITAS", nombre: miembro.nombre };
+  }
+  // Mismo QR sostenido frente al lector o doble tap: el lock del cliente se
+  // libera a los 3s, esto cubre el hueco del lado del servidor.
+  if (await checkinReciente(gym.id, miembro.id, admin)) {
+    return { success: false, error: "CHECKIN_RECIENTE", nombre: miembro.nombre };
   }
   if (
     miembro.fecha_vencimiento &&
