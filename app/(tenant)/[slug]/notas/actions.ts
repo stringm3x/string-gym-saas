@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getTenant } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
+import type { Permission } from "@/lib/types/staff";
 import {
   createNota,
   listNotas,
@@ -15,6 +17,11 @@ export interface NotaFormState {
   error: string | null;
 }
 
+/** Notas de miembro se gatean como editar_miembros; de prospecto, como ver_prospectos. */
+function permisoNotas(entidadTipo: "miembro" | "prospecto"): Permission {
+  return entidadTipo === "miembro" ? "editar_miembros" : "ver_prospectos";
+}
+
 export async function createNotaAction(
   entidadTipo: "miembro" | "prospecto",
   entidadId: string,
@@ -22,6 +29,9 @@ export async function createNotaAction(
   formData: FormData
 ): Promise<NotaFormState> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, permisoNotas(entidadTipo))) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
   const contenido = String(formData.get("contenido") ?? "").trim();
   const fechaSeguimiento = String(formData.get("fecha_seguimiento") ?? "").trim();
 
@@ -52,6 +62,10 @@ export async function toggleNotaCompletadaAction(
   completada: boolean
 ): Promise<{ ok: boolean; error?: string }> {
   const tenant = await getTenant();
+  // Solo se usa en la ficha del miembro (NotasTimeline/SeguimientosPendientes).
+  if (!hasPermission(tenant.role, "editar_miembros")) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
   const result = await toggleNotaCompletada(tenant.id, notaId, completada);
   if (!result.ok) return { ok: false, error: result.error };
   revalidatePath(`/${tenant.slug}/miembros`);
@@ -65,6 +79,9 @@ export async function registrarAccionAction(
   tipoAccion: TipoAccion
 ): Promise<{ ok: boolean; error?: string }> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, permisoNotas(entidadTipo))) {
+    return { ok: false, error: "No tienes permiso para esta acción." };
+  }
 
   const result = await createNota(
     tenant.id,
@@ -90,5 +107,6 @@ export async function listNotasAction(
   entidadId: string
 ): Promise<Nota[]> {
   const tenant = await getTenant();
+  if (!hasPermission(tenant.role, permisoNotas(entidadTipo))) return [];
   return listNotas(tenant.id, entidadTipo, entidadId);
 }
