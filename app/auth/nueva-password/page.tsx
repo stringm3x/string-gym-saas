@@ -7,6 +7,7 @@ import { LuEye, LuEyeOff } from "react-icons/lu";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { AuthShell, AuthCardHeader } from "@/components/layout/AuthShell";
 
 type Estado = "verificando" | "listo" | "invalido" | "guardando";
 
@@ -123,17 +124,14 @@ function NuevaPasswordInner() {
   }
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="mb-8 text-center">
-        <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-          STRING<span className="text-brand-green">GYM</span>
-        </h1>
-        <p className="mt-2 text-sm text-text-secondary">
-          Crea tu nueva contraseña
-        </p>
-      </div>
+    <div>
+      <AuthCardHeader
+        kicker="Acceso"
+        titulo="Crea tu nueva contraseña"
+        texto="Mínimo 8 caracteres. La usarás para entrar a tu panel."
+      />
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <Input
           label="Nueva contraseña"
           type={showPassword ? "text" : "password"}
@@ -187,7 +185,7 @@ function NuevaPasswordInner() {
         {error && (
           <p
             role="alert"
-            className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
+            className="border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
           >
             {error}
           </p>
@@ -195,6 +193,7 @@ function NuevaPasswordInner() {
 
         <Button
           type="submit"
+          size="lg"
           className="w-full"
           loading={estado === "guardando"}
         >
@@ -207,12 +206,12 @@ function NuevaPasswordInner() {
 
 export default function NuevaPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
+    <AuthShell>
       <Suspense
         fallback={<p className="text-sm text-text-secondary">Cargando…</p>}
       >
         <NuevaPasswordInner />
       </Suspense>
-    </div>
+    </AuthShell>
   );
 }

@@ -36,13 +36,14 @@ export default async function PortalClasesPage({ params }: PageProps) {
   return (
     <div className="min-h-screen">
       <PortalHeader slug={slug} gymNombre={gym.nombre} />
-      <main className="mx-auto max-w-md space-y-4 px-4 py-6">
+      <main className="mx-auto flex max-w-md flex-col gap-5 px-4 py-6">
         <Link
           href={`/portal/${slug}`}
-          className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary"
+          className="inline-flex h-10 items-center gap-2 self-start text-sm text-text-secondary hover:text-text-primary"
         >
-          <LuArrowLeft className="h-3.5 w-3.5" /> Volver
+          <LuArrowLeft className="h-4 w-4" aria-hidden="true" /> Volver
         </Link>
+        <h1 className="text-pagina font-semibold text-text-primary">Clases</h1>
         <PortalClases slug={slug} sesiones={rows} misReservas={misReservas} />
       </main>
     </div>

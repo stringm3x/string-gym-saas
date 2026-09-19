@@ -10,7 +10,7 @@ const BASE = "https://app.gym.stringwebs.com/api/v1/{slug}";
 
 function Code({ children }: { children: string }) {
   return (
-    <pre className="overflow-x-auto rounded-lg border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-text-primary">
+    <pre className="overflow-x-auto border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-text-primary">
       {children}
     </pre>
   );
@@ -47,7 +47,7 @@ export default function ApiDocsPage() {
     <div className="min-h-screen bg-bg px-4 py-12 text-text-primary">
       <div className="mx-auto max-w-3xl space-y-8">
         <header className="space-y-2">
-          <h1 className="font-display text-3xl uppercase tracking-wide">
+          <h1 className="font-display text-3xl uppercase">
             STRING<span className="text-brand-green">GYM</span> · API
           </h1>
           <p className="text-sm text-text-secondary">
@@ -57,7 +57,7 @@ export default function ApiDocsPage() {
         </header>
 
         {/* SDK */}
-        <section className="rounded-xl border border-brand-green/30 bg-brand-green/5 p-4">
+        <section className="border border-brand-green/30 bg-brand-green/5 p-4">
           <h2 className="text-sm font-semibold text-brand-green">
             ¿Prefieres no escribir fetch?
           </h2>

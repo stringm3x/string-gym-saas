@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { LuEye, LuEyeOff } from "react-icons/lu";
 import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { AuthCardHeader } from "@/components/layout/AuthShell";
 import { login, type LoginState } from "./actions";
 
 const initialState: LoginState = { error: null };
@@ -16,40 +18,30 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="mb-8 text-center">
-        <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-          STRING<span className="text-brand-green">GYM</span>
-        </h1>
-        <p className="mt-2 text-sm text-text-secondary">
-          Inicia sesión en tu panel
-        </p>
-      </div>
+    <div>
+      <AuthCardHeader
+        kicker="Acceso"
+        titulo="Entra a tu panel"
+        texto="Usa el correo con el que te dieron de alta en tu gimnasio."
+      />
 
       {justReset && (
-        <p className="mb-4 rounded-lg border border-brand-green/30 bg-brand-green/10 px-3 py-2.5 text-center text-sm text-text-primary">
+        <p className="mb-5 border border-brand-green/40 bg-brand-green/10 px-3 py-2.5 text-sm text-text-primary">
           Contraseña actualizada. Inicia sesión con tu nueva contraseña.
         </p>
       )}
 
-      <form action={formAction} className="space-y-4">
-        <div className="space-y-1.5">
-          <label
-            htmlFor="email"
-            className="block text-xs font-medium text-text-secondary"
-          >
-            Correo
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
-            placeholder="tu@correo.com"
-          />
-        </div>
+      <form action={formAction} className="flex flex-col gap-5">
+        <Input
+          label="Correo"
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          placeholder="tu@gimnasio.mx"
+          className="text-base"
+        />
 
         <Input
           label="Contraseña"
@@ -59,6 +51,7 @@ function LoginForm() {
           autoComplete="current-password"
           required
           placeholder="••••••••"
+          className="text-base"
           rightSlot={
             <button
               type="button"
@@ -66,7 +59,7 @@ function LoginForm() {
               aria-label={
                 showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
               }
-              className="flex items-center text-text-muted hover:text-text-primary"
+              className="flex h-9 w-9 items-center justify-center text-text-muted hover:text-text-primary"
             >
               {showPassword ? (
                 <LuEyeOff className="h-4 w-4" />
@@ -80,29 +73,42 @@ function LoginForm() {
         {state.error && (
           <p
             role="alert"
-            className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
+            className="border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
           >
             {state.error}
           </p>
         )}
 
-        <button
+        <Button
           type="submit"
-          disabled={isPending}
-          className="w-full rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-bg transition-colors duration-150 hover:bg-brand-green/90 disabled:cursor-not-allowed disabled:opacity-50"
+          size="lg"
+          className="w-full"
+          loading={isPending}
         >
           {isPending ? "Entrando…" : "Entrar"}
-        </button>
+        </Button>
 
         <p className="text-center">
           <Link
             href="/recuperar-password"
-            className="text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary"
+            className="text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
           >
             ¿Olvidaste tu contraseña?
           </Link>
         </p>
       </form>
+
+      <div className="mt-8 flex flex-col gap-1.5 border-t border-border pt-6">
+        <p className="text-sm text-text-muted">
+          ¿Tu gimnasio todavía no usa STRING GYM?
+        </p>
+        <a
+          href="https://stringwebs.com/saas"
+          className="text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
+        >
+          Solicita una prueba de 14 días
+        </a>
+      </div>
     </div>
   );
 }

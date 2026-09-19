@@ -22,7 +22,7 @@ export default async function ReciboPublicoPage({ params }: PageProps) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg px-4">
         <div className="max-w-sm space-y-2 text-center">
-          <p className="font-display text-2xl uppercase tracking-wide text-text-primary">
+          <p className="text-xl text-text-primary font-semibold">
             Recibo no válido
           </p>
           <p className="text-sm text-text-secondary">

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LuScanLine, LuWallet, LuCalendarX, LuTriangleAlert } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { getAlertas } from "@/lib/queries/alertas.queries";
 import { countMiembrosSinTelefono } from "@/lib/queries/miembros.queries";
@@ -21,14 +20,18 @@ interface PageProps {
 }
 
 function formatFechaHoy(): string {
-  const s = new Intl.DateTimeFormat("es-MX", {
+  return new Intl.DateTimeFormat("es-MX", {
     weekday: "long",
     day: "numeric",
     month: "long",
   }).format(new Date());
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/**
+ * Panel del día (artboard "Panel del día"): lo que el dueño abre cada
+ * mañana. Kicker con la fecha, cuatro cifras, puntos de atención y clases.
+ * Densidad y ritmo: sin cartel.
+ */
 export default async function HoyPage({ params }: PageProps) {
   const { slug } = await params;
   const tenant = await getTenant();
@@ -60,113 +63,154 @@ export default async function HoyPage({ params }: PageProps) {
         : Promise.resolve({ promedio: 0, total: 0 }),
     ]);
 
-  const vencenHoy =
-    alertas.find((a) => a.tipo === "vencimiento_hoy")?.count ?? 0;
+  const porTipo = (tipo: (typeof alertas)[number]["tipo"]) =>
+    alertas.find((a) => a.tipo === tipo)?.count ?? 0;
+  const vencenHoy = porTipo("vencimiento_hoy");
+  const vencenProximo = porTipo("vencimiento_proximo");
+  const sinVenir = porTipo("miembro_inactivo");
 
-  return (
-    <div className="space-y-8">
-      <div className="relative">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-6 -top-10 h-40 w-72 rounded-full bg-brand-green/10 blur-3xl"
-        />
-        <div className="relative flex items-center gap-3">
-          <span
-            aria-hidden
-            className="h-9 w-1 shrink-0 rounded-full bg-gradient-to-b from-brand-green to-brand-green/10"
-          />
-          <div>
-            <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-              Hoy
-            </h2>
-            <p className="mt-1 text-sm text-text-secondary">
-              {formatFechaHoy()}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats del día */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard
-          label="Check-ins hoy"
-          value={checkins.hoy}
-          variant="default"
-          icon={<LuScanLine className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Ingresos hoy"
-          value={ingresos.hoy}
-          format="currency"
-          variant={ingresos.hoy > 0 ? "success" : "default"}
-          icon={<LuWallet className="h-4 w-4" />}
-        />
-        <StatCard
-          label="Vencimientos hoy"
-          value={vencenHoy}
-          variant={vencenHoy > 0 ? "warning" : "default"}
-          icon={<LuCalendarX className="h-4 w-4" />}
-        />
-      </div>
-
-      {/* Reporte discreto: miembros sin teléfono */}
+  // Avisos de datos: van como filas más de "Puntos de atención".
+  const extras = (
+    <>
       {sinTelefono > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning/5 px-4 py-2.5">
-          <span className="flex items-center gap-2 text-sm text-text-secondary">
-            <LuTriangleAlert className="h-4 w-4 text-warning" />
-            {sinTelefono} miembro{sinTelefono === 1 ? "" : "s"} sin teléfono
-            registrado
-          </span>
+        <li className="flex items-center justify-between gap-4 px-5 py-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="w-10 shrink-0 font-mono text-2xl font-bold tabular-nums text-warning">
+              {sinTelefono}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] leading-5 text-text-primary">
+                {sinTelefono === 1 ? "Miembro" : "Miembros"} sin teléfono
+              </p>
+              <p className="mt-0.5 text-sm text-text-muted">
+                No les llegan avisos ni recordatorios
+              </p>
+            </div>
+          </div>
           <Link
             href={`/${slug}/miembros?filter=sin_telefono`}
-            className="text-sm font-medium text-brand-green hover:opacity-80"
+            className="shrink-0 text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
           >
             Ver lista
           </Link>
-        </div>
+        </li>
       )}
-
-      {/* Alerta: calificación baja esta semana */}
       {opinionesSem.total > 0 && opinionesSem.promedio < 3 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-danger/30 bg-danger/5 px-4 py-2.5">
-          <span className="flex items-center gap-2 text-sm text-text-secondary">
-            <LuTriangleAlert className="h-4 w-4 text-danger" />
-            Tu calificación bajó a {opinionesSem.promedio.toFixed(1)} estrellas
-            esta semana
-          </span>
+        <li className="flex items-center justify-between gap-4 px-5 py-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="w-10 shrink-0 font-mono text-2xl font-bold tabular-nums text-danger">
+              {opinionesSem.promedio.toFixed(1)}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] leading-5 text-text-primary">
+                Tu calificación bajó esta semana
+              </p>
+              <p className="mt-0.5 text-sm text-text-muted">
+                Promedio de {opinionesSem.total}{" "}
+                {opinionesSem.total === 1 ? "opinión" : "opiniones"}
+              </p>
+            </div>
+          </div>
           <Link
             href={`/${slug}/opiniones`}
-            className="text-sm font-medium text-brand-green hover:opacity-80"
+            className="shrink-0 text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
           >
             Ver opiniones
           </Link>
-        </div>
+        </li>
       )}
+    </>
+  );
+  const hayExtras =
+    sinTelefono > 0 || (opinionesSem.total > 0 && opinionesSem.promedio < 3);
+  const totalAtencion = alertas.length + (sinTelefono > 0 ? 1 : 0) +
+    (opinionesSem.total > 0 && opinionesSem.promedio < 3 ? 1 : 0);
 
-      {/* Clases de hoy */}
-      {canClases && (
-        <div>
-          <h3 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            <span
-              aria-hidden
-              className="h-3 w-0.5 rounded-full bg-brand-green/60"
-            />
-            Clases de hoy
-          </h3>
-          <ClasesHoy sesiones={sesionesHoy} slug={slug} />
+  return (
+    <div className="flex flex-col gap-7">
+      {/* Encabezado: fecha en mono, título en Geist, acciones del día */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <p className="font-mono text-etiqueta uppercase text-text-muted">
+            {formatFechaHoy()}
+          </p>
+          <h2 className="text-pagina font-semibold text-text-primary">Hoy</h2>
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/${slug}/checkins`}
+            className="inline-flex h-11 items-center border border-border px-4 text-sm text-text-primary transition-colors hover:border-text-secondary"
+          >
+            Registrar entrada
+          </Link>
+          <Link
+            href={`/${slug}/caja`}
+            className="inline-flex h-11 items-center bg-brand-green px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
+          >
+            Cobrar
+          </Link>
+        </div>
+      </div>
 
-      {/* Alertas */}
-      <div>
-        <h3 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-          <span
-            aria-hidden
-            className="h-3 w-0.5 rounded-full bg-brand-green/60"
-          />
-          Puntos de atención
-        </h3>
-        <AlertasList alertas={alertas} />
+      {/* Cifras del día */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard index={0} label="Check-ins" value={checkins.hoy} />
+        <StatCard
+          index={1}
+          label="Ingresos"
+          value={ingresos.hoy}
+          format="currency"
+          variant={ingresos.hoy > 0 ? "success" : "default"}
+        />
+        <StatCard
+          index={2}
+          label="Vencen hoy"
+          value={vencenHoy}
+          variant={vencenHoy > 0 ? "warning" : "default"}
+          hint={
+            vencenProximo > 0
+              ? `${vencenProximo} en los próximos 7 días`
+              : undefined
+          }
+        />
+        <StatCard
+          index={3}
+          label="Sin venir 14 días"
+          value={sinVenir}
+          hint="con membresía vigente"
+        />
+      </div>
+
+      {/* Puntos de atención + clases */}
+      <div className="grid gap-4 xl:grid-cols-3">
+        <section className={`card-surface ${canClases ? "xl:col-span-2" : "xl:col-span-3"}`}>
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h3 className="text-base font-semibold text-text-primary">
+              Puntos de atención
+            </h3>
+            <span className="font-mono text-etiqueta text-text-muted">
+              {totalAtencion}
+            </span>
+          </div>
+          <AlertasList alertas={alertas} extra={hayExtras ? extras : undefined} />
+        </section>
+
+        {canClases && (
+          <section className="card-surface">
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <h3 className="text-base font-semibold text-text-primary">
+                Clases de hoy
+              </h3>
+              <Link
+                href={`/${slug}/clases`}
+                className="text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
+              >
+                Calendario
+              </Link>
+            </div>
+            <ClasesHoy sesiones={sesionesHoy} slug={slug} />
+          </section>
+        )}
       </div>
     </div>
   );

@@ -1,74 +1,57 @@
 import Link from "next/link";
-import {
-  LuPackage,
-  LuCalendarX,
-  LuCalendarClock,
-  LuUserX,
-  LuMessageSquareWarning,
-} from "react-icons/lu";
 import { cn } from "@/lib/utils/cn";
-import type { Alerta, AlertaTipo } from "@/lib/queries/alertas.queries";
+import type { Alerta } from "@/lib/queries/alertas.queries";
 
-const iconByTipo: Record<AlertaTipo, React.ReactNode> = {
-  stock_bajo: <LuPackage className="h-5 w-5" />,
-  vencimiento_hoy: <LuCalendarX className="h-5 w-5" />,
-  vencimiento_proximo: <LuCalendarClock className="h-5 w-5" />,
-  prospecto_sin_contactar: <LuMessageSquareWarning className="h-5 w-5" />,
-  miembro_inactivo: <LuUserX className="h-5 w-5" />,
+const countColor: Record<Alerta["severidad"], string> = {
+  danger: "text-danger",
+  warning: "text-warning",
+  info: "text-text-primary",
 };
 
-const severidadStyles: Record<
-  Alerta["severidad"],
-  { border: string; icon: string }
-> = {
-  danger: {
-    border: "border-danger/30 bg-danger/5",
-    icon: "text-danger",
-  },
-  warning: {
-    border: "border-warning/30 bg-warning/5",
-    icon: "text-warning",
-  },
-  info: {
-    border: "border-border bg-surface",
-    icon: "text-brand-green",
-  },
+const linkLabel: Record<Alerta["tipo"], string> = {
+  stock_bajo: "Inventario",
+  vencimiento_hoy: "Ver lista",
+  vencimiento_proximo: "Ver lista",
+  prospecto_sin_contactar: "Abrir",
+  miembro_inactivo: "Ver lista",
 };
 
 interface AlertaCardProps {
   alerta: Alerta;
 }
 
+/**
+ * Fila de "Puntos de atención" (artboard "Panel del día"): título, una
+ * línea de contexto y el enlace a la derecha. Sin ícono ni fondo de color:
+ * la severidad se lee en la cifra.
+ */
 export function AlertaCard({ alerta }: AlertaCardProps) {
-  const styles = severidadStyles[alerta.severidad];
-
   return (
-    <Link
-      href={alerta.href}
-      className={cn(
-        "flex items-center gap-4 rounded-xl border p-4 transition-opacity hover:opacity-80",
-        styles.border
-      )}
-    >
-      <span className={cn("shrink-0", styles.icon)}>
-        {iconByTipo[alerta.tipo]}
-      </span>
-
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-text-primary">{alerta.titulo}</p>
-        <p className="text-xs text-text-secondary mt-0.5">{alerta.descripcion}</p>
+    <li className="flex items-center justify-between gap-4 px-5 py-4">
+      <div className="flex min-w-0 items-center gap-4">
+        {alerta.count !== undefined && (
+          <span
+            className={cn(
+              "w-10 shrink-0 font-mono text-2xl font-bold tabular-nums",
+              countColor[alerta.severidad]
+            )}
+          >
+            {alerta.count}
+          </span>
+        )}
+        <div className="min-w-0">
+          <p className="text-[15px] leading-5 text-text-primary">
+            {alerta.titulo}
+          </p>
+          <p className="mt-0.5 text-sm text-text-muted">{alerta.descripcion}</p>
+        </div>
       </div>
-
-      {alerta.count !== undefined && (
-        <span
-          className={cn(
-            "shrink-0 font-mono text-2xl font-bold tabular-nums",
-            styles.icon
-          )}
-        >
-          {alerta.count}
-        </span>
-      )}
-    </Link>
+      <Link
+        href={alerta.href}
+        className="shrink-0 text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
+      >
+        {linkLabel[alerta.tipo]}
+      </Link>
+    </li>
   );
 }

@@ -9,6 +9,7 @@ import {
   type KioscoResult,
   type KioscoError,
 } from "@/app/kiosco/[slug]/actions";
+import { KioscoMarco, QrPictograma } from "./KioscoMarco";
 
 const QrCameraScanner = dynamic(
   () => import("@/components/checkins/QrCameraScanner"),
@@ -79,128 +80,149 @@ export function KioscoEntrada({ slug }: { slug: string }) {
 
   const ok = result?.success === true;
 
-  return (
-    <div className="flex w-full max-w-2xl flex-col items-center gap-8">
-      {result ? (
-        <div
-          className={`flex w-full flex-col items-center gap-4 rounded-3xl border p-14 text-center ${
-            ok
-              ? "border-brand-green/40 bg-brand-green/10"
-              : "border-danger/40 bg-danger/10"
-          }`}
-        >
-          {ok ? (
-            <LuCircleCheck className="h-28 w-28 text-brand-green" />
-          ) : (
-            <LuCircleX className="h-28 w-28 text-danger" />
-          )}
-          {ok ? (
-            <>
-              <p className="text-5xl font-bold text-text-primary">
-                ¡Bienvenido, {result.nombre}!
-              </p>
-              {result.plan && (
-                <p className="text-xl text-text-secondary">{result.plan}</p>
-              )}
+  // ── Resultado: pantalla completa, se lee a un metro ──
+  if (result) {
+    return (
+      <div
+        role="status"
+        className={`flex w-full max-w-3xl flex-col items-center gap-6 border-2 p-10 text-center sm:p-14 ${
+          ok ? "border-brand-green bg-brand-green/10" : "border-danger bg-danger/10"
+        }`}
+      >
+        {ok ? (
+          <LuCircleCheck className="h-24 w-24 text-brand-green" aria-hidden="true" />
+        ) : (
+          <LuCircleX className="h-24 w-24 text-danger" aria-hidden="true" />
+        )}
 
-              {result.sinContacto && (
-                <div className="mt-6 w-full max-w-md border-t border-brand-green/20 pt-6">
-                  <p className="text-lg font-semibold text-text-primary">
-                    Actualiza tu contacto para recibir recordatorios
-                  </p>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    autoFocus
-                    value={telInput}
-                    onChange={(e) =>
-                      setTelInput(e.target.value.replace(/\D/g, "").slice(0, 10))
-                    }
-                    placeholder="¿Cuál es tu WhatsApp? (10 dígitos)"
-                    className="mt-3 w-full rounded-xl border border-border bg-bg px-4 py-3 text-center text-2xl tracking-wider text-text-primary focus:border-brand-green focus:outline-none"
-                  />
-                  <div className="mt-4 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={reset}
-                      disabled={savingTel}
-                      className="flex-1 rounded-xl border border-border px-4 py-3 text-lg text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
-                    >
-                      Ahora no
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => guardarTelefono(result.miembroId)}
-                      disabled={savingTel || telInput.length !== 10}
-                      className="flex-1 rounded-xl bg-brand-green px-4 py-3 text-lg font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
-                    >
-                      {savingTel ? "Guardando…" : "Guardar"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="text-5xl font-bold text-danger">
-                {ERROR_MSG[result.error]}
+        {ok ? (
+          <>
+            <p className="text-4xl font-semibold leading-tight text-text-primary sm:text-5xl">
+              ¡Bienvenido, {result.nombre}!
+            </p>
+            {result.plan && (
+              <p className="font-mono text-[15px] uppercase tracking-[0.16em] text-text-secondary">
+                {result.plan}
               </p>
-              {result.nombre && (
-                <p className="text-2xl text-text-secondary">{result.nombre}</p>
-              )}
-            </>
-          )}
-        </div>
-      ) : (
-        <>
-          <p className="text-center text-3xl font-semibold text-text-primary">
-            Escanea tu QR para registrar tu entrada
-          </p>
+            )}
 
-          {modo === "camara" ? (
-            <QrCameraScanner onDetect={procesar} />
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                procesar(token);
-              }}
-              className="w-full max-w-lg"
-            >
-              <input
-                ref={inputRef}
-                autoFocus
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                onBlur={() => setTimeout(focusInput, 50)}
-                placeholder="Escanea o escribe tu código…"
-                className="w-full rounded-2xl border border-border bg-surface px-6 py-6 text-center text-2xl text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
-              />
-              {pending && (
-                <p className="mt-4 text-center text-lg text-text-muted">
-                  Verificando…
+            {result.sinContacto && (
+              <div className="mt-4 w-full max-w-md border-t border-brand-green/40 pt-6">
+                <p className="text-xl font-semibold text-text-primary">
+                  Déjanos tu WhatsApp para avisarte cuando venza tu membresía
                 </p>
-              )}
-            </form>
-          )}
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  autoFocus
+                  value={telInput}
+                  onChange={(e) =>
+                    setTelInput(e.target.value.replace(/\D/g, "").slice(0, 10))
+                  }
+                  placeholder="10 dígitos"
+                  aria-label="Tu WhatsApp, 10 dígitos"
+                  className="mt-4 h-16 w-full rounded border border-border bg-bg px-4 text-center font-mono text-3xl tracking-[0.2em] text-text-primary placeholder:tracking-normal placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+                />
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={reset}
+                    disabled={savingTel}
+                    className="h-14 border border-border px-4 text-lg text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
+                  >
+                    Ahora no
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => guardarTelefono(result.miembroId)}
+                    disabled={savingTel || telInput.length !== 10}
+                    className="h-14 bg-brand-green px-4 text-lg font-semibold text-on-brand transition-colors hover:bg-brand-green/90 disabled:opacity-50"
+                  >
+                    {savingTel ? "Guardando…" : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="text-4xl font-semibold leading-tight text-danger sm:text-5xl">
+              {ERROR_MSG[result.error]}
+            </p>
+            {result.nombre && (
+              <p className="text-2xl text-text-secondary">{result.nombre}</p>
+            )}
+            <p className="text-lg text-text-muted">Pasa a recepción.</p>
+          </>
+        )}
+      </div>
+    );
+  }
 
+  // ── Espera: titular Anton + marco de escaneo ──
+  return (
+    <div className="flex w-full max-w-5xl flex-col items-center gap-10 lg:flex-row lg:justify-center lg:gap-24">
+      <div className="flex max-w-[480px] flex-col gap-6 text-center lg:text-left">
+        <h1 className="font-display text-[64px] uppercase leading-[58px] text-text-primary sm:text-[80px] sm:leading-[72px] xl:text-[96px] xl:leading-[88px]">
+          Escanea
+          <br />
+          tu código
+        </h1>
+        <p className="text-xl leading-8 text-text-secondary sm:text-2xl sm:leading-[34px]">
+          {modo === "camara"
+            ? "Muestra el QR de tu celular a la cámara para registrar tu entrada."
+            : "Acerca el QR de tu celular al lector para registrar tu entrada."}
+        </p>
+        <div className="flex justify-center lg:justify-start">
           <button
             type="button"
             onClick={() => setModo(modo === "lector" ? "camara" : "lector")}
-            className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm text-text-secondary hover:text-text-primary"
+            className="inline-flex h-12 items-center gap-2 border border-border px-5 text-base text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary"
           >
             {modo === "lector" ? (
               <>
-                <LuCamera className="h-4 w-4" /> Usar cámara
+                <LuCamera className="h-5 w-5" aria-hidden="true" /> Usar cámara
               </>
             ) : (
               <>
-                <LuKeyboard className="h-4 w-4" /> Usar lector bluetooth
+                <LuKeyboard className="h-5 w-5" aria-hidden="true" /> Usar lector
               </>
             )}
           </button>
-        </>
-      )}
+        </div>
+      </div>
+
+      <KioscoMarco>
+        {modo === "camara" ? (
+          <QrCameraScanner onDetect={procesar} />
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              procesar(token);
+            }}
+            className="flex w-full flex-col items-center gap-5"
+          >
+            <QrPictograma className="h-24 w-24 text-text-muted" />
+            <input
+              ref={inputRef}
+              autoFocus
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              onBlur={() => setTimeout(focusInput, 50)}
+              placeholder="Escanea o escribe tu código…"
+              aria-label="Código del socio"
+              className="h-12 w-full rounded border border-border bg-bg px-3 text-center text-base text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+            />
+            <p
+              className="h-5 font-mono text-etiqueta uppercase text-text-muted"
+              aria-live="polite"
+            >
+              {pending ? "Verificando…" : ""}
+            </p>
+          </form>
+        )}
+      </KioscoMarco>
     </div>
   );
 }

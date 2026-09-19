@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { LuArrowLeft, LuCheck } from "react-icons/lu";
+import { LuArrowLeft, LuCheck, LuClipboardList } from "react-icons/lu";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { KioscoScan } from "./KioscoScan";
 import { CodigoAutorizacion } from "./CodigoAutorizacion";
 import {
@@ -138,7 +139,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
   // ---- MercadoPago ----
   if (paso === "mp" && mpInit) {
     return (
-      <div className="flex w-full max-w-xl flex-col items-center gap-6 rounded-3xl border border-brand-green/40 bg-brand-green/10 p-12 text-center">
+      <div className="flex w-full max-w-xl flex-col items-center gap-6 border border-brand-green/40 bg-brand-green/10 p-12 text-center">
         <LuCheck className="h-16 w-16 text-brand-green" />
         <p className="text-2xl font-semibold text-text-primary">
           Continúa tu pago con MercadoPago
@@ -149,7 +150,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
         <button
           type="button"
           onClick={() => window.open(mpInit, "_blank", "noopener,noreferrer")}
-          className="rounded-2xl bg-brand-green px-8 py-4 text-lg font-semibold text-bg transition-opacity hover:opacity-90"
+          className="h-14 bg-brand-green px-8 text-lg font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
         >
           Abrir pago
         </button>
@@ -203,7 +204,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
         </button>
 
         <div
-          className={`flex w-full flex-col items-center gap-3 rounded-3xl border p-10 text-center ${color}`}
+          className={`flex w-full flex-col items-center gap-3 border p-10 text-center ${color}`}
         >
           <p className="text-lg font-semibold text-text-secondary">
             Hola, {miembro.nombre}
@@ -222,7 +223,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
             setError(null);
             setPaso("planes");
           }}
-          className="rounded-2xl bg-brand-green px-8 py-4 text-lg font-semibold text-bg transition-opacity hover:opacity-90"
+          className="h-14 bg-brand-green px-8 text-lg font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
         >
           {cta}
         </button>
@@ -245,9 +246,11 @@ export function KioscoMembresia({ slug }: { slug: string }) {
           Elige tu plan
         </p>
         {planes.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border py-12 text-center text-lg text-text-secondary">
-            No hay planes disponibles en este momento.
-          </p>
+          <EmptyState
+            icon={<LuClipboardList />}
+            title="Sin planes"
+            description="Por ahora no hay planes para contratar aquí. Pregunta en recepción."
+          />
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {planes.map((p) => (
@@ -255,12 +258,12 @@ export function KioscoMembresia({ slug }: { slug: string }) {
                 key={p.id}
                 type="button"
                 onClick={() => elegirPlan(p)}
-                className="flex flex-col items-start gap-1 rounded-2xl border border-border bg-surface p-5 text-left transition-colors hover:border-brand-green"
+                className="flex flex-col items-start gap-1 border border-border bg-surface p-5 text-left transition-colors hover:border-brand-green"
               >
                 <span className="text-xl font-semibold text-text-primary">
                   {p.nombre}
                 </span>
-                <span className="text-2xl font-bold text-brand-green">
+                <span className="font-mono text-2xl font-bold tabular-nums text-brand-green">
                   {pesos(p.precio)}
                 </span>
                 <span className="text-sm text-text-secondary">
@@ -286,9 +289,9 @@ export function KioscoMembresia({ slug }: { slug: string }) {
           <LuArrowLeft className="h-4 w-4" /> Atrás
         </button>
 
-        <div className="w-full rounded-2xl border border-border bg-surface p-6 text-center">
-          <p className="text-lg text-text-secondary">{planSel.nombre}</p>
-          <p className="text-3xl font-bold text-text-primary">
+        <div className="w-full border border-border bg-surface p-6 text-center">
+          <p className="font-mono text-etiqueta uppercase text-text-secondary">{planSel.nombre}</p>
+          <p className="font-mono text-cifra font-bold tabular-nums text-text-primary">
             {pesos(planSel.precio)}
           </p>
         </div>
@@ -306,7 +309,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
             type="button"
             onClick={() => pagar("efectivo")}
             disabled={pending}
-            className="rounded-2xl border border-border bg-surface px-6 py-4 text-lg font-semibold text-text-primary transition-colors hover:border-brand-green disabled:opacity-40"
+            className="h-14 border border-border bg-surface px-6 text-lg font-semibold text-text-primary transition-colors hover:border-brand-green disabled:opacity-40"
           >
             Efectivo
           </button>
@@ -314,7 +317,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
             type="button"
             onClick={() => pagar("transferencia")}
             disabled={pending}
-            className="rounded-2xl border border-border bg-surface px-6 py-4 text-lg font-semibold text-text-primary transition-colors hover:border-brand-green disabled:opacity-40"
+            className="h-14 border border-border bg-surface px-6 text-lg font-semibold text-text-primary transition-colors hover:border-brand-green disabled:opacity-40"
           >
             Transferencia
           </button>
@@ -323,7 +326,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
               type="button"
               onClick={pagarMp}
               disabled={pending}
-              className="rounded-2xl bg-brand-green px-6 py-4 text-lg font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="h-14 bg-brand-green px-6 text-lg font-semibold text-on-brand transition-colors hover:bg-brand-green/90 disabled:opacity-40"
             >
               Pagar con tarjeta / OXXO / SPEI
             </button>

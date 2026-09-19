@@ -24,7 +24,7 @@ export default async function KioscoPage({
   if (!hasFeature(gym.plan as Plan, "qr_access")) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-bg px-6 text-center">
-        <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+        <h1 className="font-display text-3xl uppercase text-text-primary">
           {gym.nombre}
         </h1>
         <p className="max-w-md text-lg text-text-secondary">

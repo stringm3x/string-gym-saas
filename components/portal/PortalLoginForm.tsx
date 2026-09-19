@@ -3,14 +3,19 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LuArrowRight, LuArrowLeft, LuRefreshCw } from "react-icons/lu";
-
-/** Segundos entre reenvíos de código (coincide con el throttle del backend). */
-const REENVIO_SEG = 60;
 import {
   solicitarCodigoAction,
   verificarCodigoAction,
 } from "@/app/portal/[slug]/login/actions";
 
+/** Segundos entre reenvíos de código (coincide con el throttle del backend). */
+const REENVIO_SEG = 60;
+
+/**
+ * Acceso del socio por código de un solo uso. Tarjeta con sombra dura en el
+ * color del gimnasio; el nombre del gym es el titular (Anton): aquí el socio
+ * está conociendo el portal, no trabajando.
+ */
 export function PortalLoginForm({
   slug,
   gymNombre,
@@ -80,24 +85,30 @@ export function PortalLoginForm({
   }
 
   const inputClass =
-    "w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:border-brand-green";
+    "h-12 w-full rounded border border-border bg-bg px-3 text-base text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
+  const labelClass = "mb-2 block font-mono text-etiqueta uppercase text-text-secondary";
+  const primaryClass =
+    "inline-flex h-12 w-full items-center justify-center gap-2 bg-brand-green px-4 text-base font-semibold text-on-brand transition-colors hover:bg-brand-green/90 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-6">
-      <div className="mb-5 text-center">
-        <p className="font-display text-xl uppercase tracking-wide text-text-primary">
-          {gymNombre}
+    <div className="w-full max-w-sm border border-border bg-surface p-8 shadow-hard-green">
+      <div className="mb-8 flex flex-col gap-3">
+        <p className="font-mono text-etiqueta uppercase text-brand-green">
+          Portal del socio
         </p>
-        <p className="mt-1 text-xs text-text-secondary">Portal del miembro</p>
+        <h1 className="font-display text-titular-m uppercase text-text-primary">
+          {gymNombre}
+        </h1>
       </div>
 
       {paso === "id" ? (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-5">
           <div>
-            <label className="mb-1 block text-xs font-medium text-text-secondary">
+            <label htmlFor="portal-id" className={labelClass}>
               Teléfono o correo
             </label>
             <input
+              id="portal-id"
               type="text"
               value={identificador}
               onChange={(e) => setIdentificador(e.target.value)}
@@ -109,19 +120,18 @@ export function PortalLoginForm({
           </div>
           {puedeWhatsapp && (
             <div>
-              <label className="mb-1 block text-xs font-medium text-text-secondary">
-                Recibir código por
-              </label>
+              <p className={labelClass}>Recibir código por</p>
               <div className="grid grid-cols-2 gap-2">
                 {(["email", "whatsapp"] as const).map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setCanal(c)}
-                    className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
+                    aria-pressed={canal === c}
+                    className={`h-11 border text-sm transition-colors ${
                       canal === c
                         ? "border-brand-green bg-brand-green/10 text-brand-green"
-                        : "border-border bg-bg text-text-secondary hover:text-text-primary"
+                        : "border-border text-text-secondary hover:text-text-primary"
                     }`}
                   >
                     {c === "email" ? "Correo" : "WhatsApp"}
@@ -130,46 +140,63 @@ export function PortalLoginForm({
               </div>
             </div>
           )}
-          {error && <p className="text-xs text-danger">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          )}
           <button
             type="button"
             disabled={pending || !identificador.trim()}
             onClick={solicitar}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+            className={primaryClass}
           >
             {pending ? "Enviando…" : "Enviar código"}
-            <LuArrowRight className="h-4 w-4" />
+            <LuArrowRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
-          <p className="text-xs text-text-secondary">
+        <div className="flex flex-col gap-5">
+          <p className="text-sm text-text-secondary">
             Enviamos un código a{" "}
-            <b className="text-text-primary">{destinoMask}</b>. Vence en 10
-            minutos.
+            <b className="font-semibold text-text-primary">{destinoMask}</b>.
+            Vence en 10 minutos.
           </p>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            onKeyDown={(e) => e.key === "Enter" && verificar()}
-            placeholder="______"
-            className={`${inputClass} text-center text-lg tracking-[0.5em]`}
-            autoFocus
-          />
-          {error && <p className="text-xs text-danger">{error}</p>}
+          <div>
+            <label htmlFor="portal-codigo" className={labelClass}>
+              Código de 6 dígitos
+            </label>
+            <input
+              id="portal-codigo"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={codigo}
+              onChange={(e) =>
+                setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              onKeyDown={(e) => e.key === "Enter" && verificar()}
+              placeholder="______"
+              className={`${inputClass} h-14 text-center font-mono text-2xl tracking-[0.5em]`}
+              autoFocus
+            />
+          </div>
+          {error && (
+            <p role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          )}
           <button
             type="button"
             disabled={pending || codigo.length !== 6}
             onClick={verificar}
-            className="w-full rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+            className={primaryClass}
           >
             {pending ? "Verificando…" : "Entrar"}
           </button>
 
           {reenvioEn > 0 ? (
-            <p className="text-center text-xs text-text-muted">
+            <p className="text-center font-mono text-etiqueta uppercase text-text-muted">
               ¿No llegó? Reenviar en {reenvioEn}s
             </p>
           ) : (
@@ -177,9 +204,9 @@ export function PortalLoginForm({
               type="button"
               onClick={reenviar}
               disabled={pending}
-              className="inline-flex w-full items-center justify-center gap-1.5 text-xs font-medium text-brand-green transition-opacity hover:opacity-80 disabled:opacity-50"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 text-sm text-brand-green underline-offset-4 hover:underline disabled:opacity-50"
             >
-              <LuRefreshCw className="h-3.5 w-3.5" />
+              <LuRefreshCw className="h-4 w-4" aria-hidden="true" />
               {pending ? "Reenviando…" : "Reenviar código"}
             </button>
           )}
@@ -191,9 +218,9 @@ export function PortalLoginForm({
               setCodigo("");
               setError(null);
             }}
-            className="inline-flex w-full items-center justify-center gap-1.5 text-xs text-text-secondary hover:text-text-primary"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 text-sm text-text-secondary hover:text-text-primary"
           >
-            <LuArrowLeft className="h-3.5 w-3.5" /> Usar otro dato
+            <LuArrowLeft className="h-4 w-4" aria-hidden="true" /> Usar otro dato
           </button>
         </div>
       )}

@@ -2,8 +2,11 @@ import { notFound } from "next/navigation";
 import { LuRefreshCw } from "react-icons/lu";
 import { getMiembroByQrTokenPublic } from "@/lib/queries/qr.queries";
 import { generarQRDataUrl } from "@/lib/utils/qr-generator";
+import { Badge } from "@/components/ui/Badge";
 
 export const dynamic = "force-dynamic";
+
+const HEX = /^#[0-9a-fA-F]{6}$/;
 
 function hoyYMD(): string {
   const n = new Date();
@@ -22,6 +25,11 @@ function fechaLarga(ymd: string | null): string {
   });
 }
 
+/**
+ * QR de acceso a pantalla completa. Lo ve el socio en su celular, muchas
+ * veces con mala luz: QR grande sobre blanco, estado claro, nada más.
+ * Manda el color del gimnasio (misma regla que portal y kiosco).
+ */
 export default async function QrPublicPage({
   params,
 }: {
@@ -41,71 +49,77 @@ export default async function QrPublicPage({
     ? "Cuenta inactiva"
     : vencida
       ? "Membresía vencida"
-      : "Activo";
+      : "Membresía activa";
+
+  const acento = miembro.gym?.color_acento;
+  const marcaCss =
+    acento && HEX.test(acento) ? `:root{--color-brand-green:${acento};}` : null;
+  const gymNombre = miembro.gym?.nombre ?? "Gimnasio";
+  const inicial = (gymNombre.trim()[0] ?? "G").toUpperCase();
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-4 py-8">
-      <div className="w-full max-w-sm space-y-5 rounded-2xl border border-border bg-surface p-6 text-center">
-        {/* Logo del gym */}
+      {marcaCss && <style dangerouslySetInnerHTML={{ __html: marcaCss }} />}
+
+      <div className="flex w-full max-w-sm flex-col items-center gap-6 border border-border bg-surface p-6 text-center">
+        {/* Identidad del gimnasio */}
         {miembro.gym?.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={miembro.gym.logo_url}
-            alt={miembro.gym?.nombre ?? ""}
-            className="mx-auto h-12 object-contain"
+            alt={gymNombre}
+            className="h-12 object-contain"
           />
         ) : (
-          <p className="font-display text-xl uppercase tracking-wide text-text-primary">
-            {miembro.gym?.nombre ?? "Gym"}
-          </p>
+          <div className="flex items-center gap-3">
+            <span
+              aria-hidden="true"
+              className="flex h-9 w-9 items-center justify-center bg-brand-green font-display text-xl leading-none text-on-brand"
+            >
+              {inicial}
+            </span>
+            <span className="text-base font-semibold text-text-primary">
+              {gymNombre}
+            </span>
+          </div>
         )}
 
-        {/* Nombre del miembro */}
-        <h1 className="font-display text-2xl uppercase tracking-wide text-text-primary">
+        {/* Nombre del socio: aquí sí entra el cartel */}
+        <h1 className="font-display text-titular-m uppercase text-text-primary">
           {miembro.nombre}
         </h1>
 
-        {/* QR */}
-        <div className="relative mx-auto w-fit">
-          <div className="rounded-xl bg-white p-3">
+        {/* QR sobre blanco puro: los lectores lo prefieren */}
+        <div className="relative w-fit">
+          <div className="bg-white p-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qr} alt="Código QR de acceso" className="h-56 w-56" />
+            <img src={qr} alt="Código QR de acceso" className="h-60 w-60" />
           </div>
           {invalido && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-danger/80">
-              <span className="px-3 text-center text-sm font-semibold text-text-primary">
+            <div className="absolute inset-0 flex items-center justify-center bg-danger/85">
+              <span className="px-4 text-center text-lg font-semibold text-text-primary">
                 {estadoLabel}
               </span>
             </div>
           )}
         </div>
 
-        {/* Estado */}
-        <span
-          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
-            invalido
-              ? "border-danger/30 bg-danger/10 text-danger"
-              : "border-brand-green/30 bg-brand-green/10 text-brand-green"
-          }`}
-        >
-          {estadoLabel}
-        </span>
+        <div className="flex flex-col items-center gap-2">
+          <Badge variant={invalido ? "danger" : "success"}>{estadoLabel}</Badge>
+          <p className="font-mono text-etiqueta uppercase text-text-muted">
+            Vence {fechaLarga(miembro.fecha_vencimiento)}
+          </p>
+        </div>
 
-        {/* Vencimiento */}
-        <p className="text-sm text-text-secondary">
-          Vence: {fechaLarga(miembro.fecha_vencimiento)}
-        </p>
-
-        {/* Actualizar */}
         <a
           href={`/qr/${token}`}
-          className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary"
+          className="inline-flex h-10 items-center gap-2 text-sm text-text-muted hover:text-text-secondary"
         >
-          <LuRefreshCw className="h-3.5 w-3.5" /> Actualizar
+          <LuRefreshCw className="h-4 w-4" aria-hidden="true" /> Actualizar
         </a>
       </div>
 
-      <p className="mt-4 text-[11px] text-text-muted">
+      <p className="mt-5 text-sm text-text-muted">
         Muestra este código en la entrada del gimnasio.
       </p>
     </div>

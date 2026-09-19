@@ -26,6 +26,13 @@ function encabezadoFecha(iso: string): string {
   });
 }
 
+function fechaCorta(iso: string): string {
+  return new Date(iso + "T00:00:00")
+    .toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short" })
+    .replace(/\./g, "");
+}
+
+/** Reservas del socio y clases disponibles, en filas de 56px para el pulgar. */
 export function PortalClases({
   slug,
   sesiones,
@@ -83,37 +90,38 @@ export function PortalClases({
     });
   }
 
+  const btnSecundario =
+    "inline-flex h-11 shrink-0 items-center border border-border px-4 text-sm text-text-primary transition-colors hover:border-text-secondary disabled:opacity-50";
+  const btnPrimario =
+    "inline-flex h-11 shrink-0 items-center bg-brand-green px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90 disabled:opacity-50";
+
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {misReservas.length > 0 && (
-        <section className="rounded-2xl border border-border bg-surface p-5">
-          <h2 className="text-sm font-semibold text-text-primary">
+        <section className="border border-border bg-surface">
+          <p className="border-b border-border px-5 py-4 font-mono text-etiqueta uppercase text-text-secondary">
             Mis reservas
-          </h2>
-          <ul className="mt-3 space-y-2">
+          </p>
+          <ul className="divide-y divide-border">
             {misReservas.map((r) => (
               <li
                 key={r.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
+                className="flex items-center justify-between gap-3 px-5 py-4"
               >
-                <div>
-                  <p className="text-sm font-medium text-text-primary">
+                <div className="min-w-0">
+                  <p className="truncate text-[15px] leading-5 text-text-primary">
                     {r.clase_nombre}
-                    {r.estado === "en_lista_espera" && (
-                      <span className="ml-2 rounded-full border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[9px] font-medium text-warning">
-                        En espera
-                      </span>
-                    )}
                   </p>
-                  <p className="text-xs text-text-secondary">
-                    {encabezadoFecha(r.fecha)} · {r.hora_inicio.slice(0, 5)}
+                  <p className="mt-0.5 font-mono text-etiqueta uppercase text-text-muted">
+                    {fechaCorta(r.fecha)} · {r.hora_inicio.slice(0, 5)}
+                    {r.estado === "en_lista_espera" && " · En espera"}
                   </p>
                 </div>
                 <button
                   type="button"
                   disabled={pending && busyId === r.sesion_id}
                   onClick={() => cancelar(r.id, r.sesion_id)}
-                  className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary transition-colors hover:text-danger disabled:opacity-50"
+                  className={btnSecundario}
                 >
                   Cancelar
                 </button>
@@ -123,56 +131,60 @@ export function PortalClases({
         </section>
       )}
 
-      <section className="rounded-2xl border border-border bg-surface p-5">
-        <h2 className="text-sm font-semibold text-text-primary">
+      <section className="border border-border bg-surface">
+        <p className="border-b border-border px-5 py-4 font-mono text-etiqueta uppercase text-text-secondary">
           Clases disponibles
-        </h2>
+        </p>
         {porFecha.length === 0 ? (
-          <p className="mt-3 text-sm text-text-secondary">
+          <p className="px-5 py-8 text-center text-sm text-text-muted">
             No hay clases programadas por ahora.
           </p>
         ) : (
-          <div className="mt-3 space-y-4">
+          <div className="flex flex-col">
             {porFecha.map(([fecha, lista]) => (
               <div key={fecha}>
-                <p className="mb-1.5 text-xs font-medium capitalize text-text-muted">
+                <p className="bg-bg px-5 py-2 font-mono text-etiqueta uppercase text-text-muted">
                   {encabezadoFecha(fecha)}
                 </p>
-                <ul className="space-y-2">
+                <ul className="divide-y divide-border">
                   {lista.map((s) => {
                     const reserva = reservaPorSesion.get(s.id);
                     const lleno = s.cupo_disponible <= 0;
                     return (
                       <li
                         key={s.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
+                        className="flex items-center justify-between gap-3 px-5 py-4"
                       >
-                        <div>
-                          <p className="text-sm font-medium text-text-primary">
-                            {s.clase_nombre}
-                          </p>
-                          <p className="text-xs text-text-secondary">
-                            {s.hora_inicio.slice(0, 5)} ·{" "}
-                            {lleno
-                              ? "Cupo lleno"
-                              : `${s.cupo_disponible}/${s.cupo_maximo} lugares`}
-                          </p>
+                        <div className="flex min-w-0 items-center gap-4">
+                          <span className="w-[52px] shrink-0 font-mono text-dato text-text-secondary">
+                            {s.hora_inicio.slice(0, 5)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-[15px] leading-5 text-text-primary">
+                              {s.clase_nombre}
+                            </p>
+                            <p className="mt-0.5 text-sm text-text-muted">
+                              {lleno
+                                ? "Cupo lleno"
+                                : `${s.cupo_disponible} de ${s.cupo_maximo} lugares`}
+                            </p>
+                          </div>
                         </div>
                         {reserva ? (
                           <button
                             type="button"
                             disabled={pending && busyId === s.id}
                             onClick={() => cancelar(reserva.id, s.id)}
-                            className="shrink-0 rounded-lg border border-brand-green/40 px-3 py-1.5 text-xs font-medium text-brand-green transition-colors hover:border-danger hover:text-danger disabled:opacity-50"
+                            className={`${btnSecundario} border-brand-green/50 text-brand-green hover:border-danger hover:text-danger`}
                           >
-                            Reservada · Cancelar
+                            Cancelar
                           </button>
                         ) : (
                           <button
                             type="button"
                             disabled={pending && busyId === s.id}
                             onClick={() => reservar(s.id)}
-                            className="shrink-0 rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+                            className={lleno ? btnSecundario : btnPrimario}
                           >
                             {lleno ? "Lista de espera" : "Reservar"}
                           </button>

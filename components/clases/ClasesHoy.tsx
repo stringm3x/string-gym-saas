@@ -2,6 +2,10 @@ import Link from "next/link";
 import { formatHora12 } from "@/lib/utils/clases-format";
 import type { ClaseSesion } from "@/lib/types/clases";
 
+/**
+ * Clases de hoy (artboard "Panel del día"): hora en mono, nombre, cupo en
+ * mono. Llena = cupo en ácido. Cancelada = atenuada.
+ */
 export function ClasesHoy({
   sesiones,
   slug,
@@ -11,7 +15,7 @@ export function ClasesHoy({
 }) {
   if (sesiones.length === 0) {
     return (
-      <p className="card-surface px-4 py-6 text-center text-xs text-text-secondary">
+      <p className="px-5 py-8 text-center text-sm text-text-muted">
         No hay clases programadas para hoy.
       </p>
     );
@@ -22,37 +26,42 @@ export function ClasesHoy({
   );
 
   return (
-    <ul className="grid gap-2 sm:grid-cols-2">
+    <ul className="divide-y divide-border">
       {ordenadas.map((s) => {
         const confirmadas = s.cupo_maximo - s.cupo_disponible;
         const cancelada = s.estado === "cancelada";
+        const llena = !cancelada && s.cupo_disponible <= 0;
         return (
           <li key={s.id}>
             <Link
               href={`/${slug}/clases/${s.id}`}
-              className={`card-surface card-interactive flex items-center gap-3 ${
+              className={`flex items-center gap-4 px-5 py-4 transition-colors hover:bg-surface-hover ${
                 cancelada ? "opacity-50" : ""
               }`}
             >
-              <span
-                className="h-12 w-1.5"
-                style={{ backgroundColor: s.clase?.color ?? "#10b981" }}
-              />
-              <div className="min-w-0 flex-1 py-2.5">
-                <p className="truncate text-sm font-medium text-text-primary">
+              <span className="w-[52px] shrink-0 font-mono text-dato text-text-secondary">
+                {formatHora12(s.hora_inicio)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] leading-5 text-text-primary">
                   {s.clase?.nombre ?? "Clase"}
-                </p>
-                <p className="text-xs text-text-muted">
-                  {formatHora12(s.hora_inicio)}
-                  {s.clase?.instructor && ` · ${s.clase.instructor}`}
-                </p>
-              </div>
-              <span className="pr-3 text-xs text-text-secondary">
-                {cancelada ? (
-                  <span className="text-danger">Cancelada</span>
-                ) : (
-                  `${confirmadas}/${s.cupo_maximo}`
+                </span>
+                {s.clase?.instructor && (
+                  <span className="block text-sm text-text-muted">
+                    {s.clase.instructor}
+                  </span>
                 )}
+              </span>
+              <span
+                className={`shrink-0 font-mono text-dato tabular-nums ${
+                  cancelada
+                    ? "text-danger"
+                    : llena
+                      ? "text-brand-green"
+                      : "text-text-muted"
+                }`}
+              >
+                {cancelada ? "Cancelada" : `${confirmadas}/${s.cupo_maximo}`}
               </span>
             </Link>
           </li>

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { LuArrowLeft, LuDownload } from "react-icons/lu";
+import { LuArrowLeft, LuReceipt } from "react-icons/lu";
 import { requirePortal } from "@/lib/portal/session";
 import { getRecibosPortal } from "@/lib/queries/portal.queries";
 import { money } from "@/lib/utils/creditos-calc";
 import { PortalHeader } from "@/components/portal/PortalHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { TZ_MX } from "@/lib/utils/dates";
 
 interface PageProps {
@@ -34,35 +35,35 @@ export default async function PortalRecibosPage({ params }: PageProps) {
   return (
     <div className="min-h-screen">
       <PortalHeader slug={slug} gymNombre={gym.nombre} />
-      <main className="mx-auto max-w-md space-y-4 px-4 py-6">
+      <main className="mx-auto flex max-w-md flex-col gap-5 px-4 py-6">
         <Link
           href={`/portal/${slug}`}
-          className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary"
+          className="inline-flex h-10 items-center gap-2 self-start text-sm text-text-secondary hover:text-text-primary"
         >
-          <LuArrowLeft className="h-3.5 w-3.5" /> Volver
+          <LuArrowLeft className="h-4 w-4" aria-hidden="true" /> Volver
         </Link>
 
-        <h1 className="text-lg font-semibold text-text-primary">Mis recibos</h1>
+        <h1 className="text-pagina font-semibold text-text-primary">Mis recibos</h1>
 
         {recibos.length === 0 ? (
-          <p className="rounded-2xl border border-border bg-surface px-4 py-8 text-center text-sm text-text-secondary">
-            Aún no tienes recibos.
-          </p>
+          <EmptyState
+            icon={<LuReceipt />}
+            title="Sin recibos"
+            description="Cada pago que hagas en el gimnasio queda aquí con su recibo para imprimir."
+          />
         ) : (
-          <ul className="space-y-2">
+          <ul className="divide-y divide-border border border-border bg-surface">
             {recibos.map((r) => (
               <li
                 key={r.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3"
+                className="flex items-center justify-between gap-4 px-5 py-4"
               >
-                <div>
-                  <p className="text-sm font-medium text-text-primary">
+                <div className="min-w-0">
+                  <p className="font-mono text-dato tabular-nums text-text-primary">
                     {money(r.monto)}
-                    <span className="ml-2 text-xs font-normal text-text-secondary">
-                      {CONCEPTO_LABEL[r.concepto] ?? r.concepto}
-                    </span>
                   </p>
-                  <p className="text-xs text-text-secondary">
+                  <p className="mt-0.5 font-mono text-etiqueta uppercase text-text-muted">
+                    {CONCEPTO_LABEL[r.concepto] ?? r.concepto} ·{" "}
                     {fecha(r.fecha_pago)}
                   </p>
                 </div>
@@ -70,9 +71,9 @@ export default async function PortalRecibosPage({ params }: PageProps) {
                   href={`/recibos/${r.token_publico}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-primary transition-colors hover:border-brand-green hover:text-brand-green"
+                  className="inline-flex h-11 shrink-0 items-center border border-border px-4 text-sm text-text-primary transition-colors hover:border-text-secondary"
                 >
-                  <LuDownload className="h-3.5 w-3.5" /> Recibo
+                  Ver recibo
                 </a>
               </li>
             ))}

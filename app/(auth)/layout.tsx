@@ -1,11 +1,9 @@
+import { AuthShell } from "@/components/layout/AuthShell";
+
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
-      {children}
-    </div>
-  );
+  return <AuthShell>{children}</AuthShell>;
 }

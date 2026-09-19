@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { LuShield } from "react-icons/lu";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { AuthShell, AuthCardHeader } from "@/components/layout/AuthShell";
 import { loginAdmin, type AdminLoginState } from "./actions";
 
 const initialState: AdminLoginState = { error: null };
@@ -13,75 +15,54 @@ export default function AdminLoginPage() {
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-brand-green/30 bg-brand-green/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-brand-green">
-            <LuShield className="h-3 w-3" /> Panel interno
-          </div>
-          <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-            ADMIN<span className="text-brand-green">GYMS</span>
-          </h1>
-          <p className="mt-2 text-sm text-text-secondary">
-            Acceso restringido a administradores
-          </p>
-        </div>
+    <AuthShell
+      marca="STRING · Panel interno"
+      headline={
+        <>
+          SOLO PARA
+          <br />
+          <span className="bg-brand-green px-2.5 text-on-brand">STRING</span>.
+        </>
+      }
+      lead="Gimnasios, solicitudes de prueba y bitácora de cambios. Acceso restringido a administradores."
+    >
+      <AuthCardHeader kicker="Panel interno" titulo="Entrar" />
 
-        <form action={formAction} className="space-y-4">
-          <div className="space-y-1.5">
-            <label
-              htmlFor="email"
-              className="block text-xs font-medium text-text-secondary"
-            >
-              Correo
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
-              placeholder="tu@correo.com"
-            />
-          </div>
+      <form action={formAction} className="flex flex-col gap-5">
+        <Input
+          label="Correo"
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          placeholder="tu@stringwebs.com"
+          className="text-base"
+        />
+        <Input
+          label="Contraseña"
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+          placeholder="••••••••"
+          className="text-base"
+        />
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="password"
-              className="block text-xs font-medium text-text-secondary"
-            >
-              Contraseña
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
-              placeholder="••••••••"
-            />
-          </div>
-
-          {state.error && (
-            <p
-              role="alert"
-              className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
-            >
-              {state.error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-bg transition-colors duration-150 hover:bg-brand-green/90 disabled:cursor-not-allowed disabled:opacity-50"
+        {state.error && (
+          <p
+            role="alert"
+            className="border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
           >
-            {isPending ? "Entrando…" : "Entrar"}
-          </button>
-        </form>
-      </div>
-    </div>
+            {state.error}
+          </p>
+        )}
+
+        <Button type="submit" size="lg" className="w-full" loading={isPending}>
+          {isPending ? "Entrando…" : "Entrar"}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

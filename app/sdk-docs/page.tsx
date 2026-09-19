@@ -12,7 +12,7 @@ const SDK_SRC = "https://app.gym.stringwebs.com/sdk/string-gym.js";
 
 function Code({ children }: { children: string }) {
   return (
-    <pre className="overflow-x-auto rounded-lg border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-text-primary">
+    <pre className="overflow-x-auto border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-text-primary">
       {children}
     </pre>
   );
@@ -24,7 +24,7 @@ function AttrTable({
   rows: [string, string, string, string][];
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="overflow-x-auto border border-border">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border bg-surface text-left uppercase tracking-wide text-text-muted">
@@ -77,7 +77,7 @@ export default function SdkDocsPage() {
     <div className="min-h-screen bg-bg px-4 py-12 text-text-primary">
       <div className="mx-auto max-w-3xl space-y-8">
         <header className="space-y-2">
-          <h1 className="font-display text-3xl uppercase tracking-wide">
+          <h1 className="font-display text-3xl uppercase">
             STRING<span className="text-brand-green">GYM</span> · SDK
           </h1>
           <p className="text-sm text-text-secondary">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { LuMinus, LuPlus, LuArrowLeft } from "react-icons/lu";
+import { LuMinus, LuPlus, LuArrowLeft, LuPackage } from "react-icons/lu";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { KioscoScan } from "./KioscoScan";
 import { CodigoAutorizacion } from "./CodigoAutorizacion";
 import {
@@ -137,9 +138,11 @@ export function KioscoComprar({ slug }: { slug: string }) {
       </div>
 
       {productos.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border py-12 text-center text-lg text-text-secondary">
-          No hay productos disponibles en este momento.
-        </p>
+        <EmptyState
+          icon={<LuPackage />}
+          title="Sin productos"
+          description="Por ahora no hay productos a la venta aquí. Pregunta en recepción."
+        />
       ) : (
         <>
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-2 pr-1">
@@ -148,13 +151,13 @@ export function KioscoComprar({ slug }: { slug: string }) {
               return (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-4 py-3"
+                  className="flex items-center justify-between gap-3 border border-border bg-surface px-4 py-3"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-lg font-medium text-text-primary">
                       {p.nombre}
                     </p>
-                    <p className="text-sm text-text-secondary">
+                    <p className="font-mono text-dato tabular-nums text-text-secondary">
                       {pesos(p.precio)} · {p.stock} disponibles
                     </p>
                   </div>
@@ -164,11 +167,11 @@ export function KioscoComprar({ slug }: { slug: string }) {
                       onClick={() => cambiar(p.id, -1, p.stock)}
                       disabled={q === 0}
                       aria-label="Quitar uno"
-                      className="flex h-11 w-11 items-center justify-center rounded-xl border border-border text-text-primary transition-colors hover:border-brand-green disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center border border-border text-text-primary transition-colors hover:border-brand-green disabled:opacity-30"
                     >
                       <LuMinus className="h-5 w-5" />
                     </button>
-                    <span className="w-8 text-center text-2xl font-semibold text-text-primary">
+                    <span className="w-8 text-center font-mono text-2xl font-bold tabular-nums text-text-primary">
                       {q}
                     </span>
                     <button
@@ -176,7 +179,7 @@ export function KioscoComprar({ slug }: { slug: string }) {
                       onClick={() => cambiar(p.id, 1, p.stock)}
                       disabled={q >= p.stock}
                       aria-label="Agregar uno"
-                      className="flex h-11 w-11 items-center justify-center rounded-xl border border-border text-text-primary transition-colors hover:border-brand-green disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center border border-border text-text-primary transition-colors hover:border-brand-green disabled:opacity-30"
                     >
                       <LuPlus className="h-5 w-5" />
                     </button>
@@ -189,7 +192,7 @@ export function KioscoComprar({ slug }: { slug: string }) {
           {/* Footer fijo: método + total + acción (siempre visible) */}
           <div className="shrink-0 space-y-3 border-t border-border pt-3">
             <div>
-              <p className="mb-2 text-sm font-medium text-text-secondary">
+              <p className="mb-2 font-mono text-etiqueta uppercase text-text-secondary">
                 Método de pago
               </p>
               <div className="flex flex-wrap gap-2">
@@ -199,9 +202,9 @@ export function KioscoComprar({ slug }: { slug: string }) {
                     type="button"
                     onClick={() => setMetodo(m)}
                     className={
-                      "rounded-xl border px-5 py-2.5 text-base font-medium transition-colors " +
+                      "h-12 border px-5 text-base font-medium transition-colors " +
                       (metodo === m
-                        ? "border-brand-green bg-brand-green/10 text-text-primary"
+                        ? "border-brand-green bg-surface-hover text-brand-green"
                         : "border-border text-text-secondary hover:text-text-primary")
                     }
                   >
@@ -219,8 +222,10 @@ export function KioscoComprar({ slug }: { slug: string }) {
 
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm text-text-secondary">Total</p>
-                <p className="text-3xl font-bold text-text-primary">
+                <p className="font-mono text-etiqueta uppercase text-text-secondary">
+                  Total
+                </p>
+                <p className="font-mono text-cifra font-bold tabular-nums text-text-primary">
                   {pesos(total)}
                 </p>
               </div>
@@ -228,7 +233,7 @@ export function KioscoComprar({ slug }: { slug: string }) {
                 type="button"
                 onClick={generar}
                 disabled={items.length === 0 || pending}
-                className="rounded-2xl bg-brand-green px-8 py-4 text-lg font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+                className="h-14 bg-brand-green px-8 text-lg font-semibold text-on-brand transition-colors hover:bg-brand-green/90 disabled:opacity-40"
               >
                 {pending ? "Generando…" : "Generar código"}
               </button>

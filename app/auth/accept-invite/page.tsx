@@ -6,6 +6,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { AuthShell, AuthCardHeader } from "@/components/layout/AuthShell";
 import { acceptInviteAction, checkInviteStatusAction } from "./actions";
 
 type Estado = "verificando" | "listo" | "invalido" | "guardando";
@@ -254,17 +255,14 @@ function AcceptInviteInner() {
   }
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="mb-8 text-center">
-        <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-          STRING<span className="text-brand-green">GYM</span>
-        </h1>
-        <p className="mt-2 text-sm text-text-secondary">
-          Crea tu contraseña para acceder
-        </p>
-      </div>
+    <div>
+      <AuthCardHeader
+        kicker="Invitación"
+        titulo="Crea tu contraseña"
+        texto="Te invitaron al equipo de un gimnasio. Con esto entras a su panel."
+      />
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <Input
           label="Nombre completo"
           value={nombre}
@@ -292,12 +290,17 @@ function AcceptInviteInner() {
         />
 
         {error && (
-          <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+          <p className="border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}
 
-        <Button type="submit" className="w-full" loading={estado === "guardando"}>
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          loading={estado === "guardando"}
+        >
           Crear contraseña y entrar
         </Button>
       </form>
@@ -307,12 +310,12 @@ function AcceptInviteInner() {
 
 export default function AcceptInvitePage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
+    <AuthShell>
       <Suspense
         fallback={<p className="text-sm text-text-secondary">Cargando…</p>}
       >
         <AcceptInviteInner />
       </Suspense>
-    </div>
+    </AuthShell>
   );
 }
