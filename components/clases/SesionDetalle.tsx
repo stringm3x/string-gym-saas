@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
+import { Button } from "@/components/ui/Button";
 import { formatDiaCorto, formatHora12 } from "@/lib/utils/clases-format";
 import { cancelarSesionAction } from "@/app/(tenant)/[slug]/clases/[sesionId]/actions";
 import { ReservaQuickForm } from "./ReservaQuickForm";
@@ -13,6 +14,8 @@ import type { ClaseSesion } from "@/lib/types/clases";
 
 const ACTIVAS = ["confirmada", "asistio", "no_asistio"];
 
+/** Detalle de una sesión: kicker con día y hora en mono, título en Geist,
+ * cupo en mono; reservas y lista de espera en tarjetas con cabecera. */
 export function SesionDetalle({
   sesion,
   slug,
@@ -30,6 +33,7 @@ export function SesionDetalle({
   const espera = reservas.filter((r) => r.estado === "en_lista_espera");
   const confirmadas = sesion.cupo_maximo - sesion.cupo_disponible;
   const cancelada = sesion.estado === "cancelada";
+  const llena = !cancelada && sesion.cupo_disponible <= 0;
 
   function cancelarSesion() {
     if (!confirm("¿Cancelar esta sesión? Las reservas quedarán sin efecto."))
@@ -41,65 +45,78 @@ export function SesionDetalle({
   }
 
   return (
-    <div className="space-y-5">
-      <Link
-        href={`/${slug}/clases`}
-        className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary"
-      >
-        <LuArrowLeft className="h-3.5 w-3.5" /> Calendario
-      </Link>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1.5">
+        <Link
+          href={`/${slug}/clases`}
+          className="inline-flex h-9 items-center gap-1.5 self-start text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
+        >
+          <LuArrowLeft className="h-4 w-4" aria-hidden="true" /> Calendario
+        </Link>
 
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <span
-          className="mt-1 h-10 w-1.5 rounded-full"
-          style={{ backgroundColor: sesion.clase?.color ?? "#10b981" }}
-        />
-        <div>
-          <h1 className="text-xl font-semibold text-text-primary">
+        <p className="font-mono text-etiqueta uppercase text-text-muted">
+          {formatDiaCorto(sesion.fecha)} · {formatHora12(sesion.hora_inicio)} –{" "}
+          {formatHora12(sesion.hora_fin)}
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <h1 className="flex items-center gap-3 text-pagina font-semibold text-text-primary">
+            <span
+              className="h-7 w-1.5 shrink-0"
+              style={{ backgroundColor: sesion.clase?.color ?? "#10b981" }}
+              aria-hidden="true"
+            />
             {sesion.clase?.nombre ?? "Clase"}
           </h1>
-          <p className="text-sm text-text-secondary">
-            {formatDiaCorto(sesion.fecha)} · {formatHora12(sesion.hora_inicio)} –{" "}
-            {formatHora12(sesion.hora_fin)}
-            {sesion.clase?.instructor && ` · ${sesion.clase.instructor}`}
-          </p>
-          <p className="mt-1 text-xs text-text-muted">
-            {confirmadas}/{sesion.cupo_maximo} confirmados
-            {sesion.cupo_disponible <= 0 && !cancelada && (
-              <span className="ml-1 text-warning">· Completo</span>
-            )}
-          </p>
+          <span
+            className={`font-mono text-dato tabular-nums ${
+              cancelada
+                ? "text-danger"
+                : llena
+                  ? "text-brand-green"
+                  : "text-text-secondary"
+            }`}
+          >
+            {cancelada
+              ? "Cancelada"
+              : `${confirmadas}/${sesion.cupo_maximo}${llena ? " · Llena" : ""}`}
+          </span>
         </div>
+        {sesion.clase?.instructor && (
+          <p className="text-sm text-text-muted">{sesion.clase.instructor}</p>
+        )}
       </div>
 
       {cancelada ? (
-        <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+        <p className="border border-danger/40 px-4 py-3 text-sm text-danger">
           Esta sesión está cancelada.
-        </div>
+        </p>
       ) : (
         <ReservaQuickForm sesionId={sesion.id} />
       )}
 
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-text-primary">
-          Reservas ({activas.length})
-        </h3>
+      <section className="card-surface">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h3 className="text-base font-semibold text-text-primary">Reservas</h3>
+          <span className="font-mono text-etiqueta text-text-muted">
+            {activas.length}
+          </span>
+        </div>
         <ReservasList sesionId={sesion.id} reservas={activas} />
-      </div>
+      </section>
 
       <ListaEsperaPanel sesionId={sesion.id} reservas={espera} />
 
       {canGestionar && !cancelada && (
         <div className="border-t border-border pt-4">
-          <button
+          <Button
             type="button"
-            disabled={pending}
+            variant="secondary"
+            loading={pending}
             onClick={cancelarSesion}
-            className="rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
+            className="border-danger/40 text-danger hover:border-danger"
           >
             Cancelar sesión
-          </button>
+          </Button>
         </div>
       )}
     </div>

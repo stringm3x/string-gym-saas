@@ -1,16 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  LuLockOpen,
-  LuLock,
-  LuHistory,
-  LuChevronDown,
-  LuChevronUp,
-} from "react-icons/lu";
+import { LuLockOpen, LuLock, LuChevronDown, LuChevronUp } from "react-icons/lu";
 import { Button } from "@/components/ui/Button";
+import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
 import { formatMoneda } from "@/lib/utils/format";
 import { TZ_MX } from "@/lib/utils/dates";
@@ -25,6 +20,9 @@ import {
   abrirCorteAction,
   cerrarCorteAction,
 } from "@/app/(tenant)/[slug]/caja/corte-actions";
+
+const INPUT =
+  "h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
 
 function hora(iso: string): string {
   return new Intl.DateTimeFormat("es-MX", {
@@ -49,6 +47,11 @@ interface CortePanelProps {
   staffParaCheckin: StaffParaCheckin[];
 }
 
+/**
+ * Tarjeta del turno (artboard "Caja"). Los totales por método los pinta la
+ * página encima; aquí va el estado del turno, el desglose por tipo y el
+ * cierre con conteo de efectivo.
+ */
 export function CortePanel({
   slug,
   cajaId,
@@ -60,9 +63,9 @@ export function CortePanel({
   checkinRequerido,
   staffParaCheckin,
 }: CortePanelProps) {
-  // Con turno abierto y sin nada pendiente, no vale la pena ocupar toda la
-  // parte superior de la página — arranca colapsado en una barra resumen.
-  // Sin turno abierto sí se muestra expandido: es una acción pendiente.
+  // Con turno abierto y sin nada pendiente, no vale la pena ocupar espacio:
+  // arranca colapsado en una barra resumen. Sin turno abierto sí se muestra
+  // expandido: es una acción pendiente.
   const [expanded, setExpanded] = useState(!corte);
 
   if (!requiereCuadre) {
@@ -80,71 +83,76 @@ export function CortePanel({
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface px-5 py-3 text-left transition-colors hover:border-brand-green/40"
+        aria-expanded={false}
+        className="card-surface flex min-h-11 w-full items-center justify-between gap-3 px-5 py-3 text-left transition-colors hover:border-text-secondary"
       >
-        <span className="flex items-center gap-2 text-sm font-medium text-text-primary">
-          <LuLockOpen className="h-4 w-4 text-brand-green" />
+        <span className="flex items-center gap-2 text-sm text-text-primary">
+          <LuLockOpen className="h-4 w-4 text-brand-green" aria-hidden="true" />
           Turno abierto
           {totales && (
-            <span className="text-text-secondary">
-              · {formatMoneda(totales.total)} cobrado
+            <span className="font-mono text-dato tabular-nums text-text-secondary">
+              · {formatMoneda(totales.total)}
             </span>
           )}
         </span>
-        <span className="inline-flex items-center gap-1.5 text-xs text-text-secondary">
+        <span className="inline-flex items-center gap-1.5 text-sm text-text-secondary">
           Ver corte
-          <LuChevronDown className="h-3.5 w-3.5" />
+          <LuChevronDown className="h-4 w-4" aria-hidden="true" />
         </span>
       </button>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+    <section className="card-surface">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <h3 className="flex items-center gap-2 text-base font-semibold text-text-primary">
           {corte ? (
-            <LuLockOpen className="h-4 w-4 text-brand-green" />
+            <LuLockOpen className="h-4 w-4 text-brand-green" aria-hidden="true" />
           ) : (
-            <LuLock className="h-4 w-4 text-text-muted" />
+            <LuLock className="h-4 w-4 text-text-muted" aria-hidden="true" />
           )}
           Corte de caja
         </h3>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <Link
+            href={`/${slug}/caja/cortes`}
+            className="text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
+          >
+            Historial
+          </Link>
           {corte && (
             <button
               type="button"
               onClick={() => setExpanded(false)}
-              className="inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-brand-green"
+              aria-expanded={true}
+              className="inline-flex h-9 items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
             >
-              <LuChevronUp className="h-3.5 w-3.5" /> Colapsar
+              Ocultar
+              <LuChevronUp className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
-          <Link
-            href={`/${slug}/caja/cortes`}
-            className="inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-brand-green"
-          >
-            <LuHistory className="h-3.5 w-3.5" /> Historial
-          </Link>
         </div>
       </div>
 
-      {corte ? (
-        <CorteAbiertoView
-          corte={corte}
-          totales={totales}
-          totalesPorConcepto={totalesPorConcepto}
-          checkinRequerido={checkinRequerido}
-          staffParaCheckin={staffParaCheckin}
-        />
-      ) : (
-        <AbrirCorte
-          cajaId={cajaId}
-          checkinRequerido={checkinRequerido}
-          staffParaCheckin={staffParaCheckin}
-        />
-      )}
-    </div>
+      <div className="p-5">
+        {corte ? (
+          <CorteAbiertoView
+            corte={corte}
+            totales={totales}
+            totalesPorConcepto={totalesPorConcepto}
+            checkinRequerido={checkinRequerido}
+            staffParaCheckin={staffParaCheckin}
+          />
+        ) : (
+          <AbrirCorte
+            cajaId={cajaId}
+            checkinRequerido={checkinRequerido}
+            staffParaCheckin={staffParaCheckin}
+          />
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -169,27 +177,26 @@ function VentasSinCuadre({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      <h3 className="mb-4 text-sm font-semibold text-text-primary">
-        Ventas de hoy · {nombreCaja}
-      </h3>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Tot label="Efectivo" valor={t.efectivo} acento />
-        <Tot label="Tarjeta" valor={t.tarjeta} />
-        <Tot label="Transferencia" valor={t.transferencia} />
-        <Tot label="Total" valor={t.total} />
+    <section className="card-surface">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <h3 className="text-base font-semibold text-text-primary">
+          Ventas de hoy · {nombreCaja}
+        </h3>
+        <span className="font-mono text-dato tabular-nums text-text-primary">
+          {formatMoneda(t.total)}
+        </span>
       </div>
-      {totalesPorConcepto && (
-        <div className="mt-4">
+      <div className="flex flex-col gap-4 p-5">
+        {totalesPorConcepto && (
           <DesglosePorConcepto totalesPorConcepto={totalesPorConcepto} />
-        </div>
-      )}
-      <p className="mt-4 text-[11px] text-text-muted">
-        Esta caja no cuadra efectivo por separado — solo categoriza ventas.
-        Si algún día separas este dinero físicamente, actívalo en
-        Configuración → Cajas.
-      </p>
-    </div>
+        )}
+        <p className="text-sm text-text-muted">
+          Esta caja no cuadra efectivo por separado: solo categoriza ventas.
+          Si algún día separas este dinero físicamente, actívalo en
+          Configuración → Cajas.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -207,14 +214,16 @@ function CheckinPicker({
   onStaffChange: (id: string) => void;
   onPinChange: (pin: string) => void;
 }) {
+  const id = useId();
   return (
-    <div className="space-y-1.5 rounded-lg border border-border bg-bg p-3">
-      <p className="text-xs font-medium text-text-secondary">¿Quién eres?</p>
+    <div className="space-y-2 border border-border bg-bg p-4">
+      <Label htmlFor={`${id}-staff`}>¿Quién eres?</Label>
       <div className="flex gap-2">
         <select
+          id={`${id}-staff`}
           value={staffId}
           onChange={(e) => onStaffChange(e.target.value)}
-          className="flex-1 rounded-lg border border-border bg-surface px-2 py-2 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+          className={cn(INPUT, "min-w-0 flex-1 cursor-pointer")}
         >
           <option value="">Selecciona tu nombre…</option>
           {staff.map((s) => (
@@ -233,7 +242,11 @@ function CheckinPicker({
             onPinChange(e.target.value.replace(/\D/g, "").slice(0, 4))
           }
           placeholder="PIN"
-          className="w-20 rounded-lg border border-border bg-surface px-2 py-2 text-center font-mono text-sm tracking-widest text-text-primary placeholder:tracking-normal focus:border-brand-green focus:outline-none"
+          aria-label="PIN"
+          className={cn(
+            INPUT,
+            "w-24 text-center font-mono tracking-[0.3em] placeholder:tracking-normal"
+          )}
         />
       </div>
     </div>
@@ -280,10 +293,10 @@ function AbrirCorte({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-4">
       <p className="text-sm text-text-secondary">
-        No hay ningún turno abierto. Abre uno con el efectivo con el que arrancas
-        el cajón.
+        No hay ningún turno abierto. Abre uno con el efectivo con el que
+        arrancas el cajón.
       </p>
       {checkinRequerido && (
         <CheckinPicker
@@ -295,8 +308,8 @@ function AbrirCorte({
         />
       )}
       <div className="flex items-end gap-2">
-        <label className="flex-1">
-          <span className="mb-1 block text-xs font-mono uppercase tracking-widest text-text-muted">
+        <label className="flex-1 space-y-2">
+          <span className="block font-mono text-etiqueta uppercase text-text-secondary">
             Fondo inicial (efectivo)
           </span>
           <input
@@ -307,7 +320,7 @@ function AbrirCorte({
             value={fondo}
             onChange={(e) => setFondo(e.target.value)}
             placeholder="0.00"
-            className="w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+            className={cn(INPUT, "font-mono tabular-nums")}
           />
         </label>
         <Button type="button" onClick={abrir} loading={pending}>
@@ -383,73 +396,66 @@ function CorteAbiertoView({
   }
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-text-secondary">
-        Abierto por{" "}
-        <span className="text-text-primary">
-          {corte.abierto_por_nombre ?? "—"}
-        </span>{" "}
-        a las {hora(corte.abierto_at)} · Fondo inicial{" "}
-        {formatMoneda(corte.fondo_inicial)}
-      </p>
+    <div className="flex flex-col gap-5">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+        <Dato label="Abrió" valor={corte.abierto_por_nombre ?? "—"} />
+        <Dato label="Hora" valor={hora(corte.abierto_at)} mono />
+        <Dato label="Fondo inicial" valor={formatMoneda(corte.fondo_inicial)} mono />
+        <Dato
+          label="Total turno"
+          valor={`${formatMoneda(t.total)} · ${t.cantidad}`}
+          mono
+        />
+      </dl>
 
-      {/* Totales del turno */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Tot label="Efectivo" valor={t.efectivo} acento />
-        <Tot label="Tarjeta" valor={t.tarjeta} />
-        <Tot label="Transferencia" valor={t.transferencia} />
-        <Tot label="Total turno" valor={t.total} />
-      </div>
-
-      {/* Desglose por tipo */}
       {totalesPorConcepto && (
         <DesglosePorConcepto totalesPorConcepto={totalesPorConcepto} />
       )}
 
       {/* Cierre */}
-      <div className="space-y-3 border-t border-border pt-4">
-        {t.reembolsosEfectivo > 0 && (
-          <div className="flex items-center justify-between text-sm text-text-secondary">
-            <span>Reembolsos en efectivo</span>
-            <span className="font-mono text-danger">
-              −{formatMoneda(t.reembolsosEfectivo)}
+      <div className="flex flex-col gap-4 border-t border-border pt-5">
+        <ul className="divide-y divide-border border border-border">
+          {t.reembolsosEfectivo > 0 && (
+            <li className="flex items-center justify-between px-4 py-3 text-sm">
+              <span className="text-text-secondary">Reembolsos en efectivo</span>
+              <span className="font-mono text-dato tabular-nums text-danger">
+                −{formatMoneda(t.reembolsosEfectivo)}
+              </span>
+            </li>
+          )}
+          <li className="flex items-center justify-between px-4 py-3 text-sm">
+            <span className="text-text-secondary">Esperado en cajón</span>
+            <span className="font-mono text-dato tabular-nums text-text-primary">
+              {formatMoneda(esperado)}
             </span>
-          </div>
-        )}
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-text-secondary">Esperado en cajón</span>
-          <span className="font-mono font-semibold text-text-primary">
-            {formatMoneda(esperado)}
-          </span>
-        </div>
+          </li>
+        </ul>
 
-        <div className="flex items-end gap-2">
-          <label className="flex-1">
-            <span className="mb-1 block text-xs font-mono uppercase tracking-widest text-text-muted">
-              Efectivo contado
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
-              value={contado}
-              onChange={(e) => setContado(e.target.value)}
-              placeholder="0.00"
-              className="w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
-            />
-          </label>
-        </div>
+        <label className="space-y-2">
+          <span className="block font-mono text-etiqueta uppercase text-text-secondary">
+            Efectivo contado
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            value={contado}
+            onChange={(e) => setContado(e.target.value)}
+            placeholder="0.00"
+            className={cn(INPUT, "font-mono tabular-nums")}
+          />
+        </label>
 
         {diferencia !== null && (
-          <div
+          <p
             className={cn(
-              "flex items-center justify-between rounded-lg px-3 py-2 text-sm",
+              "flex items-center justify-between border px-4 py-3 text-sm",
               diferencia === 0
-                ? "bg-success/10 text-success"
+                ? "border-success/40 text-success"
                 : diferencia < 0
-                  ? "bg-danger/10 text-danger"
-                  : "bg-warning/10 text-warning"
+                  ? "border-danger/40 text-danger"
+                  : "border-warning/40 text-warning"
             )}
           >
             <span>
@@ -459,10 +465,10 @@ function CorteAbiertoView({
                   ? "Faltante"
                   : "Sobrante"}
             </span>
-            <span className="font-mono font-semibold">
+            <span className="font-mono text-dato tabular-nums">
               {formatMoneda(Math.abs(diferencia))}
             </span>
-          </div>
+          </p>
         )}
 
         <textarea
@@ -470,7 +476,8 @@ function CorteAbiertoView({
           onChange={(e) => setNotas(e.target.value)}
           rows={2}
           placeholder="Notas del cierre (opcional)…"
-          className="w-full resize-none rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+          aria-label="Notas del cierre"
+          className="w-full resize-none rounded border border-border bg-bg px-3 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
         />
 
         {checkinRequerido && (
@@ -485,6 +492,7 @@ function CorteAbiertoView({
 
         <Button
           type="button"
+          variant="secondary"
           onClick={cerrar}
           loading={pending}
           className="w-full"
@@ -496,28 +504,28 @@ function CorteAbiertoView({
   );
 }
 
-function Tot({
+function Dato({
   label,
   valor,
-  acento = false,
+  mono = false,
 }: {
   label: string;
-  valor: number;
-  acento?: boolean;
+  valor: string;
+  mono?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-bg px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wider text-text-muted">
+    <div className="min-w-0">
+      <dt className="font-mono text-etiqueta uppercase text-text-muted">
         {label}
-      </p>
-      <p
+      </dt>
+      <dd
         className={cn(
-          "mt-0.5 font-mono text-sm font-semibold tabular-nums",
-          acento ? "text-brand-green" : "text-text-primary"
+          "mt-1 truncate text-text-primary",
+          mono ? "font-mono text-dato tabular-nums" : "text-[15px] leading-5"
         )}
       >
-        {formatMoneda(valor)}
-      </p>
+        {valor}
+      </dd>
     </div>
   );
 }
@@ -544,56 +552,40 @@ function DesglosePorConcepto({
 
   return (
     <div className="space-y-2">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">
-        Desglose por tipo
+      <p className="font-mono text-etiqueta uppercase text-text-muted">
+        Por tipo
       </p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <ul className="divide-y divide-border border border-border">
         {conceptos.map((c) => (
-          <TotConcepto
+          <li
             key={c}
-            label={CONCEPTO_LABELS[c]}
-            valor={totalesPorConcepto[c].total}
-            cantidad={totalesPorConcepto[c].cantidad}
-          />
+            className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+          >
+            <span className="text-text-secondary">
+              {CONCEPTO_LABELS[c]}
+              <span className="ml-2 font-mono text-text-muted">
+                ×{totalesPorConcepto[c].cantidad}
+              </span>
+            </span>
+            <span className="font-mono text-dato tabular-nums text-text-primary">
+              {formatMoneda(totalesPorConcepto[c].total)}
+            </span>
+          </li>
         ))}
-      </div>
-      {totalesPorConcepto.producto.total > 0 && (
-        <div
-          className="flex items-center justify-between rounded-lg border border-success/30 bg-success/5 px-3 py-2"
-          title="Venta de productos menos su costo. En ventas a plazos, el costo se cuenta el día que salió el producto del inventario, no el día de cada cuota — puede no coincidir con el turno exacto."
-        >
-          <span className="text-xs text-text-secondary">
-            Ganancia de productos (estimada)
-          </span>
-          <span className="font-mono text-sm font-semibold tabular-nums text-success">
-            {formatMoneda(totalesPorConcepto.gananciaProductos)}
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TotConcepto({
-  label,
-  valor,
-  cantidad,
-}: {
-  label: string;
-  valor: number;
-  cantidad: number;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-bg px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wider text-text-muted">
-        {label}
-      </p>
-      <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-text-primary">
-        {formatMoneda(valor)}{" "}
-        <span className="text-[10px] font-normal text-text-muted">
-          ({cantidad})
-        </span>
-      </p>
+        {totalesPorConcepto.producto.total > 0 && (
+          <li
+            className="flex items-center justify-between gap-3 px-4 py-3 text-sm"
+            title="Venta de productos menos su costo. En ventas a plazos, el costo se cuenta el día que salió el producto del inventario, no el día de cada cuota — puede no coincidir con el turno exacto."
+          >
+            <span className="text-text-secondary">
+              Ganancia de productos (estimada)
+            </span>
+            <span className="font-mono text-dato tabular-nums text-success">
+              {formatMoneda(totalesPorConcepto.gananciaProductos)}
+            </span>
+          </li>
+        )}
+      </ul>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { LuCreditCard, LuPlus } from "react-icons/lu";
+import { LuPlus } from "react-icons/lu";
+import { Button } from "@/components/ui/Button";
 import type { PlanPagoConCuotas } from "@/lib/types/creditos";
 import { PlanPagoForm } from "./PlanPagoForm";
 import { PlanPagoCard } from "./PlanPagoCard";
@@ -36,30 +37,31 @@ export function MiembroCreditos({
   const sinCatalogo = planesMembresia.length === 0 && productos.length === 0;
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-6">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-          <LuCreditCard className="h-4 w-4 text-brand-green" />
-          Créditos / Pagos a plazos
+    <section className="card-surface">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <h3 className="text-base font-semibold text-text-primary">
+          Pagos a plazos
         </h3>
         {!creando && (
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => setCreando(true)}
             disabled={sinCatalogo}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+            leftIcon={<LuPlus className="h-4 w-4" />}
             title={
               sinCatalogo
                 ? "Crea un plan de membresía o un producto primero"
                 : undefined
             }
           >
-            <LuPlus className="h-3.5 w-3.5" /> Crear plan de pagos
-          </button>
+            Crear plan de pagos
+          </Button>
         )}
       </div>
 
-      <div className="mt-4 space-y-4">
+      <div className="flex flex-col gap-4 p-5">
         {creando && (
           <PlanPagoForm
             miembroId={miembroId}
@@ -70,12 +72,12 @@ export function MiembroCreditos({
         )}
 
         {planes.length === 0 && !creando ? (
-          <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
-            <p className="text-sm text-text-secondary">
+          <div className="border border-border bg-bg px-5 py-8 text-center">
+            <p className="text-sm text-text-muted">
               Este miembro no tiene planes de pago a plazos.
             </p>
             {sinCatalogo && (
-              <p className="mt-1 text-xs text-text-muted">
+              <p className="mt-1 text-sm text-text-muted">
                 Crea primero un plan de membresía o un producto para poder
                 ofrecer pagos a plazos.
               </p>
@@ -87,6 +89,6 @@ export function MiembroCreditos({
           ))
         )}
       </div>
-    </div>
+    </section>
   );
 }

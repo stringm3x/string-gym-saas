@@ -3,7 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/lib/utils/cn";
 import { pagarCuotaAction } from "@/app/(tenant)/[slug]/miembros/[id]/creditos-actions";
 import { money } from "@/lib/utils/creditos-calc";
 
@@ -67,51 +70,53 @@ export function CobroCuotaModal({
       size="sm"
     >
       <div className="space-y-4">
-        <div className="rounded-lg border border-border bg-bg px-4 py-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-text-secondary">Miembro</span>
-            <span className="font-medium text-text-primary">
-              {miembroNombre}
-            </span>
+        <dl className="divide-y divide-border border border-border bg-bg">
+          <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+            <dt className="text-text-secondary">Miembro</dt>
+            <dd className="truncate text-text-primary">{miembroNombre}</dd>
           </div>
-          <div className="mt-1 flex justify-between">
-            <span className="text-text-secondary">Monto</span>
-            <span className="font-semibold text-brand-green">
+          <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+            <dt className="text-text-secondary">Monto</dt>
+            <dd className="font-mono text-dato font-bold tabular-nums text-text-primary">
               {money(monto)}
-            </span>
+            </dd>
           </div>
-        </div>
+        </dl>
 
-        <div className="space-y-1.5">
-          <span className="block text-xs font-medium text-text-secondary">
-            Método de pago
-          </span>
+        <div className="space-y-2">
+          <Label>Método</Label>
           <div className="grid grid-cols-3 gap-2">
-            {METODOS.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                onClick={() => setMetodo(m.value)}
-                className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                  metodo === m.value
-                    ? "border-brand-green bg-brand-green/10 text-brand-green"
-                    : "border-border text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
+            {METODOS.map((m) => {
+              const active = metodo === m.value;
+              return (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => setMetodo(m.value)}
+                  aria-pressed={active}
+                  className={cn(
+                    "inline-flex h-11 items-center justify-center border px-2 text-sm font-medium transition-colors",
+                    active
+                      ? "border-brand-green bg-surface-hover text-brand-green"
+                      : "border-border bg-bg text-text-secondary hover:border-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <button
+        <Button
           type="button"
-          disabled={pending}
+          loading={pending}
           onClick={confirmar}
-          className="w-full rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+          size="lg"
+          className="w-full"
         >
-          {pending ? "Registrando…" : "Confirmar pago"}
-        </button>
+          Confirmar pago · {money(monto)}
+        </Button>
       </div>
     </Modal>
   );

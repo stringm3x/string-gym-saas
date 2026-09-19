@@ -51,7 +51,7 @@ export default async function ProspectosPage({ params }: PageProps) {
   return (
     <div className="flex h-full flex-col space-y-4">
       <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+        <h2 className="text-pagina text-text-primary font-semibold">
           Prospectos
         </h2>
         <p className="mt-1 text-sm text-text-secondary">

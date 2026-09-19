@@ -11,6 +11,7 @@ import {
 } from "react-icons/lu";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
 import { compilarPlantilla } from "@/lib/utils/plantilla";
 import { formatFecha } from "@/lib/utils/format";
@@ -107,12 +108,12 @@ export function BulkActionsBar({
     <>
       {/* Barra flotante */}
       <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-lg shadow-black/20">
-          <span className="whitespace-nowrap text-sm font-medium text-text-primary">
+        <div className="flex items-center gap-3 border border-border bg-surface px-4 py-2">
+          <span className="whitespace-nowrap font-mono text-etiqueta uppercase text-text-primary">
             {count} seleccionado{count !== 1 ? "s" : ""}
           </span>
 
-          <div className="h-4 w-px bg-border" />
+          <div className="h-5 w-px bg-border" />
 
           {/* WhatsApp masivo */}
           {canBulk && (
@@ -147,17 +148,19 @@ export function BulkActionsBar({
 
             {tagDropdownOpen && (
               <>
-                <div
-                  className="fixed inset-0 z-10"
+                <button
+                  type="button"
+                  aria-label="Cerrar lista de tags"
+                  className="fixed inset-0 z-10 cursor-default"
                   onClick={() => setTagDropdownOpen(false)}
                 />
-                <div className="absolute bottom-full left-0 z-20 mb-2 min-w-[160px] rounded-lg border border-border bg-surface py-1 shadow-lg">
+                <div className="absolute bottom-full left-0 z-20 mb-2 min-w-[180px] border border-border bg-surface">
                   {availableTags.map((tag) => (
                     <button
                       key={tag.id}
                       type="button"
                       onClick={() => handleAsignarTag(tag.id)}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-hover"
+                      className="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-sm text-text-primary transition-colors hover:bg-surface-hover"
                     >
                       <span
                         className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
@@ -184,13 +187,13 @@ export function BulkActionsBar({
             </Button>
           )}
 
-          <div className="h-4 w-px bg-border" />
+          <div className="h-5 w-px bg-border" />
 
           {/* Deseleccionar */}
           <button
             type="button"
             onClick={onDeselect}
-            className="rounded-md p-1 text-text-muted hover:bg-surface-hover hover:text-text-primary"
+            className="flex h-9 w-9 items-center justify-center text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
             aria-label="Deseleccionar todo"
           >
             <LuX className="h-4 w-4" />
@@ -206,18 +209,13 @@ export function BulkActionsBar({
         size="lg"
       >
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label
-              htmlFor="plantilla-bulk"
-              className="text-xs font-medium uppercase tracking-wider text-text-secondary"
-            >
-              Plantilla (opcional)
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="plantilla-bulk">Plantilla (opcional)</Label>
             <select
               id="plantilla-bulk"
               value={selectedPlantillaId}
               onChange={(e) => setSelectedPlantillaId(e.target.value)}
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+              className="h-11 w-full cursor-pointer rounded border border-border bg-bg px-3 text-sm text-text-primary focus:border-brand-green focus:outline-none"
             >
               <option value="">Sin plantilla</option>
               {plantillas.map((p) => (
@@ -228,7 +226,7 @@ export function BulkActionsBar({
             </select>
           </div>
 
-          <div className="max-h-80 divide-y divide-border overflow-y-auto rounded-xl border border-border bg-surface">
+          <div className="max-h-80 divide-y divide-border overflow-y-auto border border-border bg-surface">
             {selectedMiembros.map((m) => {
               const msg = selectedPlantilla
                 ? compilarPlantilla(selectedPlantilla.contenido, {
@@ -246,18 +244,18 @@ export function BulkActionsBar({
               return (
                 <div
                   key={m.id}
-                  className="flex items-center justify-between gap-3 px-4 py-3"
+                  className="flex items-center justify-between gap-4 px-4 py-2"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-text-primary">
+                    <p className="truncate text-[15px] leading-5 text-text-primary">
                       {m.nombre}
                     </p>
                     {m.telefono ? (
-                      <p className="font-mono text-xs text-text-muted">
+                      <p className="font-mono text-dato text-text-muted">
                         {m.telefono}
                       </p>
                     ) : (
-                      <p className="text-xs text-danger">Sin teléfono</p>
+                      <p className="text-sm text-danger">Sin teléfono</p>
                     )}
                   </div>
                   {waUrl ? (
@@ -265,21 +263,19 @@ export function BulkActionsBar({
                       href={waUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 rounded-lg bg-whatsapp/10 px-3 py-1.5 text-xs font-medium text-whatsapp transition-colors hover:bg-whatsapp/20"
+                      className="inline-flex h-9 shrink-0 items-center gap-2 border border-border px-3 text-sm text-text-primary transition-colors hover:border-text-secondary"
                     >
                       Abrir
                     </a>
                   ) : (
-                    <span className="shrink-0 text-xs text-text-muted">
-                      Sin teléfono
-                    </span>
+                    <span className="shrink-0 text-sm text-text-muted">—</span>
                   )}
                 </div>
               );
             })}
           </div>
 
-          <p className="text-xs text-text-muted">
+          <p className="text-sm text-text-muted">
             Cada chat se abre por separado en WhatsApp.
           </p>
         </div>

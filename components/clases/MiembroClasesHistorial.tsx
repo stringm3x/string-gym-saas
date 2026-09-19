@@ -2,39 +2,44 @@ import { formatHora12, formatDiaCorto, hoyYMD } from "@/lib/utils/clases-format"
 import type { ReservaMiembro } from "@/lib/types/clases";
 
 const ESTADO_LABEL: Record<string, { label: string; cls: string }> = {
-  confirmada: { label: "Confirmada", cls: "text-brand-green" },
+  confirmada: { label: "Confirmada", cls: "text-text-secondary" },
   en_lista_espera: { label: "Lista de espera", cls: "text-warning" },
   asistio: { label: "Asistió", cls: "text-brand-green" },
-  no_asistio: { label: "No asistió", cls: "text-text-muted" },
+  no_asistio: { label: "No asistió", cls: "text-danger" },
   cancelada: { label: "Cancelada", cls: "text-text-muted" },
 };
 
 function Fila({ r }: { r: ReservaMiembro }) {
   const estado = ESTADO_LABEL[r.estado] ?? ESTADO_LABEL.cancelada;
   return (
-    <li className="flex items-center justify-between gap-2 px-3 py-2">
-      <div className="flex items-center gap-2">
+    <li className="flex items-center justify-between gap-4 px-5 py-3">
+      <div className="flex min-w-0 items-center gap-3">
         <span
-          className="h-2 w-2 rounded-full"
+          className="h-2 w-2 shrink-0 rounded-full"
           style={{ backgroundColor: r.sesion?.clase?.color ?? "#10b981" }}
+          aria-hidden="true"
         />
-        <div>
-          <p className="text-xs font-medium text-text-primary">
+        <div className="min-w-0">
+          <p className="truncate text-[15px] leading-5 text-text-primary">
             {r.sesion?.clase?.nombre ?? "Clase"}
           </p>
-          <p className="text-[10px] text-text-muted">
+          <p className="font-mono text-dato text-text-muted">
             {r.sesion ? formatDiaCorto(r.sesion.fecha) : "—"}
             {r.sesion && ` · ${formatHora12(r.sesion.hora_inicio)}`}
           </p>
         </div>
       </div>
-      <span className={`text-[10px] font-medium ${estado.cls}`}>
+      <span
+        className={`shrink-0 font-mono text-xs uppercase tracking-[0.12em] ${estado.cls}`}
+      >
         {estado.label}
       </span>
     </li>
   );
 }
 
+/** Clases del miembro: tarjeta con cabecera y asistencia en mono; próximas
+ * e histórico como dos listas con kicker. */
 export function MiembroClasesHistorial({
   reservas,
 }: {
@@ -62,19 +67,20 @@ export function MiembroClasesHistorial({
   );
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text-primary">Clases</h3>
-        <div className="flex items-center gap-3 text-xs text-text-secondary">
+    <section className="card-surface">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <h3 className="text-base font-semibold text-text-primary">Clases</h3>
+        <div className="flex items-center gap-4 font-mono text-dato tabular-nums text-text-secondary">
           {tasa !== null && (
             <span>
-              Asistencia: <span className="text-text-primary">{tasa}%</span> (
-              {asistio}/{relevantes.length})
+              Asistencia{" "}
+              <span className="text-text-primary">{tasa}%</span> ({asistio}/
+              {relevantes.length})
             </span>
           )}
           {noShows > 0 && (
             <span className="text-warning">
-              No-shows: {noShows}
+              Inasistencias {noShows}
               {resueltas > 0 &&
                 ` (${Math.round((noShows / resueltas) * 100)}%)`}
             </span>
@@ -83,17 +89,17 @@ export function MiembroClasesHistorial({
       </div>
 
       {reservas.length === 0 ? (
-        <p className="rounded-xl border border-border bg-surface px-4 py-6 text-center text-xs text-text-secondary">
+        <p className="px-5 py-8 text-center text-sm text-text-muted">
           Sin reservas de clases.
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className="divide-y divide-border">
           {proximas.length > 0 && (
             <div>
-              <p className="mb-1 text-[11px] uppercase tracking-wide text-text-muted">
+              <p className="border-b border-border px-5 py-3 font-mono text-etiqueta uppercase text-text-muted">
                 Próximas
               </p>
-              <ul className="divide-y divide-border rounded-xl border border-border">
+              <ul className="divide-y divide-border">
                 {proximas.map((r) => (
                   <Fila key={r.id} r={r} />
                 ))}
@@ -102,10 +108,10 @@ export function MiembroClasesHistorial({
           )}
           {historico.length > 0 && (
             <div>
-              <p className="mb-1 text-[11px] uppercase tracking-wide text-text-muted">
+              <p className="border-b border-border px-5 py-3 font-mono text-etiqueta uppercase text-text-muted">
                 Histórico
               </p>
-              <ul className="divide-y divide-border rounded-xl border border-border">
+              <ul className="divide-y divide-border">
                 {historico.map((r) => (
                   <Fila key={r.id} r={r} />
                 ))}
@@ -114,6 +120,6 @@ export function MiembroClasesHistorial({
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }

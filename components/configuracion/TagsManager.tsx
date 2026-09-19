@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { LuPencil, LuTrash2, LuPlus, LuTag } from "react-icons/lu";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import { tagColorToVariant } from "@/components/ui/TagSelector";
@@ -88,26 +90,29 @@ function TagForm({
         autoFocus
       />
 
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium text-text-secondary">Color</p>
+      <div className="space-y-2">
+        <Label>Color</Label>
+        {/* Muestras de color: botón circular (permitido), selección por anillo. */}
         <div className="flex flex-wrap gap-2">
           {TAG_COLORS.map((c) => (
             <button
               key={c}
               type="button"
               title={colorLabels[c]}
+              aria-label={colorLabels[c]}
+              aria-pressed={color === c}
               onClick={() => setColor(c)}
               className={cn(
-                "h-7 w-7 rounded-full transition-all duration-150",
+                "h-9 w-9 rounded-full transition-[box-shadow] duration-150",
                 swatchStyles[c],
                 color === c
-                  ? "ring-2 ring-brand-green ring-offset-2 ring-offset-bg"
-                  : "opacity-60 hover:opacity-90"
+                  ? "ring-2 ring-brand-green ring-offset-2 ring-offset-surface"
+                  : "ring-1 ring-border hover:ring-text-secondary"
               )}
             />
           ))}
         </div>
-        <div className="mt-2">
+        <div className="pt-1">
           <Badge variant={tagColorToVariant(color)}>
             {tag?.nombre || "Vista previa"}
           </Badge>
@@ -115,12 +120,12 @@ function TagForm({
       </div>
 
       {state.error && Object.keys(state.fieldErrors).length === 0 && (
-        <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+        <p className="border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {state.error}
         </p>
       )}
 
-      <div className="flex justify-end gap-2 border-t border-border pt-4">
+      <div className="flex justify-end gap-3 border-t border-border pt-4">
         <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
           Cancelar
         </Button>
@@ -177,47 +182,40 @@ export function TagsManager({ tags }: TagsManagerProps) {
 
   return (
     <>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-text-secondary">
-            {tags.length === 0
-              ? "Sin tags. Crea el primero."
-              : `${tags.length} tag${tags.length !== 1 ? "s" : ""}`}
-          </p>
-          <Button
-            leftIcon={<LuPlus className="h-4 w-4" />}
-            onClick={openCreate}
-            size="sm"
-          >
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-text-primary">Tags</h3>
+            <p className="mt-1 text-sm text-text-secondary">
+              {tags.length === 0
+                ? "Sin tags. Crea el primero."
+                : `${tags.length} tag${tags.length !== 1 ? "s" : ""}`}
+            </p>
+          </div>
+          <Button leftIcon={<LuPlus className="h-4 w-4" />} onClick={openCreate}>
             Nuevo tag
           </Button>
         </div>
 
         {tags.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-12 text-center">
-            <LuTag className="h-8 w-8 text-text-muted" />
-            <div>
-              <p className="text-sm font-medium text-text-primary">Sin tags</p>
-              <p className="mt-0.5 text-xs text-text-secondary">
-                Los tags te permiten clasificar miembros y prospectos.
-              </p>
-            </div>
-            <Button
-              leftIcon={<LuPlus className="h-4 w-4" />}
-              onClick={openCreate}
-              size="sm"
-            >
-              Crear primer tag
-            </Button>
-          </div>
+          <EmptyState
+            icon={<LuTag />}
+            title="Sin tags todavía"
+            description="Con los tags clasificas miembros y prospectos (turno, entrenador, promoción) y luego los filtras o les mandas mensajes en grupo."
+            action={
+              <Button leftIcon={<LuPlus className="h-4 w-4" />} onClick={openCreate}>
+                Crear primer tag
+              </Button>
+            }
+          />
         ) : (
-          <div className="divide-y divide-border rounded-xl border border-border bg-surface">
+          <ul className="divide-y divide-border border border-border bg-surface">
             {tags.map((tag) => {
               const total = tag.miembros_count + tag.prospectos_count;
               return (
-                <div
+                <li
                   key={tag.id}
-                  className="flex items-center justify-between gap-4 px-4 py-3"
+                  className="flex items-center justify-between gap-4 px-5 py-4"
                 >
                   <div className="flex items-center gap-3">
                     <Badge variant={tagColorToVariant(tag.color)}>
@@ -225,34 +223,38 @@ export function TagsManager({ tags }: TagsManagerProps) {
                     </Badge>
                     {total > 0 && (
                       <span className="text-xs text-text-muted">
-                        {total} uso{total !== 1 ? "s" : ""}
+                        <span className="font-mono tabular-nums">{total}</span>{" "}
+                        uso{total !== 1 ? "s" : ""}
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => openEdit(tag)}
-                      className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
-                      aria-label="Editar tag"
+                      aria-label={`Editar ${tag.nombre}`}
                     >
-                      <LuPencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
+                      <LuPencil className="h-4 w-4" />
+                    </Button>
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleDelete(tag)}
                       disabled={deletingId === tag.id}
-                      className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-danger/10 hover:text-danger"
-                      aria-label="Eliminar tag"
+                      aria-label={`Eliminar ${tag.nombre}`}
+                      className="hover:text-danger"
                     >
-                      <LuTrash2 className="h-3.5 w-3.5" />
-                    </button>
+                      <LuTrash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </div>
 

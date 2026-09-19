@@ -52,6 +52,9 @@ const initialState: ProspectoFormState = {
   fieldErrors: {},
 };
 
+const selectClass =
+  "h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
+
 export function ProspectoModal({
   open,
   onClose,
@@ -92,7 +95,7 @@ export function ProspectoModal({
       size="lg"
     >
       {isEdit && prospecto && (
-        <div className="mb-4 rounded-xl border border-border bg-surface-hover px-4 py-3">
+        <div className="mb-4 border border-border bg-surface-hover px-4 py-3">
           <AccionesRapidas
             nombre={prospecto.nombre}
             telefono={prospecto.telefono}
@@ -140,13 +143,13 @@ export function ProspectoModal({
             autoComplete="email"
           />
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="origen">Origen</Label>
             <select
               id="origen"
               name="origen"
               defaultValue={prospecto?.origen ?? "manual"}
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+              className={selectClass}
             >
               {ORIGENES.map((o) => (
                 <option key={o} value={o}>
@@ -157,13 +160,13 @@ export function ProspectoModal({
           </div>
 
           {isEdit && (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="estado">Estado</Label>
               <select
                 id="estado"
                 name="estado"
                 defaultValue={prospecto?.estado}
-                className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+                className={selectClass}
               >
                 {ESTADOS.map((e) => (
                   <option key={e} value={e}>
@@ -178,7 +181,7 @@ export function ProspectoModal({
             <input type="hidden" name="estado" value="nuevo" />
           )}
 
-          <div className="space-y-1.5 sm:col-span-2">
+          <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="fecha_prueba_agendada">
               Fecha de clase de prueba{" "}
               <span className="text-text-muted">(opcional)</span>
@@ -188,11 +191,11 @@ export function ProspectoModal({
               name="fecha_prueba_agendada"
               type="datetime-local"
               defaultValue={prospecto?.fecha_prueba_agendada?.slice(0, 16) ?? ""}
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+              className={`${selectClass} font-mono tabular-nums`}
             />
           </div>
 
-          <div className="space-y-1.5 sm:col-span-2">
+          <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="notas">Notas</Label>
             <textarea
               id="notas"
@@ -200,7 +203,7 @@ export function ProspectoModal({
               rows={3}
               defaultValue={prospecto?.notas ?? ""}
               placeholder="Observaciones, preferencias, horarios…"
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+              className="w-full rounded border border-border bg-bg px-3 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
             />
           </div>
 
@@ -218,7 +221,7 @@ export function ProspectoModal({
         {state.error && Object.keys(state.fieldErrors).length === 0 && (
           <p
             role="alert"
-            className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
+            className="border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
           >
             {state.error}
           </p>
@@ -228,16 +231,16 @@ export function ProspectoModal({
           {isEdit ? (
             <Link
               href={`/${slug}/miembros/nuevo?prospecto_id=${prospecto!.id}`}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green/10 px-3 py-2 text-sm font-medium text-brand-green border border-brand-green/30 transition-colors hover:bg-brand-green/20"
+              className="inline-flex h-11 items-center gap-2 border border-border px-4 text-sm text-text-primary transition-colors hover:border-text-secondary"
             >
               Convertir a miembro
-              <LuArrowRight size={14} />
+              <LuArrowRight size={14} aria-hidden="true" />
             </Link>
           ) : (
             <div />
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
               Cancelar
             </Button>

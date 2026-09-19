@@ -4,6 +4,7 @@ import { useState, useTransition, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { LuCopy, LuCheck, LuRefreshCw } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa";
+import { Button } from "@/components/ui/Button";
 import { regenerarQrAction } from "@/app/(tenant)/[slug]/miembros/qr-actions";
 
 // El origin solo existe en el cliente. Lo leemos con useSyncExternalStore para
@@ -75,55 +76,69 @@ export function MiembroQrPanel({
   }
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-text-primary">Acceso QR</h3>
-      <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-surface p-5 sm:flex-row sm:items-start">
-        <div className="rounded-xl bg-white p-2">
+    <section className="card-surface">
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <h3 className="text-base font-semibold text-text-primary">Acceso QR</h3>
+      </div>
+      <div className="flex flex-col items-center gap-5 p-5 sm:flex-row sm:items-start">
+        <div className="shrink-0 bg-paper p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qrDataUrl} alt="Código QR" className="h-36 w-36" />
         </div>
 
-        <div className="flex-1 space-y-2">
-          <p className="text-xs text-text-secondary">
-            Link público del QR (el miembro lo guarda en favoritos):
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <p className="font-mono text-etiqueta uppercase text-text-secondary">
+            Link público del QR
           </p>
-          <code className="block overflow-x-auto rounded-lg border border-border bg-bg px-2 py-1.5 font-mono text-[11px] text-text-secondary">
+          <code className="block overflow-x-auto border border-border bg-bg px-3 py-2 font-mono text-dato text-text-secondary">
             {publicUrl()}
           </code>
           <div className="flex flex-wrap gap-2">
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={copiar}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+              leftIcon={
+                copied ? (
+                  <LuCheck className="h-4 w-4 text-brand-green" />
+                ) : (
+                  <LuCopy className="h-4 w-4" />
+                )
+              }
             >
-              {copied ? (
-                <LuCheck className="h-3.5 w-3.5 text-brand-green" />
-              ) : (
-                <LuCopy className="h-3.5 w-3.5" />
-              )}
               {copied ? "Copiado" : "Copiar link"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={whatsapp}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+              leftIcon={<FaWhatsapp className="h-4 w-4" />}
             >
-              <FaWhatsapp className="h-3.5 w-3.5" /> WhatsApp
-            </button>
+              WhatsApp
+            </Button>
             {canRegenerar && (
-              <button
+              <Button
                 type="button"
-                disabled={pending}
+                variant="secondary"
+                size="sm"
+                loading={pending}
                 onClick={regenerar}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-danger/40 px-2.5 py-1.5 text-xs text-danger hover:bg-danger/10 disabled:opacity-50"
+                leftIcon={<LuRefreshCw className="h-4 w-4" />}
+                className="border-danger/40 text-danger hover:border-danger"
               >
-                <LuRefreshCw className="h-3.5 w-3.5" /> Regenerar
-              </button>
+                Regenerar
+              </Button>
             )}
           </div>
-          {err && <p className="text-xs text-danger">{err}</p>}
+          {err && (
+            <p role="alert" className="text-sm text-danger">
+              {err}
+            </p>
+          )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

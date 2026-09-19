@@ -63,6 +63,7 @@ export function InboxSidebar({
         <div className="relative">
           <LuSearch
             size={16}
+            aria-hidden="true"
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
           />
           <input
@@ -70,7 +71,8 @@ export function InboxSidebar({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por nombre o teléfono"
-            className="w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+            aria-label="Buscar conversación"
+            className="h-11 w-full rounded border border-border bg-bg pl-10 pr-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
           />
         </div>
       </div>
@@ -92,22 +94,29 @@ export function InboxSidebar({
                   <button
                     type="button"
                     onClick={() => onSelect(c.id)}
+                    aria-current={activa ? "true" : undefined}
                     className={cn(
-                      "flex w-full items-center gap-3 border-b border-border/60 px-3 py-3 text-left transition-colors",
-                      activa
-                        ? "bg-brand-green/10"
-                        : "hover:bg-text-primary/[0.04]"
+                      "flex w-full items-center gap-3 border-b border-border px-4 py-3 text-left transition-colors",
+                      activa ? "bg-surface-hover" : "hover:bg-surface-hover/60"
                     )}
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-green/15 text-sm font-semibold text-brand-green">
+                    <span
+                      aria-hidden="true"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-green/15 font-mono text-sm font-bold text-brand-green"
+                    >
                       {iniciales(nombre)}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-medium text-text-primary">
+                        <span
+                          className={cn(
+                            "truncate text-sm text-text-primary",
+                            c.no_leidos > 0 ? "font-semibold" : "font-medium"
+                          )}
+                        >
                           {nombre}
                         </span>
-                        <span className="shrink-0 text-[11px] text-text-muted">
+                        <span className="shrink-0 font-mono text-xs tabular-nums text-text-muted">
                           {tiempoRelativo(c.ultimo_mensaje_at)}
                         </span>
                       </span>
@@ -116,7 +125,7 @@ export function InboxSidebar({
                           {c.ultimo_mensaje ?? "—"}
                         </span>
                         {c.no_leidos > 0 && (
-                          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-danger px-1.5 text-[11px] font-semibold text-text-primary">
+                          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center bg-danger px-1.5 font-mono text-xs font-bold tabular-nums text-text-primary">
                             {c.no_leidos}
                           </span>
                         )}

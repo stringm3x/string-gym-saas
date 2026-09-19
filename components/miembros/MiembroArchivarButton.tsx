@@ -61,7 +61,7 @@ export function MiembroArchivarButton({
           <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >

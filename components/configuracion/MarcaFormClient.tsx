@@ -166,15 +166,15 @@ export function MarcaFormClient({
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Logo */}
-        <section className="space-y-3">
+        <section className="space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-text-primary">
-              Logo del gym
+            <h3 className="text-base font-semibold text-text-primary">
+              Logo del gimnasio
             </h3>
-            <p className="text-xs text-text-secondary">
-              Se muestra en el sidebar, recibos y pantalla de check-in.
+            <p className="mt-1 text-sm text-text-secondary">
+              Se muestra en el menú, los recibos y la pantalla de check-in.
             </p>
           </div>
           <FileUpload
@@ -186,13 +186,14 @@ export function MarcaFormClient({
         </section>
 
         {/* Colores */}
-        <section className="space-y-3">
+        <section className="space-y-4 border-t border-border pt-6">
           <div>
-            <h3 className="text-sm font-semibold text-text-primary">
+            <h3 className="text-base font-semibold text-text-primary">
               Colores de marca
             </h3>
-            <p className="text-xs text-text-secondary">
-              Aplica el color de tu gym a botones, badges y sidebar del sistema.
+            <p className="mt-1 text-sm text-text-secondary">
+              Aplica el color de tu gimnasio a botones, etiquetas y menú del
+              sistema.
             </p>
           </div>
 
@@ -200,7 +201,7 @@ export function MarcaFormClient({
             <form action={formAction} className="space-y-4">
               {/* Temas curados: un clic aplica los tres colores. */}
               <div className="space-y-2">
-                <p className="text-xs font-medium text-text-secondary">
+                <p className="font-mono text-etiqueta uppercase text-text-secondary">
                   Temas rápidos
                 </p>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -214,28 +215,34 @@ export function MarcaFormClient({
                         aria-pressed={activo}
                         title={t.nombre}
                         className={
-                          "group relative flex flex-col items-center gap-1.5 rounded-lg border p-2 transition-colors " +
+                          "relative flex flex-col items-center gap-1.5 border p-2 transition-colors " +
                           (activo
-                            ? "border-brand-green bg-brand-green/[0.06]"
-                            : "border-border hover:border-brand-green/40")
+                            ? "border-brand-green bg-surface-hover"
+                            : "border-border hover:border-text-secondary")
                         }
                       >
                         <span
-                          className="flex h-8 w-full items-center justify-end gap-1 overflow-hidden rounded-md px-1.5"
+                          className="flex h-8 w-full items-center justify-end gap-1 overflow-hidden px-1.5"
                           style={{ backgroundColor: t.fondo }}
                         >
                           <span
-                            className="absolute left-0 top-0 h-full w-2.5 rounded-l-md"
+                            className="absolute left-0 top-0 h-full w-2.5"
                             style={{ backgroundColor: t.sidebar }}
                           />
                           <span
-                            className="h-3.5 w-3.5 rounded-full ring-1 ring-bg/20"
+                            className="h-3.5 w-3.5 rounded-full"
                             style={{ backgroundColor: t.acento }}
                           />
                         </span>
-                        <span className="flex items-center gap-0.5 text-[11px] font-medium text-text-secondary">
+                        <span
+                          className={`flex items-center gap-1 text-xs ${
+                            activo
+                              ? "font-semibold text-brand-green"
+                              : "text-text-secondary"
+                          }`}
+                        >
                           {activo && (
-                            <LuCheck className="h-3 w-3 text-brand-green" />
+                            <LuCheck className="h-3 w-3" aria-hidden="true" />
                           )}
                           {t.nombre}
                         </span>
@@ -243,7 +250,7 @@ export function MarcaFormClient({
                     );
                   })}
                 </div>
-                <p className="text-[11px] text-text-muted">
+                <p className="text-xs text-text-muted">
                   ¿Quieres afinar? Ajusta cada color abajo.
                 </p>
               </div>
@@ -255,7 +262,7 @@ export function MarcaFormClient({
                 presetColors={PRESETS}
               />
               <ColorPicker
-                label="Color del sidebar"
+                label="Color del menú lateral"
                 value={colorSidebar}
                 onChange={setColorSidebar}
                 presetColors={SIDEBAR_PRESETS}
@@ -272,9 +279,9 @@ export function MarcaFormClient({
               <input type="hidden" name="color_fondo" value={colorFondo} />
 
               {avisos.length > 0 && (
-                <div className="space-y-1.5 rounded-lg border border-warning/30 bg-warning/[0.06] p-3">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold text-warning">
-                    <LuTriangleAlert className="h-3.5 w-3.5" />
+                <div className="space-y-2 border border-warning p-4">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold text-warning">
+                    <LuTriangleAlert className="h-4 w-4" aria-hidden="true" />
                     Revisa la legibilidad
                   </p>
                   <ul className="space-y-1 pl-5 text-xs text-text-secondary">
@@ -291,11 +298,10 @@ export function MarcaFormClient({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
-                  leftIcon={<LuRotateCcw className="h-3.5 w-3.5" />}
+                  leftIcon={<LuRotateCcw className="h-4 w-4" />}
                   onClick={restaurarDefaults}
                 >
-                  Restaurar defaults
+                  Restaurar colores STRING
                 </Button>
                 <Button type="submit" loading={isPending}>
                   Guardar cambios
@@ -303,13 +309,13 @@ export function MarcaFormClient({
               </div>
             </form>
           ) : (
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-8 text-center">
-              <LuLock className="h-6 w-6 text-text-muted" />
+            <div className="flex flex-col items-center gap-4 border border-dashed border-border px-5 py-8 text-center">
+              <LuLock className="h-6 w-6 text-text-muted" aria-hidden="true" />
               <div>
                 <p className="text-sm font-medium text-text-primary">
                   Colores personalizados
                 </p>
-                <p className="mt-0.5 text-xs text-text-secondary">
+                <p className="mt-1 text-sm text-text-secondary">
                   Disponible en Plan {PLAN_LABELS.pro}. Tu logo sí puedes
                   cambiarlo en cualquier plan.
                 </p>
@@ -318,7 +324,7 @@ export function MarcaFormClient({
                 href={upgradeUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-colors hover:bg-brand-green/90"
+                className="inline-flex h-11 items-center gap-2 bg-brand-green px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
               >
                 Mejorar a Plan {PLAN_LABELS.pro}
               </a>

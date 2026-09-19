@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { LuPlus, LuChevronDown } from "react-icons/lu";
+import { LuPlus, LuChevronDown, LuCalendarDays } from "react-icons/lu";
 import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { cn } from "@/lib/utils/cn";
 import { ClaseCard } from "./ClaseCard";
 import { ClaseForm } from "./ClaseForm";
 import type { Clase } from "@/lib/types/clases";
@@ -35,37 +38,43 @@ export function ClasesList({
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-text-secondary">
           Clases recurrentes y únicas de tu gimnasio.
         </p>
-        <button
+        <Button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-2 text-sm font-semibold text-bg hover:bg-brand-green/90"
+          leftIcon={<LuPlus className="h-4 w-4" />}
         >
-          <LuPlus className="h-4 w-4" /> Nueva clase
-        </button>
+          Nueva clase
+        </Button>
       </div>
 
       {clases.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-surface px-6 py-16 text-center">
-          <p className="text-sm font-medium text-text-primary">
-            Aún no tienes clases configuradas.
-          </p>
-          <p className="mt-1 text-xs text-text-secondary">
-            Crea tu primera clase para empezar a generar sesiones.
-          </p>
-        </div>
+        <EmptyState
+          icon={<LuCalendarDays />}
+          title="Sin clases todavía"
+          description="Crea la primera con su horario y cupo; a partir de ahí se generan las sesiones que tus miembros pueden reservar."
+          action={
+            <Button
+              type="button"
+              onClick={openCreate}
+              leftIcon={<LuPlus className="h-4 w-4" />}
+            >
+              Crear primera clase
+            </Button>
+          }
+        />
       ) : (
         <>
           {activas.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                Activas ({activas.length})
+            <div className="flex flex-col gap-3">
+              <h3 className="font-mono text-etiqueta uppercase text-text-muted">
+                Activas · {activas.length}
               </h3>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 {activas.map((c) => (
                   <ClaseCard
                     key={c.id}
@@ -79,21 +88,24 @@ export function ClasesList({
           )}
 
           {inactivas.length > 0 && (
-            <div className="space-y-2">
+            <div className="flex flex-col gap-3">
               <button
                 type="button"
                 onClick={() => setShowInactivas((v) => !v)}
-                className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-text-muted hover:text-text-secondary"
+                aria-expanded={showInactivas}
+                className="inline-flex h-9 items-center gap-1.5 self-start font-mono text-etiqueta uppercase text-text-muted transition-colors hover:text-text-primary"
               >
                 <LuChevronDown
-                  className={`h-3.5 w-3.5 transition-transform ${
-                    showInactivas ? "" : "-rotate-90"
-                  }`}
+                  className={cn(
+                    "h-4 w-4 transition-transform",
+                    !showInactivas && "-rotate-90"
+                  )}
+                  aria-hidden="true"
                 />
-                Inactivas ({inactivas.length})
+                Inactivas · {inactivas.length}
               </button>
               {showInactivas && (
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2">
                   {inactivas.map((c) => (
                     <ClaseCard
                       key={c.id}

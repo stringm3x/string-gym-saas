@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LuArrowLeft, LuMessageCircle } from "react-icons/lu";
+import { LuArrowLeft } from "react-icons/lu";
 import type {
   ConversacionResumen,
   MensajeInbox,
@@ -108,9 +108,9 @@ export function InboxClient({
       <button
         type="button"
         onClick={volver}
-        className="flex items-center gap-2 border-b border-border px-4 py-2 text-sm text-text-secondary md:hidden"
+        className="flex h-11 items-center gap-2 border-b border-border px-4 text-sm text-text-secondary transition-colors hover:text-text-primary md:hidden"
       >
-        <LuArrowLeft size={16} /> Volver
+        <LuArrowLeft size={16} aria-hidden="true" /> Volver
       </button>
       <div className="min-h-0 flex-1">
         <HiloMensajes
@@ -128,14 +128,15 @@ export function InboxClient({
       />
     </div>
   ) : (
-    <div className="flex h-full flex-col items-center justify-center gap-2 text-text-muted">
-      <LuMessageCircle size={40} className="opacity-40" />
-      <p className="text-sm">Selecciona una conversación</p>
+    <div className="flex h-full items-center justify-center">
+      <p className="px-5 py-8 text-center text-sm text-text-muted">
+        Selecciona una conversación para leerla aquí.
+      </p>
     </div>
   );
 
   return (
-    <div className="h-[calc(100vh-8rem)] overflow-hidden rounded-2xl border border-border bg-canvas">
+    <div className="h-[calc(100vh-8rem)] overflow-hidden border border-border bg-surface">
       {/* Desktop: 2 columnas */}
       <div className="hidden h-full md:grid md:grid-cols-[320px_1fr]">
         <div className="min-h-0 border-r border-border">{sidebar}</div>

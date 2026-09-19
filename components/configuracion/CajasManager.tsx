@@ -41,8 +41,8 @@ export function CajasManager({ cajas }: { cajas: Caja[] }) {
   const inactivas = cajas.filter((c) => !c.activa);
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-end gap-2">
+    <div className="space-y-6">
+      <div className="flex items-end gap-3">
         <div className="flex-1">
           <Input
             label="Nueva caja"
@@ -67,20 +67,22 @@ export function CajasManager({ cajas }: { cajas: Caja[] }) {
         </Button>
       </div>
 
-      <div className="space-y-2">
+      <ul className="divide-y divide-border border border-border bg-surface">
         {activas.map((c) => (
           <CajaRow key={c.id} caja={c} />
         ))}
-      </div>
+      </ul>
 
       {inactivas.length > 0 && (
-        <div className="space-y-2 border-t border-border pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+        <div className="space-y-3 border-t border-border pt-6">
+          <p className="font-mono text-etiqueta uppercase text-text-muted">
             Desactivadas
           </p>
-          {inactivas.map((c) => (
-            <CajaRow key={c.id} caja={c} />
-          ))}
+          <ul className="divide-y divide-border border border-border bg-surface">
+            {inactivas.map((c) => (
+              <CajaRow key={c.id} caja={c} />
+            ))}
+          </ul>
         </div>
       )}
     </div>
@@ -147,8 +149,8 @@ function CajaRow({ caja }: { caja: Caja }) {
   }
 
   return (
-    <div
-      className={`flex items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 ${
+    <li
+      className={`flex items-center gap-4 px-5 py-4 ${
         !caja.activa ? "opacity-60" : ""
       }`}
     >
@@ -158,6 +160,7 @@ function CajaRow({ caja }: { caja: Caja }) {
             <input
               autoFocus
               value={nombre}
+              aria-label="Nombre de la caja"
               onChange={(e) => setNombre(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") guardar();
@@ -166,13 +169,13 @@ function CajaRow({ caja }: { caja: Caja }) {
                   setNombre(caja.nombre);
                 }
               }}
-              className="w-full rounded-lg border border-border bg-bg px-2 py-1.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+              className="h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary focus:border-brand-green focus:outline-none"
             />
             <button
               type="button"
               onClick={guardar}
               disabled={isPending}
-              className="text-text-muted hover:text-success disabled:opacity-40"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center text-text-muted transition-colors hover:bg-surface-hover hover:text-brand-green disabled:opacity-40"
               aria-label="Guardar"
             >
               <LuCheck className="h-4 w-4" />
@@ -184,29 +187,29 @@ function CajaRow({ caja }: { caja: Caja }) {
                 setNombre(caja.nombre);
               }}
               disabled={isPending}
-              className="text-text-muted hover:text-danger disabled:opacity-40"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center text-text-muted transition-colors hover:bg-surface-hover hover:text-danger disabled:opacity-40"
               aria-label="Cancelar"
             >
               <LuX className="h-4 w-4" />
             </button>
           </div>
         ) : (
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-text-primary">
                 {caja.nombre}
               </span>
-              {caja.es_default && <Badge variant="info">Default</Badge>}
+              {caja.es_default && <Badge variant="info">Principal</Badge>}
               {!caja.activa && <Badge variant="neutral">Desactivada</Badge>}
             </div>
             {caja.activa && (
-              <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-secondary">
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-text-secondary">
                 <input
                   type="checkbox"
                   checked={caja.requiere_cuadre}
                   onChange={(e) => toggleCuadre(e.target.checked)}
                   disabled={isPending}
-                  className="h-3.5 w-3.5 rounded border-border accent-brand-green"
+                  className="h-4 w-4 rounded border-border accent-brand-green"
                 />
                 Cuadra su propio efectivo (fondo + conteo al cerrar turno)
               </label>
@@ -216,28 +219,30 @@ function CajaRow({ caja }: { caja: Caja }) {
       </div>
 
       {!editando && (
-        <div className="flex shrink-0 items-center gap-2">
-          <button
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setEditando(true)}
             disabled={isPending}
-            className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-40"
             aria-label={`Renombrar ${caja.nombre}`}
           >
-            <LuPencil className="h-3.5 w-3.5" />
-          </button>
+            <LuPencil className="h-4 w-4" />
+          </Button>
           {!caja.es_default && (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={toggle}
               disabled={isPending}
-              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary disabled:opacity-40"
             >
               {caja.activa ? "Desactivar" : "Reactivar"}
-            </button>
+            </Button>
           )}
         </div>
       )}
-    </div>
+    </li>
   );
 }

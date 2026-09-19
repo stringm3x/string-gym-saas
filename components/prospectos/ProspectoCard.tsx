@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { LuPhone, LuCalendar, LuGripVertical, LuUserPlus } from "react-icons/lu";
 import { cn } from "@/lib/utils/cn";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { TagBadges } from "@/components/ui/TagSelector";
 import type { ProspectoConTags } from "@/lib/queries/prospectos.queries";
 
@@ -57,16 +58,17 @@ export function ProspectoCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative rounded-lg border border-border bg-surface p-3 shadow-sm transition-shadow duration-150",
-        isDragging ? "opacity-50 shadow-lg" : "hover:shadow-md"
+        "relative border border-border bg-surface p-4 transition-colors duration-150 hover:border-text-secondary",
+        isDragging ? "opacity-50" : ""
       )}
     >
-      {/* Drag handle */}
+      {/* Asa de arrastre: siempre visible (en tablet no hay hover). */}
       <button
+        type="button"
         {...listeners}
         {...attributes}
         aria-label="Arrastrar"
-        className="absolute right-2 top-2 cursor-grab touch-none p-0.5 text-text-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100 active:cursor-grabbing"
+        className="absolute right-1 top-1 flex h-9 w-9 cursor-grab touch-none items-center justify-center text-text-muted transition-colors hover:text-text-primary active:cursor-grabbing"
       >
         <LuGripVertical size={14} />
       </button>
@@ -77,12 +79,12 @@ export function ProspectoCard({
         onClick={() => onClick(prospecto)}
         className="w-full text-left"
       >
-        <div className="mb-2 pr-5">
-          <p className="text-sm font-medium text-text-primary leading-snug">
+        <div className="mb-2 pr-8">
+          <p className="text-sm font-medium leading-snug text-text-primary">
             {prospecto.nombre}
           </p>
-          <p className="mt-0.5 font-mono text-xs text-text-muted">
-            <LuPhone className="mr-1 inline h-3 w-3" />
+          <p className="mt-1 flex items-center gap-1 font-mono text-xs tabular-nums text-text-muted">
+            <LuPhone className="h-3 w-3" aria-hidden="true" />
             {prospecto.telefono}
           </p>
         </div>
@@ -104,20 +106,22 @@ export function ProspectoCard({
           </div>
         )}
 
-        <p className="mt-2 text-xs text-text-muted">
+        <p className="mt-2 font-mono text-xs uppercase text-text-muted">
           {formatRelativeDate(prospecto.created_at)}
         </p>
       </button>
 
       {prospecto.estado === "convertido" && onInscribir && (
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
+          leftIcon={<LuUserPlus className="h-3.5 w-3.5" />}
           onClick={() => onInscribir(prospecto)}
-          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-brand-green/30 bg-brand-green/10 px-2.5 py-1.5 text-xs font-medium text-brand-green transition-colors hover:bg-brand-green/20"
+          className="mt-3 w-full text-brand-green hover:border-brand-green"
         >
-          <LuUserPlus className="h-3.5 w-3.5" />
           Inscribir como miembro
-        </button>
+        </Button>
       )}
     </div>
   );

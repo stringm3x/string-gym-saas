@@ -13,6 +13,8 @@ interface KanbanColumnProps {
   isConverting?: boolean;
 }
 
+// Columna del tablero: encabezado en mono (etiqueta + conteo), cuerpo
+// punteado sobre fondo; al soltar, borde ácido y fondo lleno.
 export function KanbanColumn({
   estado,
   label,
@@ -25,11 +27,11 @@ export function KanbanColumn({
 
   return (
     <div className="flex min-w-[220px] flex-1 flex-col">
-      <div className="mb-3 flex items-center gap-2 px-1">
-        <span className={cn("text-xs font-semibold uppercase tracking-wide", colorClass)}>
+      <div className="mb-3 flex items-center justify-between gap-2 px-1">
+        <span className={cn("font-mono text-etiqueta uppercase", colorClass)}>
           {label}
         </span>
-        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-surface px-1.5 font-mono text-xs text-text-muted">
+        <span className="font-mono text-etiqueta tabular-nums text-text-muted">
           {count}
         </span>
       </div>
@@ -37,12 +39,12 @@ export function KanbanColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex flex-1 flex-col gap-2 rounded-xl border-2 border-dashed p-2 transition-colors duration-150",
+          "flex flex-1 flex-col gap-2 border border-dashed p-2 transition-colors duration-150",
           isOver && !isConverting
-            ? "border-brand-green/40 bg-brand-green/5"
+            ? "border-brand-green bg-surface-hover"
             : isOver && isConverting
-              ? "border-warning/40 bg-warning/5"
-              : "border-border/50 bg-bg"
+              ? "border-warning bg-surface-hover"
+              : "border-border bg-bg"
         )}
       >
         {children}

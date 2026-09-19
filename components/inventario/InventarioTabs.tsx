@@ -10,6 +10,8 @@ interface InventarioTabsProps {
   canMovimientos?: boolean;
 }
 
+// Pestañas del sistema: bloque con borde, activo con fondo lleno y borde
+// ácido (sin barra inferior). 44px de alto para tablet.
 export function InventarioTabs({
   slug,
   stockBajoCount,
@@ -26,32 +28,30 @@ export function InventarioTabs({
   ];
 
   return (
-    <div className="flex gap-1 border-b border-border">
+    <nav aria-label="Secciones de inventario" className="flex flex-wrap gap-2">
       {tabs.map((t) => {
         const active = pathname.startsWith(t.href);
         return (
           <Link
             key={t.href}
             href={t.href}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors duration-150",
+              "inline-flex h-11 items-center gap-2 border px-4 text-sm transition-colors duration-150",
               active
-                ? "text-text-primary"
-                : "text-text-secondary hover:text-text-primary"
+                ? "border-brand-green bg-surface-hover font-semibold text-brand-green"
+                : "border-border text-text-secondary hover:border-text-secondary hover:text-text-primary"
             )}
           >
             {t.label}
             {t.badge > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1.5 font-mono text-xs font-bold text-text-primary tabular-nums">
+              <span className="flex h-5 min-w-5 items-center justify-center bg-danger px-1.5 font-mono text-xs font-bold tabular-nums text-text-primary">
                 {t.badge}
               </span>
-            )}
-            {active && (
-              <span className="absolute inset-x-0 bottom-[-1px] h-0.5 bg-brand-green" />
             )}
           </Link>
         );
       })}
-    </div>
+    </nav>
   );
 }

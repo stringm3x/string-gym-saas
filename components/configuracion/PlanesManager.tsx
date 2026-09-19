@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { LuPencil, LuPlus, LuPackage } from "react-icons/lu";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -36,13 +37,18 @@ export function PlanesManager({ planes }: PlanesManagerProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-text-secondary">
-          {planes.length === 0
-            ? "Sin planes definidos"
-            : `${planes.length} ${planes.length === 1 ? "plan" : "planes"}`}
-        </p>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-text-primary">
+            Planes de membresía
+          </h3>
+          <p className="mt-1 text-sm text-text-secondary">
+            {planes.length === 0
+              ? "Sin planes definidos"
+              : `${planes.length} ${planes.length === 1 ? "plan" : "planes"}`}
+          </p>
+        </div>
         <Button
           leftIcon={<LuPlus className="h-4 w-4" />}
           onClick={() => openModal({ mode: "create" })}
@@ -53,9 +59,9 @@ export function PlanesManager({ planes }: PlanesManagerProps) {
 
       {planes.length === 0 ? (
         <EmptyState
-          icon={<LuPackage className="h-5 w-5" />}
-          title="Aún no hay planes"
-          description="Define los planes de membresía que ofreces (ej. Mensualidad, Trimestre) para cobrar más rápido."
+          icon={<LuPackage />}
+          title="Todavía no hay planes"
+          description="Define los planes que vendes (mensualidad, trimestre, visita) con precio y duración: en caja se cobran con un clic."
           action={
             <Button
               leftIcon={<LuPlus className="h-4 w-4" />}
@@ -66,7 +72,7 @@ export function PlanesManager({ planes }: PlanesManagerProps) {
           }
         />
       ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+        <ul className="divide-y divide-border border border-border bg-surface">
           {planes.map((p) => (
             <PlanRow
               key={p.id}
@@ -104,47 +110,42 @@ function PlanRow({
   }
 
   return (
-    <li className="flex items-center justify-between gap-4 px-4 py-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-medium text-text-primary">
-              {plan.nombre}
-            </p>
-            {!plan.activo && <Badge variant="neutral">Archivado</Badge>}
-          </div>
-          <p className="text-xs text-text-secondary">
-            {plan.tipo === "tiempo"
-              ? `${plan.dias_duracion} ${plan.dias_duracion === 1 ? "día" : "días"}`
-              : `${plan.visitas ?? 0} visitas · válido ${plan.dias_duracion} días`}
+    <li className="flex items-center justify-between gap-4 px-5 py-4">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate text-sm font-medium text-text-primary">
+            {plan.nombre}
           </p>
+          {!plan.activo && <Badge variant="neutral">Archivado</Badge>}
         </div>
+        <p className="mt-0.5 text-xs text-text-secondary">
+          {plan.tipo === "tiempo"
+            ? `${plan.dias_duracion} ${plan.dias_duracion === 1 ? "día" : "días"}`
+            : `${plan.visitas ?? 0} visitas · válido ${plan.dias_duracion} días`}
+        </p>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-sm font-semibold text-text-primary tabular-nums">
+      <div className="flex shrink-0 items-center gap-3">
+        <span className="font-mono text-dato font-bold tabular-nums text-text-primary">
           {formatMoneda(plan.precio)}
         </span>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={toggle}
           disabled={isPending}
-          className={cn(
-            "text-xs font-medium transition-colors duration-150",
-            plan.activo
-              ? "text-text-muted hover:text-text-secondary"
-              : "text-brand-green hover:text-brand-green/80"
-          )}
+          className={cn(!plan.activo && "text-brand-green")}
         >
           {plan.activo ? "Archivar" : "Activar"}
-        </button>
+        </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={onEdit}
           aria-label={`Editar ${plan.nombre}`}
         >
-          <LuPencil className="h-3.5 w-3.5" />
+          <LuPencil className="h-4 w-4" />
         </Button>
       </div>
     </li>
@@ -225,10 +226,8 @@ function PlanFormModal({
           />
         </div>
 
-        <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-text-secondary">
-            Tipo de plan
-          </label>
+        <div className="space-y-2">
+          <Label>Tipo de plan</Label>
           <div className="grid grid-cols-3 gap-2">
             {(
               [
@@ -241,11 +240,12 @@ function PlanFormModal({
                 key={o.v}
                 type="button"
                 onClick={() => setTipo(o.v)}
+                aria-pressed={tipo === o.v}
                 className={cn(
-                  "rounded-lg border px-2 py-2 text-xs font-medium transition-colors",
+                  "h-11 border px-2 text-sm font-semibold transition-colors",
                   tipo === o.v
-                    ? "border-brand-green bg-brand-green/10 text-brand-green"
-                    : "border-border bg-surface text-text-secondary hover:text-text-primary"
+                    ? "border-brand-green bg-surface-hover text-brand-green"
+                    : "border-border bg-transparent text-text-secondary hover:border-text-secondary hover:text-text-primary"
                 )}
               >
                 {o.l}
@@ -253,7 +253,7 @@ function PlanFormModal({
             ))}
           </div>
           <input type="hidden" name="tipo" value={tipo} />
-          <p className="text-[11px] text-text-muted">
+          <p className="text-xs text-text-muted">
             {tipo === "tiempo"
               ? "Vigente por los días indicados."
               : tipo === "visitas"
@@ -280,13 +280,13 @@ function PlanFormModal({
         {state.error && Object.keys(state.fieldErrors).length === 0 && (
           <p
             role="alert"
-            className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
+            className="border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
           >
             {state.error}
           </p>
         )}
 
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
+        <div className="flex justify-end gap-3 border-t border-border pt-4">
           <Button
             type="button"
             variant="ghost"

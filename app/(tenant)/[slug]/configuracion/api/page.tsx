@@ -46,18 +46,19 @@ export default async function ApiConfigPage() {
   }
 
   return (
-    <div className="space-y-2 pt-2">
-      <p className="text-sm text-text-secondary">
-        Usa esta API key para conectar tu web externa con tu gimnasio.
-      </p>
-      <div className="pt-2">
-        <ApiKeyPanel
-          apiKey={keyInfo.api_key}
-          ultimoUso={keyInfo.ultimo_uso}
-          requestsMes={requestsMes}
-          log={log}
-        />
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-text-primary">API pública</h3>
+        <p className="mt-1 text-sm text-text-secondary">
+          Usa esta API key para conectar tu web externa con tu gimnasio.
+        </p>
       </div>
+      <ApiKeyPanel
+        apiKey={keyInfo.api_key}
+        ultimoUso={keyInfo.ultimo_uso}
+        requestsMes={requestsMes}
+        log={log}
+      />
     </div>
   );
 }

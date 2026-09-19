@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LuApple, LuPlus, LuChevronDown } from "react-icons/lu";
+import { LuPlus, LuChevronDown } from "react-icons/lu";
+import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/lib/utils/cn";
 import type { PlanNutricion } from "@/lib/queries/nutricion.queries";
 import { PlanNutricionForm } from "./PlanNutricionForm";
 import { PlanNutricionCard } from "./PlanNutricionCard";
@@ -49,25 +51,23 @@ export function MiembroNutricion({ miembroId, planes, disabled }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-6">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-          <LuApple className="h-4 w-4 text-brand-green" />
-          Nutrición
-        </h3>
+    <section className="card-surface">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <h3 className="text-base font-semibold text-text-primary">Nutrición</h3>
         {!disabled && modo === "ver" && (
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => setModo("crear")}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-bg transition-opacity hover:opacity-90"
+            leftIcon={<LuPlus className="h-4 w-4" />}
           >
-            <LuPlus className="h-3.5 w-3.5" />
             {activo ? "Nuevo plan" : "Crear plan"}
-          </button>
+          </Button>
         )}
       </div>
 
-      <div className="mt-4 space-y-4">
+      <div className="flex flex-col gap-4 p-5">
         {modo === "crear" && (
           <PlanNutricionForm
             miembroId={miembroId}
@@ -95,35 +95,30 @@ export function MiembroNutricion({ miembroId, planes, disabled }: Props) {
         )}
 
         {!activo && modo === "ver" && (
-          <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
-            <p className="text-sm text-text-secondary">
-              Este miembro no tiene un plan de nutrición activo.
-            </p>
-            {!disabled && (
-              <p className="mt-1 text-xs text-text-muted">
-                Crea uno para asignarle comidas y objetivos.
-              </p>
-            )}
-          </div>
+          <p className="px-5 py-8 text-center text-sm text-text-muted">
+            Sin plan de nutrición activo.
+          </p>
         )}
 
         {historial.length > 0 && (
-          <div className="border-t border-border pt-3">
+          <div className="border-t border-border pt-4">
             <button
               type="button"
               onClick={() => setVerHistorial((v) => !v)}
-              className="flex items-center gap-1.5 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary"
+              aria-expanded={verHistorial}
+              className="inline-flex h-9 items-center gap-1.5 font-mono text-etiqueta uppercase text-text-muted transition-colors hover:text-text-primary"
             >
               <LuChevronDown
-                className={
-                  "h-3.5 w-3.5 transition-transform " +
-                  (verHistorial ? "rotate-180" : "")
-                }
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  verHistorial && "rotate-180"
+                )}
+                aria-hidden="true"
               />
-              Historial ({historial.length})
+              Historial · {historial.length}
             </button>
             {verHistorial && (
-              <div className="mt-3 space-y-3">
+              <div className="mt-3 flex flex-col gap-3">
                 {historial.map((p) =>
                   editandoId === p.id ? (
                     <PlanNutricionForm
@@ -148,6 +143,6 @@ export function MiembroNutricion({ miembroId, planes, disabled }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

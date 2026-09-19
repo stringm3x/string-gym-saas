@@ -12,6 +12,8 @@ const options = [
   { value: "otros", label: "Otros" },
 ] as const;
 
+/** Filtro por categoría de los movimientos: chips con estado seleccionado
+ * en fondo lleno + ácido (sin barra lateral). */
 export function CajaFilters() {
   const router = useRouter();
   const pathname = usePathname();
@@ -30,7 +32,7 @@ export function CajaFilters() {
   }
 
   return (
-    <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface p-1">
+    <div className="flex flex-wrap items-center gap-2">
       {options.map((opt) => {
         const active = current === opt.value;
         return (
@@ -38,11 +40,12 @@ export function CajaFilters() {
             key={opt.value}
             type="button"
             onClick={() => set(opt.value)}
+            aria-pressed={active}
             className={cn(
-              "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+              "inline-flex h-9 items-center border px-3 text-sm transition-colors duration-150",
               active
-                ? "bg-bg text-text-primary"
-                : "text-text-secondary hover:text-text-primary"
+                ? "border-brand-green bg-surface-hover text-brand-green"
+                : "border-border text-text-secondary hover:border-text-secondary hover:text-text-primary"
             )}
           >
             {opt.label}

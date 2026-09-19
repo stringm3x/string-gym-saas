@@ -1,6 +1,7 @@
 import {
   LuArrowDownToLine,
   LuArrowUpFromLine,
+  LuArrowUpDown,
   LuRefreshCw,
 } from "react-icons/lu";
 import { Badge } from "@/components/ui/Badge";
@@ -19,18 +20,21 @@ const tipoConfig = {
     icon: LuArrowDownToLine,
     variant: "success" as const,
     sign: "+",
+    color: "text-brand-green",
   },
   salida: {
     label: "Salida",
     icon: LuArrowUpFromLine,
     variant: "danger" as const,
     sign: "−",
+    color: "text-danger",
   },
   ajuste: {
     label: "Ajuste",
     icon: LuRefreshCw,
     variant: "warning" as const,
     sign: "",
+    color: "text-warning",
   },
 };
 
@@ -38,34 +42,37 @@ export function MovimientosList({ movimientos }: MovimientosListProps) {
   if (movimientos.length === 0) {
     return (
       <EmptyState
-        icon={<LuRefreshCw className="h-5 w-5" />}
-        title="Sin movimientos"
-        description="Cuando registres entradas, salidas o ajustes, aparecerán aquí con su motivo."
+        icon={<LuArrowUpDown />}
+        title="Sin movimientos todavía"
+        description="Cada entrada, salida o ajuste de stock queda registrado aquí con su fecha y motivo."
       />
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface">
+    <div className="border border-border bg-surface">
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <h3 className="text-base font-semibold text-text-primary">
+          Movimientos
+        </h3>
+        <span className="font-mono text-etiqueta text-text-muted">
+          {movimientos.length}
+        </span>
+      </div>
       <ul className="divide-y divide-border">
         {movimientos.map((m) => {
           const cfg = tipoConfig[m.tipo];
           const Icon = cfg.icon;
 
           return (
-            <li key={m.id} className="flex items-center gap-4 px-4 py-3">
-              <div
-                className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                  m.tipo === "entrada" && "bg-brand-green/15 text-brand-green",
-                  m.tipo === "salida" && "bg-danger/15 text-danger",
-                  m.tipo === "ajuste" && "bg-warning/15 text-warning"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-              </div>
+            <li key={m.id} className="flex items-center gap-4 px-5 py-4">
+              {/* Ícono a color, sin caja: el borde y el ritmo hacen el trabajo. */}
+              <Icon
+                className={cn("h-4 w-4 shrink-0", cfg.color)}
+                aria-hidden="true"
+              />
 
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="truncate text-sm font-medium text-text-primary">
                     {m.producto_nombre}
@@ -73,12 +80,14 @@ export function MovimientosList({ movimientos }: MovimientosListProps) {
                   <Badge variant={cfg.variant}>{cfg.label}</Badge>
                   {m.pago_id && <Badge variant="neutral">Venta</Badge>}
                 </div>
-                <p className="text-xs text-text-secondary">
-                  {formatFechaHora(m.created_at)}
+                <p className="mt-0.5 text-xs text-text-secondary">
+                  <span className="font-mono tabular-nums">
+                    {formatFechaHora(m.created_at)}
+                  </span>
                   {m.motivo && (
                     <>
                       {" · "}
-                      <span className="italic">{m.motivo}</span>
+                      <span className="text-text-muted">{m.motivo}</span>
                     </>
                   )}
                 </p>
@@ -86,10 +95,8 @@ export function MovimientosList({ movimientos }: MovimientosListProps) {
 
               <span
                 className={cn(
-                  "font-mono text-sm font-bold tabular-nums",
-                  m.tipo === "entrada" && "text-brand-green",
-                  m.tipo === "salida" && "text-danger",
-                  m.tipo === "ajuste" && "text-warning"
+                  "font-mono text-dato font-bold tabular-nums",
+                  cfg.color
                 )}
               >
                 {cfg.sign}

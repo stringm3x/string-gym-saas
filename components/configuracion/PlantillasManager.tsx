@@ -7,12 +7,13 @@ import {
   LuTrash2,
   LuPlus,
   LuMessageSquare,
-  LuSparkles,
+  LuListPlus,
 } from "react-icons/lu";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -114,13 +115,13 @@ function PlantillaForm({
         autoFocus
       />
 
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <Label htmlFor="categoria">Categoría</Label>
         <select
           id="categoria"
           name="categoria"
           defaultValue={plantilla?.categoria ?? "general"}
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+          className="h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary focus:border-brand-green focus:outline-none"
         >
           {PLANTILLA_CATEGORIAS.map((c) => (
             <option key={c} value={c}>
@@ -133,17 +134,19 @@ function PlantillaForm({
         )}
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <Label htmlFor="contenido">Contenido</Label>
 
-        <div className="flex flex-wrap gap-1.5 rounded-lg border border-border/60 bg-surface-hover px-3 py-2">
-          <span className="text-xs text-text-muted">Insertar variable:</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-etiqueta uppercase text-text-muted">
+            Variables
+          </span>
           {VARIABLES.map((v) => (
             <button
               key={v.key}
               type="button"
               onClick={() => insertVariable(v.key)}
-              className="rounded bg-brand-green/10 px-1.5 py-0.5 font-mono text-xs text-brand-green hover:bg-brand-green/20 transition-colors"
+              className="inline-flex h-9 items-center border border-border px-3 font-mono text-xs text-brand-green transition-colors hover:border-brand-green"
             >
               {v.label}
             </button>
@@ -158,7 +161,7 @@ function PlantillaForm({
           required
           defaultValue={plantilla?.contenido}
           placeholder="Hola {{nombre}}, tu membresía en {{gym_nombre}}…"
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+          className="w-full rounded border border-border bg-bg px-3 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
         />
         {state.fieldErrors.contenido && (
           <p className="text-xs text-danger">{state.fieldErrors.contenido}</p>
@@ -168,12 +171,12 @@ function PlantillaForm({
       <input type="hidden" name="activo" value={plantilla?.activo === false ? "false" : "true"} />
 
       {state.error && Object.keys(state.fieldErrors).length === 0 && (
-        <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+        <p className="border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {state.error}
         </p>
       )}
 
-      <div className="flex justify-end gap-2 border-t border-border pt-4">
+      <div className="flex justify-end gap-3 border-t border-border pt-4">
         <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
           Cancelar
         </Button>
@@ -252,62 +255,56 @@ export function PlantillasManager({ plantillas }: PlantillasManagerProps) {
 
   return (
     <>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-text-secondary">
-            {plantillas.length === 0
-              ? "Sin plantillas."
-              : `${plantillas.length} plantilla${plantillas.length !== 1 ? "s" : ""}`}
-          </p>
-          <Button
-            leftIcon={<LuPlus className="h-4 w-4" />}
-            onClick={openCreate}
-            size="sm"
-          >
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-text-primary">
+              Plantillas de mensaje
+            </h3>
+            <p className="mt-1 text-sm text-text-secondary">
+              {plantillas.length === 0
+                ? "Sin plantillas"
+                : `${plantillas.length} plantilla${plantillas.length !== 1 ? "s" : ""}`}
+            </p>
+          </div>
+          <Button leftIcon={<LuPlus className="h-4 w-4" />} onClick={openCreate}>
             Nueva plantilla
           </Button>
         </div>
 
         {plantillas.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-border py-12 text-center">
-            <LuMessageSquare className="h-8 w-8 text-text-muted" />
-            <div>
-              <p className="text-sm font-medium text-text-primary">
-                Sin plantillas de mensaje
-              </p>
-              <p className="mt-0.5 text-xs text-text-secondary">
-                Las plantillas aceleran tus mensajes de WhatsApp con variables
-                como nombre y fecha de vencimiento.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                leftIcon={<LuSparkles className="h-4 w-4" />}
-                onClick={handleSeed}
-                loading={seeding}
-                variant="ghost"
-                size="sm"
-              >
-                Crear plantillas sugeridas
-              </Button>
-              <Button
-                leftIcon={<LuPlus className="h-4 w-4" />}
-                onClick={openCreate}
-                size="sm"
-              >
-                Crear plantilla
-              </Button>
-            </div>
-          </div>
+          <EmptyState
+            icon={<LuMessageSquare />}
+            title="Sin plantillas todavía"
+            description="Las plantillas aceleran tus mensajes de WhatsApp con variables como el nombre y la fecha de vencimiento. Empieza con las sugeridas o escribe la tuya."
+            action={
+              <>
+                <Button
+                  leftIcon={<LuPlus className="h-4 w-4" />}
+                  onClick={openCreate}
+                >
+                  Crear plantilla
+                </Button>
+                <Button
+                  leftIcon={<LuListPlus className="h-4 w-4" />}
+                  onClick={handleSeed}
+                  loading={seeding}
+                  variant="secondary"
+                >
+                  Crear plantillas sugeridas
+                </Button>
+              </>
+            }
+          />
         ) : (
-          <div className="divide-y divide-border rounded-xl border border-border bg-surface">
+          <ul className="divide-y divide-border border border-border bg-surface">
             {plantillas.map((p) => (
-              <div
+              <li
                 key={p.id}
-                className="flex items-start justify-between gap-4 px-4 py-3"
+                className="flex items-center justify-between gap-4 px-5 py-4"
               >
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={`text-sm font-medium ${
                         p.activo ? "text-text-primary" : "text-text-muted line-through"
@@ -322,46 +319,47 @@ export function PlantillasManager({ plantillas }: PlantillasManagerProps) {
                       <Badge variant="neutral">Inactiva</Badge>
                     )}
                   </div>
-                  <p className="truncate text-xs text-text-muted">
+                  <p className="mt-0.5 truncate text-xs text-text-muted">
                     {p.contenido.slice(0, 90)}
                     {p.contenido.length > 90 ? "…" : ""}
                   </p>
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleToggleActivo(p)}
-                    title={p.activo ? "Desactivar" : "Activar"}
-                    className={`rounded-md px-2 py-1 text-xs transition-colors ${
-                      p.activo
-                        ? "text-brand-green hover:bg-brand-green/10"
-                        : "text-text-muted hover:bg-surface-hover"
-                    }`}
+                    aria-pressed={p.activo}
+                    className={p.activo ? "text-brand-green" : undefined}
                   >
                     {p.activo ? "Activa" : "Inactiva"}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => openEdit(p)}
-                    className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
-                    aria-label="Editar plantilla"
+                    aria-label={`Editar ${p.nombre}`}
                   >
-                    <LuPencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
+                    <LuPencil className="h-4 w-4" />
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleDelete(p)}
                     disabled={deletingId === p.id}
-                    className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-danger/10 hover:text-danger"
-                    aria-label="Eliminar plantilla"
+                    aria-label={`Eliminar ${p.nombre}`}
+                    className="hover:text-danger"
                   >
-                    <LuTrash2 className="h-3.5 w-3.5" />
-                  </button>
+                    <LuTrash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
 

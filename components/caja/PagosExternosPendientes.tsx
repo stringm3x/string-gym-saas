@@ -30,32 +30,37 @@ export function PagosExternosPendientes({
   if (pendientes.length === 0) return null;
 
   return (
-    <div className="space-y-2 rounded-xl border border-warning/40 bg-warning/[0.06] p-4">
-      <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-warning">
-        <LuLoaderCircle className="h-3.5 w-3.5 animate-spin" />
-        MercadoPago pendiente de confirmación ({pendientes.length})
-      </h4>
-      <ul className="space-y-1.5">
+    <section className="border border-warning/40 bg-surface">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <h4 className="flex items-center gap-2 font-mono text-etiqueta uppercase text-warning">
+          <LuLoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+          MercadoPago por confirmar
+        </h4>
+        <span className="font-mono text-etiqueta text-text-muted">
+          {pendientes.length}
+        </span>
+      </div>
+      <ul className="divide-y divide-border">
         {pendientes.map((p) => (
           <li
             key={p.id}
-            className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+            className="flex items-center justify-between gap-4 px-5 py-3"
           >
             <div className="min-w-0">
-              <p className="truncate text-text-primary">
+              <p className="truncate text-[15px] leading-5 text-text-primary">
                 {p.descripcion ?? "Cobro con MercadoPago"}
               </p>
-              <p className="text-xs text-text-muted">
-                {formatFechaHora(p.createdAt)} ·{" "}
-                {STATUS_LABEL[p.status] ?? p.status}
+              <p className="text-sm text-text-muted">
+                <span className="font-mono">{formatFechaHora(p.createdAt)}</span>{" "}
+                · {STATUS_LABEL[p.status] ?? p.status}
               </p>
             </div>
-            <span className="shrink-0 font-mono font-semibold tabular-nums text-text-primary">
+            <span className="shrink-0 font-mono text-dato tabular-nums text-text-primary">
               {formatMoneda(p.monto)}
             </span>
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   );
 }

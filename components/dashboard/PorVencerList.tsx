@@ -3,7 +3,6 @@ import { LuClock, LuChevronRight } from "react-icons/lu";
 import { formatFecha } from "@/lib/utils/format";
 import { diasParaVencer } from "@/lib/utils/estado-membresia";
 import { Badge } from "@/components/ui/Badge";
-import { EmptyState } from "@/components/ui/EmptyState";
 import type { MiembroPorVencer } from "@/lib/queries/dashboard.queries";
 
 interface PorVencerListProps {
@@ -14,17 +13,17 @@ interface PorVencerListProps {
 export function PorVencerList({ miembros, slug }: PorVencerListProps) {
   return (
     <div className="card-surface">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
         <div className="flex items-center gap-2">
-          <LuClock className="h-4 w-4 text-warning" />
-          <h3 className="text-sm font-semibold text-text-primary">
+          <LuClock className="h-4 w-4 text-warning" aria-hidden="true" />
+          <h3 className="text-base font-semibold text-text-primary">
             Por vencer (7 días)
           </h3>
         </div>
         {miembros.length > 0 && (
           <Link
             href={`/${slug}/miembros?filter=por_vencer`}
-            className="text-xs text-text-secondary transition-colors hover:text-brand-green"
+            className="text-sm text-text-secondary underline-offset-4 transition-colors hover:text-brand-green hover:underline"
           >
             Ver todos
           </Link>
@@ -32,14 +31,9 @@ export function PorVencerList({ miembros, slug }: PorVencerListProps) {
       </div>
 
       {miembros.length === 0 ? (
-        <div className="p-5">
-          <EmptyState
-            icon={<LuClock className="h-5 w-5" />}
-            title="Todo en orden"
-            description="Ningún miembro vence en los próximos 7 días."
-            className="border-0"
-          />
-        </div>
+        <p className="px-5 py-8 text-center text-sm text-text-muted">
+          Ningún miembro vence en los próximos 7 días.
+        </p>
       ) : (
         <ul className="divide-y divide-border">
           {miembros.map((m) => {
@@ -52,18 +46,23 @@ export function PorVencerList({ miembros, slug }: PorVencerListProps) {
               <li key={m.id}>
                 <Link
                   href={`/${slug}/miembros/${m.id}`}
-                  className="flex items-center justify-between gap-3 px-5 py-3 transition-colors duration-150 hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none"
+                  className="flex min-h-[44px] items-center justify-between gap-3 px-5 py-3 transition-colors duration-150 hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-text-primary">
                       {m.nombre}
                     </p>
                     <p className="truncate text-xs text-text-secondary">
-                      Vence el {formatFecha(m.fecha_vencimiento)}
+                      Vence el{" "}
+                      <span className="font-mono tabular-nums">
+                        {formatFecha(m.fecha_vencimiento)}
+                      </span>
                       {m.telefono && (
                         <>
                           {" · "}
-                          <span className="font-mono">{m.telefono}</span>
+                          <span className="font-mono tabular-nums">
+                            {m.telefono}
+                          </span>
                         </>
                       )}
                     </p>

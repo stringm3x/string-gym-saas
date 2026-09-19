@@ -24,7 +24,7 @@ export default async function WhatsappInboxPage({
         descripcion="Contesta los WhatsApp de tus miembros desde STRING GYM. El bot responde solo y tú tomas el control cuando quieras."
         beneficios={[
           "Bandeja unificada de conversaciones por gym",
-          "Bot con IA que reserva clases y consulta membresías",
+          "Bot de WhatsApp que reserva clases y consulta membresías",
           "Pausa el bot y responde manual en cualquier conversación",
           "Historial completo: recordatorios, pagos y bienvenidas",
         ]}
@@ -48,7 +48,7 @@ export default async function WhatsappInboxPage({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+        <h2 className="text-pagina text-text-primary font-semibold">
           WhatsApp
         </h2>
         <p className="mt-1 text-sm text-text-secondary">

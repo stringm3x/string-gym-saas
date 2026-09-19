@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { crearPlanPagoAction } from "@/app/(tenant)/[slug]/miembros/[id]/creditos-actions";
 import { repartirMonto, fechasCuotas, money } from "@/lib/utils/creditos-calc";
@@ -148,28 +149,33 @@ export function PlanPagoForm({
     });
   }
 
-  const labelClass = "block text-xs font-medium text-text-secondary mb-1";
+  const labelClass =
+    "mb-2 block font-mono text-etiqueta uppercase text-text-secondary";
   const inputClass =
-    "w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand-green";
+    "h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary focus:outline-none focus:border-brand-green";
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-bg p-4">
-      {/* Tipo de plan */}
-      <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
-        {(["membresia", "producto"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => cambiarTipo(t)}
-            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              tipo === t
-                ? "bg-brand-green text-bg"
-                : "text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            {t === "membresia" ? "Membresía" : "Producto"}
-          </button>
-        ))}
+    <div className="space-y-4 border border-border bg-bg p-5">
+      {/* Tipo de plan: chip seleccionado en fondo lleno + ácido */}
+      <div className="grid grid-cols-2 gap-2">
+        {(["membresia", "producto"] as const).map((t) => {
+          const active = tipo === t;
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => cambiarTipo(t)}
+              aria-pressed={active}
+              className={`inline-flex h-11 items-center justify-center border px-3 text-sm font-medium transition-colors ${
+                active
+                  ? "border-brand-green bg-surface-hover text-brand-green"
+                  : "border-border text-text-secondary hover:border-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {t === "membresia" ? "Membresía" : "Producto"}
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -239,11 +245,12 @@ export function PlanPagoForm({
           <input
             id="total"
             type="number"
+            inputMode="decimal"
             min={0}
             step="0.01"
             value={total}
             onChange={(e) => setTotal(Number(e.target.value))}
-            className={inputClass}
+            className={`${inputClass} font-mono tabular-nums`}
           />
         </div>
 
@@ -297,41 +304,44 @@ export function PlanPagoForm({
       </div>
 
       {tipo === "producto" && (
-        <p className="text-xs text-text-muted">
+        <p className="text-sm text-text-muted">
           El producto se descuenta del inventario al crear el plan (el miembro se
           lo lleva hoy).
         </p>
       )}
 
       {preview && (
-        <div className="rounded-lg border border-brand-green/20 bg-brand-green/5 px-4 py-3">
-          <p className="text-xs font-medium text-brand-green">
-            {cuotas} cuotas de {money(preview[0].monto)}
-            {preview[0].monto !== preview[cuotas - 1].monto &&
-              ` (última ${money(preview[cuotas - 1].monto)})`}
+        <div className="border border-border bg-surface px-4 py-3">
+          <p className="text-[15px] leading-5 text-text-primary">
+            {cuotas} cuotas de{" "}
+            <span className="font-mono text-dato">{money(preview[0].monto)}</span>
+            {preview[0].monto !== preview[cuotas - 1].monto && (
+              <>
+                {" "}
+                (última{" "}
+                <span className="font-mono text-dato">
+                  {money(preview[cuotas - 1].monto)}
+                </span>
+                )
+              </>
+            )}
           </p>
-          <p className="mt-1 text-xs text-text-secondary">
-            Vencen: {preview.map((c) => fechaCorta(c.fecha)).join(" / ")}
+          <p className="mt-1 text-sm text-text-muted">
+            Vencen:{" "}
+            <span className="font-mono">
+              {preview.map((c) => fechaCorta(c.fecha)).join(" / ")}
+            </span>
           </p>
         </div>
       )}
 
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onDone}
-          className="rounded-lg border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary"
-        >
+      <div className="flex justify-end gap-2 border-t border-border pt-4">
+        <Button type="button" variant="secondary" onClick={onDone}>
           Cancelar
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={crear}
-          className="rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
-          {pending ? "Creando…" : "Crear plan de pagos"}
-        </button>
+        </Button>
+        <Button type="button" loading={pending} onClick={crear}>
+          Crear plan de pagos
+        </Button>
       </div>
     </div>
   );

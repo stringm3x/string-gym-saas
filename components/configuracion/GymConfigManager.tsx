@@ -81,7 +81,7 @@ export function GymConfigManager({ gym }: GymConfigManagerProps) {
         error={state.fieldErrors.rfc}
       />
 
-      <label className="flex items-start gap-3 rounded-lg border border-border p-3">
+      <label className="flex items-start gap-3 border border-border p-4">
         <input
           type="checkbox"
           name="checkin_bloquea_vencidos"
@@ -100,7 +100,7 @@ export function GymConfigManager({ gym }: GymConfigManagerProps) {
         </span>
       </label>
 
-      <label className="flex items-start gap-3 rounded-lg border border-border p-3">
+      <label className="flex items-start gap-3 border border-border p-4">
         <input
           type="checkbox"
           name="congelacion_auto_aprobar"
@@ -120,7 +120,7 @@ export function GymConfigManager({ gym }: GymConfigManagerProps) {
       </label>
 
       {state.error && Object.keys(state.fieldErrors).length === 0 && (
-        <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+        <p className="border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {state.error}
         </p>
       )}

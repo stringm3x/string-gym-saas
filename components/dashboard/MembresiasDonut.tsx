@@ -35,7 +35,7 @@ export function MembresiasDonut({
 
   return (
     <div className="card-surface p-5">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+      <p className="font-mono text-etiqueta uppercase text-text-secondary">
         Membresías
       </p>
 
@@ -70,11 +70,13 @@ export function MembresiasDonut({
             <span className="font-mono text-2xl font-bold tabular-nums text-text-primary">
               {total}
             </span>
-            <span className="text-[10px] text-text-muted">miembros</span>
+            <span className="font-mono text-xs uppercase text-text-muted">
+              miembros
+            </span>
           </div>
         </div>
 
-        <ul className="flex-1 space-y-1.5">
+        <ul className="flex-1">
           {segments.map((s) => {
             const pct = total > 0 ? Math.round((s.value / total) * 100) : 0;
             return (
@@ -82,16 +84,17 @@ export function MembresiasDonut({
                 <button
                   type="button"
                   onClick={() => ir(s.filtro)}
-                  className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-bg"
+                  className="flex h-11 w-full items-center justify-between gap-2 px-2 text-left transition-colors hover:bg-surface-hover"
                 >
-                  <span className="flex items-center gap-2 text-sm text-text-secondary">
+                  <span className="flex items-center gap-2 font-mono text-etiqueta uppercase text-text-secondary">
                     <span
-                      className="h-2.5 w-2.5 rounded-full"
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: s.color }}
+                      aria-hidden="true"
                     />
                     {s.label}
                   </span>
-                  <span className="font-mono text-sm tabular-nums text-text-primary">
+                  <span className="font-mono text-dato tabular-nums text-text-primary">
                     {s.value}{" "}
                     <span className="text-xs text-text-muted">({pct}%)</span>
                   </span>

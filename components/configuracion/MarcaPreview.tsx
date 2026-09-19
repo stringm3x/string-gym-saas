@@ -20,11 +20,11 @@ export function MarcaPreview({
 }: MarcaPreviewProps) {
   return (
     <div className="space-y-3">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+      <p className="font-mono text-etiqueta uppercase text-text-secondary">
         Vista previa
       </p>
 
-      <div className="overflow-hidden rounded-xl border border-border">
+      <div className="overflow-hidden border border-border">
         <div className="flex h-64">
           {/* Sidebar simulado */}
           <div
@@ -44,20 +44,20 @@ export function MarcaPreview({
                   />
                 </div>
               ) : (
-                <span className="truncate text-xs font-bold uppercase tracking-wide text-text-primary">
-                  {gymNombre || "Mi Gym"}
+                <span className="truncate font-mono text-etiqueta uppercase text-text-primary">
+                  {gymNombre || "Mi gimnasio"}
                 </span>
               )}
             </div>
 
             {/* Item "Hoy" activo con color acento */}
             <div
-              className="flex items-center gap-2 rounded-md px-2 py-1.5"
+              className="flex items-center gap-2 px-2 py-1.5"
               style={{ backgroundColor: hexToRgba(colorAcento, 0.15) }}
             >
               <LuSunrise className="h-3.5 w-3.5" style={{ color: colorAcento }} />
               <span
-                className="text-[11px] font-medium"
+                className="text-xs font-medium"
                 style={{ color: colorAcento }}
               >
                 Hoy
@@ -66,11 +66,11 @@ export function MarcaPreview({
 
             <div className="flex items-center gap-2 px-2 py-1.5">
               <LuLayoutDashboard className="h-3.5 w-3.5 text-text-primary/50" />
-              <span className="text-[11px] text-text-primary/50">Dashboard</span>
+              <span className="text-xs text-text-primary/50">Panel</span>
             </div>
             <div className="flex items-center gap-2 px-2 py-1.5">
               <LuUsers className="h-3.5 w-3.5 text-text-primary/50" />
-              <span className="text-[11px] text-text-primary/50">Miembros</span>
+              <span className="text-xs text-text-primary/50">Miembros</span>
             </div>
           </div>
 
@@ -81,29 +81,30 @@ export function MarcaPreview({
           >
             <div className="flex items-center gap-2">
               <span
-                className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
+                className="inline-flex items-center border px-2 py-0.5 font-mono text-xs uppercase tracking-[0.12em]"
                 style={{
-                  backgroundColor: hexToRgba(colorAcento, 0.15),
+                  backgroundColor: hexToRgba(colorAcento, 0.1),
+                  borderColor: hexToRgba(colorAcento, 0.4),
                   color: colorAcento,
                 }}
               >
                 Activo
               </span>
-              <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-text-secondary">
+              <span className="border border-border px-2 py-0.5 font-mono text-xs uppercase tracking-[0.12em] text-text-secondary">
                 Por vencer
               </span>
             </div>
 
-            <button
-              type="button"
-              disabled
-              className="w-fit rounded-lg px-4 py-2 text-xs font-semibold"
+            <span
+              aria-hidden="true"
+              className="inline-flex h-9 w-fit items-center px-3 text-xs font-semibold"
               style={{ backgroundColor: colorAcento, color: "var(--color-on-brand)" }}
             >
               Botón primario
-            </button>
+            </span>
 
-            <div className="mt-auto h-1.5 w-2/3 rounded-full"
+            <div
+              className="mt-auto h-1.5 w-2/3"
               style={{ backgroundColor: colorAcento }}
             />
           </div>

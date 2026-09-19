@@ -99,7 +99,7 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
       )}
 
       {disabled && (
-        <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-text-secondary">
+        <p className="border border-warning/40 px-4 py-3 text-sm text-text-secondary">
           Restaura este miembro para editarlo.
         </p>
       )}
@@ -201,20 +201,22 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
       {state.duplicate && (
         <div
           role="alert"
-          className="space-y-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 text-xs text-text-secondary"
+          className="space-y-3 border border-warning/40 px-4 py-3 text-sm text-text-secondary"
         >
           <p>
             Ya existe un miembro parecido:{" "}
-            <strong className="text-text-primary">
+            <strong className="font-medium text-text-primary">
               {state.duplicate.nombre}
             </strong>
-            {state.duplicate.telefono && ` · ${state.duplicate.telefono}`}
+            {state.duplicate.telefono && (
+              <span className="font-mono"> · {state.duplicate.telefono}</span>
+            )}
             {state.duplicate.email && ` · ${state.duplicate.email}`}
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Link
               href={`/${slug}/miembros/${state.duplicate.id}`}
-              className="font-medium text-brand-green underline underline-offset-2 hover:opacity-80"
+              className="inline-flex h-9 items-center text-sm text-text-primary underline-offset-4 hover:text-brand-green hover:underline"
             >
               Ver registro existente
             </Link>
@@ -222,7 +224,7 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
               type="submit"
               name="confirmar_duplicado"
               value="true"
-              variant="ghost"
+              variant="secondary"
               size="sm"
               loading={isPending}
             >
@@ -235,7 +237,7 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
       {state.error && Object.keys(state.fieldErrors).length === 0 && (
         <p
           role="alert"
-          className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
+          className="border border-danger/40 px-4 py-3 text-sm text-danger"
         >
           {state.error}
         </p>
@@ -244,7 +246,7 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
       <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           onClick={() => router.push(`/${slug}/miembros`)}
           disabled={isPending}
         >
@@ -298,20 +300,22 @@ function ReferidoPorField({
   }, [query, selected, excludeId]);
 
   return (
-    <div className="space-y-1.5">
-      <Label>Referido por</Label>
+    <div className="space-y-2">
+      <Label htmlFor="referido-por">Referido por</Label>
       <input type="hidden" name="referido_por" value={selected?.id ?? ""} />
 
       {selected ? (
-        <div className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
-          <span className="text-text-primary">{selected.nombre}</span>
+        <div className="flex items-center justify-between gap-3 border border-border bg-bg py-1 pl-4 pr-1">
+          <span className="truncate text-[15px] leading-5 text-text-primary">
+            {selected.nombre}
+          </span>
           <button
             type="button"
             onClick={() => {
               setSelected(null);
               setQuery("");
             }}
-            className="text-text-muted hover:text-danger"
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
             aria-label="Quitar referido"
           >
             <LuX className="h-4 w-4" />
@@ -320,6 +324,7 @@ function ReferidoPorField({
       ) : (
         <div className="relative">
           <Input
+            id="referido-por"
             type="search"
             placeholder="Buscar miembro que lo refirió…"
             value={query}
@@ -328,7 +333,7 @@ function ReferidoPorField({
             autoComplete="off"
           />
           {resultados.length > 0 && (
-            <ul className="absolute z-10 mt-1 w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+            <ul className="absolute z-10 mt-2 w-full divide-y divide-border overflow-hidden border border-border bg-surface">
               {resultados.map((m) => (
                 <li key={m.id}>
                   <button
@@ -337,9 +342,16 @@ function ReferidoPorField({
                       setSelected({ id: m.id, nombre: m.nombre });
                       setResultados([]);
                     }}
-                    className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-surface-hover"
+                    className="flex min-h-11 w-full items-center justify-between gap-4 px-4 py-2.5 text-left transition-colors hover:bg-surface-hover"
                   >
-                    {m.nombre}
+                    <span className="truncate text-[15px] leading-5 text-text-primary">
+                      {m.nombre}
+                    </span>
+                    {m.telefono && (
+                      <span className="shrink-0 font-mono text-dato text-text-muted">
+                        {m.telefono}
+                      </span>
+                    )}
                   </button>
                 </li>
               ))}

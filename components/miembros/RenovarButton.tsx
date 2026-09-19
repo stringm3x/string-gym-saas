@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { LuRefreshCw } from "react-icons/lu";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
 import { formatMoneda } from "@/lib/utils/format";
 import { formatearFechaMX } from "@/lib/utils/dates";
@@ -107,17 +109,16 @@ export function RenovarButton({
 
       <Modal open={open} onClose={() => setOpen(false)} title="Renovar membresía">
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <span className="block text-xs font-mono uppercase tracking-widest text-text-muted">
-              Plan
-            </span>
+          <div className="space-y-2">
+            <Label htmlFor="renovar-plan">Plan</Label>
             <select
+              id="renovar-plan"
               value={planId}
               onChange={(e) => {
                 setPlanId(e.target.value);
                 setFechasPersonalizadas(false);
               }}
-              className="w-full cursor-pointer appearance-none rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+              className="h-11 w-full cursor-pointer rounded border border-border bg-bg px-3 text-sm text-text-primary focus:border-brand-green focus:outline-none"
             >
               {planes.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -127,82 +128,74 @@ export function RenovarButton({
             </select>
           </div>
 
-          <div className="space-y-1.5">
-            <span className="block text-xs font-mono uppercase tracking-widest text-text-muted">
-              Método de pago
-            </span>
+          <div className="space-y-2">
+            <Label>Método</Label>
             <div className="grid grid-cols-3 gap-2">
-              {METODOS.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => setMetodo(m.value)}
-                  className={cn(
-                    "rounded-lg border px-2 py-2 text-xs font-medium transition-colors",
-                    metodo === m.value
-                      ? "border-brand-green bg-brand-green/10 text-brand-green"
-                      : "border-border bg-surface text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  {m.label}
-                </button>
-              ))}
+              {METODOS.map((m) => {
+                const active = metodo === m.value;
+                return (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setMetodo(m.value)}
+                    aria-pressed={active}
+                    className={cn(
+                      "inline-flex h-11 items-center justify-center border px-2 text-sm font-medium transition-colors",
+                      active
+                        ? "border-brand-green bg-surface-hover text-brand-green"
+                        : "border-border bg-bg text-text-secondary hover:border-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {plan && rango && (
-            <div className="rounded-lg border border-border bg-bg p-3 text-sm">
-              <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 border border-border bg-bg p-4 text-sm">
+              <div className="flex items-center justify-between gap-4">
                 <span className="text-text-secondary">A cobrar</span>
-                <span className="font-mono font-semibold text-brand-green">
+                <span className="font-mono text-dato font-bold tabular-nums text-text-primary">
                   {formatMoneda(plan.precio)}
                 </span>
               </div>
 
               {fechasPersonalizadas ? (
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <label>
-                    <span className="mb-1 block text-[10px] uppercase tracking-widest text-text-muted">
-                      Inicio
-                    </span>
-                    <input
-                      type="date"
-                      value={periodoInicio}
-                      onChange={(e) => setPeriodoInicio(e.target.value)}
-                      className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
-                    />
-                  </label>
-                  <label>
-                    <span className="mb-1 block text-[10px] uppercase tracking-widest text-text-muted">
-                      Fin
-                    </span>
-                    <input
-                      type="date"
-                      value={periodoFin}
-                      min={periodoInicio || undefined}
-                      onChange={(e) => setPeriodoFin(e.target.value)}
-                      className="w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
-                    />
-                  </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Inicio"
+                    type="date"
+                    value={periodoInicio}
+                    onChange={(e) => setPeriodoInicio(e.target.value)}
+                  />
+                  <Input
+                    label="Fin"
+                    type="date"
+                    value={periodoFin}
+                    min={periodoInicio || undefined}
+                    onChange={(e) => setPeriodoFin(e.target.value)}
+                  />
                   <button
                     type="button"
                     onClick={() => setFechasPersonalizadas(false)}
-                    className="col-span-2 text-left text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary"
+                    className="col-span-2 inline-flex h-9 items-center self-start text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
                   >
                     Usar la vigencia del plan
                   </button>
                 </div>
               ) : (
-                <div className="mt-1 flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                   <span className="text-text-secondary">Nueva vigencia hasta</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-text-primary">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-dato tabular-nums text-text-primary">
                       {formatearFechaMX(rango.periodo_fin)}
                     </span>
                     <button
                       type="button"
                       onClick={activarFechasPersonalizadas}
-                      className="text-xs text-brand-green underline underline-offset-2 hover:opacity-80"
+                      className="inline-flex h-9 items-center text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
                     >
                       Personalizar
                     </button>
@@ -215,7 +208,7 @@ export function RenovarButton({
           <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >

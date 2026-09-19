@@ -20,10 +20,12 @@ export function CheckinsChart({ data }: CheckinsChartProps) {
   if (data.length === 0) {
     return (
       <div className="card-surface p-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+        <p className="font-mono text-etiqueta uppercase text-text-secondary">
           Check-ins (últimos 7 días)
         </p>
-        <p className="mt-4 text-sm text-text-secondary">Sin datos todavía.</p>
+        <p className="py-8 text-center text-sm text-text-muted">
+          Todavía no hay check-ins registrados.
+        </p>
       </div>
     );
   }
@@ -34,20 +36,20 @@ export function CheckinsChart({ data }: CheckinsChartProps) {
     <div className="card-surface p-5">
       <div className="flex items-baseline justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+          <p className="font-mono text-etiqueta uppercase text-text-secondary">
             Check-ins (últimos 7 días)
           </p>
-          <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary">
+          <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-text-primary">
             {total}
           </p>
-          <p className="text-xs text-text-secondary">visitas en total</p>
+          <p className="text-xs text-text-muted">visitas en total</p>
         </div>
 
         <div className="text-right">
           <p className="font-mono text-lg font-bold tabular-nums text-brand-green">
             {hoy.cantidad}
           </p>
-          <p className="text-xs text-text-secondary">hoy</p>
+          <p className="text-xs text-text-muted">hoy</p>
         </div>
       </div>
 
@@ -68,7 +70,7 @@ export function CheckinsChart({ data }: CheckinsChartProps) {
               >
                 <div
                   className={cn(
-                    "w-full rounded-t transition-all duration-300",
+                    "w-full transition-all duration-300",
                     isHoy ? "bg-brand-green" : "bg-text-muted/30",
                     d.cantidad === 0 && "bg-border"
                   )}
@@ -82,7 +84,7 @@ export function CheckinsChart({ data }: CheckinsChartProps) {
               </div>
               <span
                 className={cn(
-                  "text-[10px] tabular-nums",
+                  "font-mono text-xs uppercase tabular-nums",
                   isHoy ? "font-bold text-brand-green" : "text-text-muted"
                 )}
               >

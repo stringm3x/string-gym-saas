@@ -11,6 +11,8 @@ import {
   LuCircleCheck,
 } from "react-icons/lu";
 import { FaWhatsapp } from "react-icons/fa";
+import { Button } from "@/components/ui/Button";
+import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
 import { buildWhatsAppUrl } from "@/lib/utils/whatsapp";
 import { compilarPlantilla } from "@/lib/utils/plantilla";
@@ -111,44 +113,50 @@ export function CampanaWizard({
   }
 
   const inputClass =
-    "w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-brand-green";
+    "h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      {/* Stepper */}
-      <div className="mb-5 flex items-center gap-2 text-xs">
+    <div className="border border-border bg-surface p-5">
+      {/* Pasos: número en círculo (badge numérico) + etiqueta en mono. */}
+      <ol className="mb-5 flex items-center gap-2">
         {["Audiencia", "Mensaje", "Enviar"].map((label, i) => {
           const n = (i + 1) as 1 | 2 | 3;
           const activo = paso === n;
           const hecho = paso > n;
           return (
-            <div key={label} className="flex items-center gap-2">
+            <li key={label} className="flex items-center gap-2">
               <span
-                className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold ${
+                aria-hidden="true"
+                className={`flex h-6 w-6 items-center justify-center rounded-full font-mono text-xs font-bold ${
                   activo
-                    ? "bg-brand-green text-bg"
+                    ? "bg-brand-green text-on-brand"
                     : hecho
-                      ? "bg-brand-green/15 text-brand-green"
-                      : "bg-bg text-text-muted"
+                      ? "border border-brand-green text-brand-green"
+                      : "border border-border text-text-muted"
                 }`}
               >
                 {hecho ? <LuCheck className="h-3 w-3" /> : n}
               </span>
               <span
-                className={activo ? "text-text-primary" : "text-text-secondary"}
+                aria-current={activo ? "step" : undefined}
+                className={`font-mono text-etiqueta uppercase ${
+                  activo ? "text-text-primary" : "text-text-muted"
+                }`}
               >
                 {label}
               </span>
-              {n < 3 && <span className="mx-1 h-px w-6 bg-border" />}
-            </div>
+              {n < 3 && (
+                <span className="mx-1 h-px w-6 bg-border" aria-hidden="true" />
+              )}
+            </li>
           );
         })}
-      </div>
+      </ol>
 
       {/* Paso 1 — Audiencia */}
       {paso === 1 && (
-        <div className="space-y-3">
-          <div className="grid gap-2 sm:grid-cols-2">
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             {audiencias.map((a) => {
               const sel = audiencia === a.value;
               return (
@@ -156,44 +164,48 @@ export function CampanaWizard({
                   key={a.value}
                   type="button"
                   onClick={() => setAudiencia(a.value)}
-                  className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-3 text-left transition-colors ${
+                  aria-pressed={sel}
+                  className={`flex min-h-[44px] items-start justify-between gap-3 border px-4 py-3 text-left transition-colors ${
                     sel
-                      ? "border-brand-green bg-brand-green/5"
-                      : "border-border hover:border-text-muted"
+                      ? "border-brand-green bg-surface-hover"
+                      : "border-border hover:border-text-secondary"
                   }`}
                 >
                   <span>
-                    <span className="block text-sm font-medium text-text-primary">
+                    <span
+                      className={`block text-sm font-semibold ${
+                        sel ? "text-brand-green" : "text-text-primary"
+                      }`}
+                    >
                       {a.label}
                     </span>
-                    <span className="block text-xs text-text-secondary">
+                    <span className="mt-0.5 block text-xs text-text-secondary">
                       {a.descripcion}
                     </span>
                   </span>
-                  <span className="flex items-center gap-1 whitespace-nowrap text-sm font-semibold text-brand-green">
-                    <LuUsers className="h-3.5 w-3.5" />
+                  <span className="flex items-center gap-1.5 whitespace-nowrap font-mono text-dato font-bold tabular-nums text-text-primary">
+                    <LuUsers
+                      className="h-3.5 w-3.5 text-text-muted"
+                      aria-hidden="true"
+                    />
                     {a.total}
                   </span>
                 </button>
               );
             })}
           </div>
-          <div className="flex justify-between">
-            <button
-              type="button"
-              onClick={onDone}
-              className="rounded-lg border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary"
-            >
+          <div className="flex justify-between gap-3">
+            <Button type="button" variant="secondary" onClick={onDone}>
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               disabled={!audiencia || (audData?.total ?? 0) === 0}
               onClick={() => setPaso(2)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+              rightIcon={<LuArrowRight className="h-4 w-4" />}
             >
-              Siguiente <LuArrowRight className="h-3.5 w-3.5" />
-            </button>
+              Siguiente
+            </Button>
           </div>
         </div>
       )}
@@ -201,11 +213,10 @@ export function CampanaWizard({
       {/* Paso 2 — Mensaje */}
       {paso === 2 && (
         <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-text-secondary">
-              Nombre de la campaña
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="campana-nombre">Nombre de la campaña</Label>
             <input
+              id="campana-nombre"
               type="text"
               value={nombre}
               maxLength={100}
@@ -215,31 +226,32 @@ export function CampanaWizard({
             />
           </div>
 
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs font-medium text-text-secondary">
-                Mensaje
-              </label>
-              <span className="text-[11px] text-text-muted">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="campana-mensaje">Mensaje</Label>
+              <span className="font-mono text-xs tabular-nums text-text-muted">
                 {mensaje.length}/1000
               </span>
             </div>
             <textarea
+              id="campana-mensaje"
               value={mensaje}
               maxLength={1000}
               rows={5}
               onChange={(e) => setMensaje(e.target.value)}
               placeholder="Hola {{nombre}}, tu membresía vence el {{fecha_vencimiento}}. ¡Renuévala y sigue entrenando!"
-              className={`${inputClass} resize-y`}
+              className="w-full resize-y rounded border border-border bg-bg px-3 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
             />
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] text-text-muted">Variables:</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-etiqueta uppercase text-text-muted">
+                Variables
+              </span>
               {["{{nombre}}", "{{fecha_vencimiento}}"].map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => setMensaje((m) => m + v)}
-                  className="rounded-md border border-border px-2 py-0.5 font-mono text-[11px] text-brand-green hover:bg-brand-green/10"
+                  className="inline-flex h-9 items-center border border-border px-3 font-mono text-xs text-brand-green transition-colors hover:border-brand-green"
                 >
                   {v}
                 </button>
@@ -248,32 +260,33 @@ export function CampanaWizard({
           </div>
 
           {destinatarios[0] && mensaje && (
-            <div className="rounded-lg border border-border bg-bg px-3 py-2">
-              <p className="text-[11px] text-text-muted">
+            <div className="border border-border bg-bg px-4 py-3">
+              <p className="font-mono text-etiqueta uppercase text-text-muted">
                 Vista previa · {destinatarios[0].nombre}
               </p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-text-primary">
+              <p className="mt-2 whitespace-pre-wrap text-sm text-text-primary">
                 {renderMensaje(mensaje, destinatarios[0])}
               </p>
             </div>
           )}
 
-          <div className="flex justify-between">
-            <button
+          <div className="flex justify-between gap-3">
+            <Button
               type="button"
+              variant="secondary"
               onClick={() => setPaso(1)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary"
+              leftIcon={<LuArrowLeft className="h-4 w-4" />}
             >
-              <LuArrowLeft className="h-3.5 w-3.5" /> Atrás
-            </button>
-            <button
+              Atrás
+            </Button>
+            <Button
               type="button"
               disabled={!nombre.trim() || !mensaje.trim()}
               onClick={() => setPaso(3)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+              rightIcon={<LuArrowRight className="h-4 w-4" />}
             >
-              Siguiente <LuArrowRight className="h-3.5 w-3.5" />
-            </button>
+              Siguiente
+            </Button>
           </div>
         </div>
       )}
@@ -281,22 +294,22 @@ export function CampanaWizard({
       {/* Paso 3 — Enviar */}
       {paso === 3 && audData && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-bg px-4 py-3 text-sm">
-            <div className="flex justify-between">
+          <div className="divide-y divide-border border border-border bg-bg text-sm">
+            <div className="flex items-center justify-between px-4 py-3">
               <span className="text-text-secondary">Audiencia</span>
               <span className="font-medium text-text-primary">
                 {audData.label}
               </span>
             </div>
-            <div className="mt-1 flex justify-between">
+            <div className="flex items-center justify-between px-4 py-3">
               <span className="text-text-secondary">Destinatarios</span>
-              <span className="font-semibold text-brand-green">
+              <span className="font-mono text-dato font-bold tabular-nums text-text-primary">
                 {audData.total}
               </span>
             </div>
             {audData.sinTelefono > 0 && (
-              <p className="mt-1 text-[11px] text-warning">
-                {audData.sinTelefono} sin teléfono — se excluyen del envío.
+              <p className="px-4 py-3 text-xs text-warning">
+                {audData.sinTelefono} sin teléfono: se excluyen del envío.
               </p>
             )}
           </div>
@@ -304,53 +317,60 @@ export function CampanaWizard({
           {!enviada ? (
             <>
               <div>
-                <p className="mb-1 text-xs font-medium text-text-secondary">
+                <p className="mb-2 font-mono text-etiqueta uppercase text-text-muted">
                   Primeros destinatarios
                 </p>
-                <ul className="space-y-1 text-sm text-text-primary">
+                <ul className="divide-y divide-border border border-border text-sm">
                   {destinatarios.slice(0, 5).map((d) => (
-                    <li key={d.id} className="flex justify-between">
-                      <span>{d.nombre}</span>
-                      <span className="text-text-muted">{d.telefono}</span>
+                    <li
+                      key={d.id}
+                      className="flex items-center justify-between gap-3 px-4 py-2.5"
+                    >
+                      <span className="truncate text-text-primary">
+                        {d.nombre}
+                      </span>
+                      <span className="shrink-0 font-mono text-dato tabular-nums text-text-muted">
+                        {d.telefono}
+                      </span>
                     </li>
                   ))}
                 </ul>
                 {destinatarios.length > 5 && (
-                  <p className="mt-1 text-xs text-text-muted">
+                  <p className="mt-2 text-xs text-text-muted">
                     y {destinatarios.length - 5} más
                   </p>
                 )}
               </div>
 
-              <div className="flex justify-between">
-                <button
+              <div className="flex justify-between gap-3">
+                <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => setPaso(2)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm text-text-secondary hover:text-text-primary"
+                  leftIcon={<LuArrowLeft className="h-4 w-4" />}
                 >
-                  <LuArrowLeft className="h-3.5 w-3.5" /> Atrás
-                </button>
-                <button
+                  Atrás
+                </Button>
+                <Button
                   type="button"
-                  disabled={pending || destinatarios.length === 0}
+                  disabled={destinatarios.length === 0}
+                  loading={pending}
                   onClick={enviar}
-                  className="inline-flex items-center gap-2 rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+                  leftIcon={<FaWhatsapp className="h-4 w-4" />}
                 >
-                  <FaWhatsapp className="h-4 w-4" />
                   {pending ? "Enviando…" : "Enviar campaña"}
-                </button>
+                </Button>
               </div>
             </>
           ) : apiSent ? (
             <>
               <div
-                className={`flex items-center gap-1.5 rounded-lg border px-4 py-3 text-sm text-text-primary ${
-                  fallidosApi === 0
-                    ? "border-brand-green/30 bg-brand-green/5"
-                    : "border-danger/30 bg-danger/5"
+                className={`flex items-center gap-2 border px-4 py-3 text-sm text-text-primary ${
+                  fallidosApi === 0 ? "border-brand-green" : "border-danger"
                 }`}
               >
                 <LuCircleCheck
+                  aria-hidden="true"
                   className={`h-4 w-4 shrink-0 ${
                     fallidosApi === 0 ? "text-brand-green" : "text-danger"
                   }`}
@@ -362,22 +382,18 @@ export function CampanaWizard({
                 </span>
               </div>
               <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={onDone}
-                  className="rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90"
-                >
+                <Button type="button" onClick={onDone}>
                   Terminar
-                </button>
+                </Button>
               </div>
             </>
           ) : (
             <>
-              <div className="rounded-lg border border-brand-green/30 bg-brand-green/5 px-4 py-3 text-sm text-text-primary">
+              <div className="border border-brand-green px-4 py-3 text-sm text-text-primary">
                 Campaña registrada. Se abrió el primer chat; abre los demás uno
                 por uno desde la lista.
               </div>
-              <ul className="max-h-72 space-y-1 overflow-y-auto">
+              <ul className="max-h-72 divide-y divide-border overflow-y-auto border border-border">
                 {destinatarios.map((d) => (
                   <li key={d.id}>
                     <a
@@ -387,25 +403,26 @@ export function CampanaWizard({
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:border-brand-green"
+                      className="flex h-11 items-center justify-between gap-3 px-4 text-sm transition-colors hover:bg-surface-hover"
                     >
-                      <span className="text-text-primary">{d.nombre}</span>
-                      <span className="inline-flex items-center gap-1.5 text-brand-green">
+                      <span className="truncate text-text-primary">
+                        {d.nombre}
+                      </span>
+                      <span className="inline-flex shrink-0 items-center gap-1.5 font-mono text-dato tabular-nums text-brand-green">
                         {d.telefono}
-                        <LuExternalLink className="h-3.5 w-3.5" />
+                        <LuExternalLink
+                          className="h-3.5 w-3.5"
+                          aria-hidden="true"
+                        />
                       </span>
                     </a>
                   </li>
                 ))}
               </ul>
               <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={onDone}
-                  className="rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90"
-                >
+                <Button type="button" onClick={onDone}>
                   Terminar
-                </button>
+                </Button>
               </div>
             </>
           )}

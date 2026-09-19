@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { LuPencil, LuArchive, LuFlame, LuTarget } from "react-icons/lu";
+import { LuPencil, LuArchive } from "react-icons/lu";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import type { PlanNutricion } from "@/lib/queries/nutricion.queries";
 import { TZ_MX } from "@/lib/utils/dates";
 
@@ -23,6 +25,8 @@ interface Props {
   readOnly?: boolean;
 }
 
+/** Plan de nutrición: cabecera con chip "Activo", datos en mono
+ * (kcal, fecha) y comidas como tarjetas con su tiempo en mono. */
 export function PlanNutricionCard({
   plan,
   onEditar,
@@ -34,85 +38,85 @@ export function PlanNutricionCard({
   const acciones = !readOnly && (!!onEditar || !!onArchivar);
 
   return (
-    <div className="rounded-lg border border-border bg-bg p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="border border-border bg-bg">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h4 className="truncate text-sm font-semibold text-text-primary">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="truncate text-base font-semibold text-text-primary">
               {plan.titulo}
             </h4>
-            {plan.activo && (
-              <span className="rounded-full bg-brand-green/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-green">
-                Activo
-              </span>
-            )}
+            {plan.activo && <Badge variant="success">Activo</Badge>}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
-            {plan.objetivo && (
-              <span className="inline-flex items-center gap-1">
-                <LuTarget className="h-3.5 w-3.5" /> {plan.objetivo}
-              </span>
-            )}
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-text-secondary">
+            {plan.objetivo && <span>{plan.objetivo}</span>}
             {plan.calorias_objetivo != null && (
-              <span className="inline-flex items-center gap-1">
-                <LuFlame className="h-3.5 w-3.5" /> {plan.calorias_objetivo} kcal
+              <span className="font-mono text-dato">
+                {plan.calorias_objetivo} kcal
               </span>
             )}
-            <span className="text-text-muted">Creado el {fecha(plan.created_at)}</span>
-          </div>
+            <span className="text-text-muted">
+              Creado el {fecha(plan.created_at)}
+            </span>
+          </p>
         </div>
 
         {acciones && (
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-2">
             {onEditar && (
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={onEditar}
-                className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:text-text-primary"
+                leftIcon={<LuPencil className="h-4 w-4" />}
               >
-                <LuPencil className="h-3.5 w-3.5" /> Editar
-              </button>
+                Editar
+              </Button>
             )}
             {onArchivar &&
               (confirmando ? (
-                <span className="inline-flex items-center gap-1">
-                  <button
+                <>
+                  <Button
                     type="button"
+                    variant="danger"
+                    size="sm"
                     onClick={onArchivar}
-                    disabled={archivando}
-                    className="rounded-lg bg-danger px-2.5 py-1.5 text-xs font-semibold text-text-primary transition-opacity hover:opacity-90 disabled:opacity-50"
+                    loading={archivando}
                   >
-                    {archivando ? "Archivando…" : "Confirmar"}
-                  </button>
-                  <button
+                    Confirmar
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setConfirmando(false)}
-                    className="rounded-lg px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary"
                   >
                     Cancelar
-                  </button>
-                </span>
+                  </Button>
+                </>
               ) : (
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setConfirmando(true)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:text-danger"
+                  leftIcon={<LuArchive className="h-4 w-4" />}
                 >
-                  <LuArchive className="h-3.5 w-3.5" /> Archivar
-                </button>
+                  Archivar
+                </Button>
               ))}
           </div>
         )}
       </div>
 
       {plan.comidas.length > 0 && (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-3 border-t border-border px-5 py-4 sm:grid-cols-2">
           {plan.comidas.map((c, i) => (
-            <div key={i} className="rounded-lg border border-border bg-surface p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-green">
+            <div key={i} className="border border-border bg-surface p-4">
+              <p className="font-mono text-etiqueta uppercase text-text-secondary">
                 {c.tiempo || "Comida"}
               </p>
-              <p className="mt-1 whitespace-pre-line text-sm text-text-secondary">
+              <p className="mt-2 whitespace-pre-line text-sm text-text-primary">
                 {c.alimentos || "—"}
               </p>
             </div>
@@ -121,10 +125,14 @@ export function PlanNutricionCard({
       )}
 
       {plan.notas && (
-        <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-xs text-text-secondary">
-          <span className="font-semibold text-text-primary">Notas: </span>
-          <span className="whitespace-pre-line">{plan.notas}</span>
-        </p>
+        <div className="border-t border-border px-5 py-4">
+          <p className="font-mono text-etiqueta uppercase text-text-muted">
+            Notas
+          </p>
+          <p className="mt-2 whitespace-pre-line text-sm text-text-secondary">
+            {plan.notas}
+          </p>
+        </div>
       )}
     </div>
   );

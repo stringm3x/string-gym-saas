@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LuTag, LuPackage, LuSearch } from "react-icons/lu";
 import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils/cn";
 import { formatMoneda } from "@/lib/utils/format";
 import type { Promocion } from "@/lib/queries/promociones.queries";
@@ -75,8 +76,8 @@ export function ProductoPromoSelector({
           )}
 
           {productosFiltrados.length === 0 ? (
-            <p className="text-xs text-text-secondary">
-              Sin coincidencias para "{search}".
+            <p className="text-sm text-text-muted">
+              Sin coincidencias para “{search}”.
             </p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -99,7 +100,7 @@ export function ProductoPromoSelector({
           )}
         </Section>
       ) : (
-        <p className="rounded-xl border border-dashed border-border bg-surface/50 px-4 py-3 text-xs text-text-secondary">
+        <p className="border border-border bg-bg px-4 py-4 text-sm text-text-muted">
           Aún no tienes productos en el catálogo. Agrégalos en Inventario para
           venderlos desde aquí.
         </p>
@@ -108,11 +109,12 @@ export function ProductoPromoSelector({
       <button
         type="button"
         onClick={() => onChange({ kind: "custom" })}
+        aria-pressed={value.kind === "custom"}
         className={cn(
-          "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+          "inline-flex h-9 items-center border px-3 text-sm transition-colors duration-150",
           value.kind === "custom"
-            ? "border-brand-green bg-brand-green/10 text-brand-green"
-            : "border-border bg-surface text-text-secondary hover:text-text-primary"
+            ? "border-brand-green bg-surface-hover text-brand-green"
+            : "border-border text-text-secondary hover:border-text-secondary hover:text-text-primary"
         )}
       >
         Capturar monto personalizado
@@ -132,7 +134,7 @@ function Section({
 }) {
   return (
     <div className="space-y-2">
-      <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-text-muted">
+      <p className="flex items-center gap-1.5 font-mono text-etiqueta uppercase text-text-muted">
         {icon}
         {title}
       </p>
@@ -141,6 +143,8 @@ function Section({
   );
 }
 
+/** Tarjeta de producto/promo: seleccionada = fondo lleno + borde y texto en
+ * ácido (mismo estado que el método de pago). */
 function SelectorCard({
   selected,
   onClick,
@@ -162,11 +166,12 @@ function SelectorCard({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={selected}
       className={cn(
-        "flex flex-col gap-1 rounded-xl border p-3 text-left transition-colors duration-150",
+        "flex min-h-11 flex-col gap-1 border p-3 text-left transition-colors duration-150",
         selected
-          ? "border-brand-green bg-brand-green/10"
-          : "border-border bg-surface hover:border-text-muted"
+          ? "border-brand-green bg-surface-hover"
+          : "border-border bg-bg hover:border-text-secondary"
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -178,23 +183,19 @@ function SelectorCard({
         >
           {title}
         </p>
-        {badge && (
-          <span className="shrink-0 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold">
-            {badge}
-          </span>
-        )}
+        {badge && <Badge variant="neutral">{badge}</Badge>}
       </div>
       <p
         className={cn(
-          "text-xs",
-          subtitleVariant === "danger" ? "text-danger" : "text-text-secondary"
+          "text-sm",
+          subtitleVariant === "danger" ? "text-danger" : "text-text-muted"
         )}
       >
         {subtitle}
       </p>
       <p
         className={cn(
-          "mt-1 font-mono text-base font-bold tabular-nums",
+          "mt-1 font-mono text-dato font-bold tabular-nums",
           selected ? "text-brand-green" : "text-text-primary"
         )}
       >

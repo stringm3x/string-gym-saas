@@ -15,42 +15,43 @@ export function SaludNegocio({
     { label: "ARPU", valor: formatMoneda(metricas.arpu), hint: "Ingreso por socio activo" },
     { label: "LTV", valor: formatMoneda(metricas.ltv), hint: "Valor de vida del socio" },
     {
-      label: "Churn",
+      label: "Rotación",
       valor: `${(metricas.churnRate * 100).toFixed(1)}%`,
       hint: "Bajas últimos 30 días",
     },
   ];
 
   return (
-    <section className="card-surface p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-          <LuHeartPulse className="h-4 w-4 text-brand-green" />
+    <section className="card-surface">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <h3 className="flex items-center gap-2 text-base font-semibold text-text-primary">
+          <LuHeartPulse className="h-4 w-4 text-brand-green" aria-hidden="true" />
           Salud del negocio
         </h3>
         <Link
           href={`/${slug}/reportes/financiero`}
-          className="inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-brand-green"
+          className="inline-flex items-center gap-1.5 text-sm text-text-secondary underline-offset-4 transition-colors hover:text-brand-green hover:underline"
         >
-          <LuFileText className="h-3.5 w-3.5" /> Reporte financiero
+          <LuFileText className="h-4 w-4" aria-hidden="true" /> Reporte
+          financiero
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 p-5 lg:grid-cols-4">
         {items.map((it) => (
-          <div key={it.label} className="rounded-xl border border-border bg-bg/60 p-3">
-            <p className="text-[11px] uppercase tracking-wider text-text-muted">
+          <div key={it.label} className="border border-border bg-bg p-4">
+            <p className="font-mono text-etiqueta uppercase text-text-secondary">
               {it.label}
             </p>
-            <p className="mt-1 font-mono text-xl font-bold tabular-nums text-text-primary">
+            <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-text-primary">
               {it.valor}
             </p>
-            <p className="mt-0.5 text-[11px] text-text-secondary">{it.hint}</p>
+            <p className="mt-1 text-xs text-text-muted">{it.hint}</p>
           </div>
         ))}
       </div>
 
-      <p className="mt-3 text-[11px] text-text-muted">
+      <p className="px-5 pb-5 text-xs text-text-muted">
         Estimaciones sobre los datos actuales. El MRR considera solo planes por
         tiempo con plan asignado.
       </p>

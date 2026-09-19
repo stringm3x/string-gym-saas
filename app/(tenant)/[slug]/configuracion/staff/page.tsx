@@ -22,18 +22,10 @@ export default async function StaffPage() {
   ]);
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm text-text-secondary">
-        Gestiona quién puede acceder al sistema de tu gimnasio y con qué rol.
-      </p>
-
-      <div className="pt-4">
-        <StaffManager
-          staff={staff}
-          gymNombre={gym?.nombre ?? ""}
-          cajaCheckinPin={gym?.caja_checkin_pin ?? false}
-        />
-      </div>
-    </div>
+    <StaffManager
+      staff={staff}
+      gymNombre={gym?.nombre ?? ""}
+      cajaCheckinPin={gym?.caja_checkin_pin ?? false}
+    />
   );
 }

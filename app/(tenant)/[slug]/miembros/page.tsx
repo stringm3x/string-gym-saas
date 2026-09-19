@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { LuPlus, LuUsers, LuUpload, LuChevronLeft, LuChevronRight } from "react-icons/lu";
+import {
+  LuPlus,
+  LuUsers,
+  LuUpload,
+  LuChevronLeft,
+  LuChevronRight,
+  LuSearch,
+  LuArchive,
+} from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
 import { listMiembros } from "@/lib/queries/miembros.queries";
 import { listTags } from "@/lib/queries/tags.queries";
@@ -7,13 +15,17 @@ import { listPlantillas } from "@/lib/queries/plantillas.queries";
 import { listSeguimientosPendientes } from "@/lib/queries/notas.queries";
 import { hoyISO } from "@/lib/utils/dates";
 import { cn } from "@/lib/utils/cn";
-import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MiembrosToolbar } from "@/components/miembros/MiembrosToolbar";
 import { MiembrosListClient } from "@/components/miembros/MiembrosListClient";
 import { SeguimientosPendientes } from "@/components/miembros/SeguimientosPendientes";
 
 const PAGE_SIZE = 50;
+
+const LINK_PRIMARIO =
+  "inline-flex h-11 items-center gap-2 bg-brand-green px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90";
+const LINK_SECUNDARIO =
+  "inline-flex h-11 items-center gap-2 border border-border px-4 text-sm text-text-primary transition-colors hover:border-text-secondary";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -86,34 +98,30 @@ export default async function MiembrosPage({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-            Miembros
-          </h2>
-          <p className="mt-1 text-sm text-text-secondary">
+    <div className="flex flex-col gap-7">
+      {/* Encabezado: conteo en mono, título en Geist, acciones */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <p className="font-mono text-etiqueta uppercase text-text-muted">
             {total === 0
               ? "Sin miembros"
               : `${total} ${total === 1 ? "miembro" : "miembros"}`}
           </p>
+          <h2 className="text-pagina font-semibold text-text-primary">
+            Miembros
+          </h2>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {isOwner && (
-            <Link href={`/${slug}/miembros/importar`}>
-              <Button
-                variant="secondary"
-                leftIcon={<LuUpload className="h-4 w-4" />}
-              >
-                Importar CSV
-              </Button>
+            <Link href={`/${slug}/miembros/importar`} className={LINK_SECUNDARIO}>
+              <LuUpload className="h-4 w-4" aria-hidden="true" />
+              Importar CSV
             </Link>
           )}
-          <Link href={`/${slug}/miembros/nuevo`}>
-            <Button leftIcon={<LuPlus className="h-4 w-4" />}>
-              Nuevo miembro
-            </Button>
+          <Link href={`/${slug}/miembros/nuevo`} className={LINK_PRIMARIO}>
+            <LuPlus className="h-4 w-4" aria-hidden="true" />
+            Nuevo miembro
           </Link>
         </div>
       </div>
@@ -125,28 +133,53 @@ export default async function MiembrosPage({
       {miembros.length === 0 ? (
         soloArchivados ? (
           <EmptyState
-            icon={<LuUsers className="h-5 w-5" />}
-            title="Sin miembros archivados"
-            description="Los miembros que archives aparecerán aquí."
+            icon={<LuArchive />}
+            title="Nada en el archivo"
+            description="Cuando archives a un miembro queda aquí, con todo su historial. Lo puedes reactivar cuando quieras."
+            action={
+              <Link href={`/${slug}/miembros`} className={LINK_SECUNDARIO}>
+                Ver miembros activos
+              </Link>
+            }
           />
         ) : isFiltered ? (
           <EmptyState
-            icon={<LuUsers className="h-5 w-5" />}
+            icon={<LuSearch />}
             title="Sin resultados"
-            description="No hay miembros que coincidan con la búsqueda o el filtro actual."
+            description="Ningún miembro coincide con la búsqueda o el filtro."
+            action={
+              <Link href={`/${slug}/miembros`} className={LINK_SECUNDARIO}>
+                Quitar filtros
+              </Link>
+            }
           />
         ) : (
           <EmptyState
-            icon={<LuUsers className="h-5 w-5" />}
-            title="Aún no hay miembros"
-            description="Cuando registres a tu primer miembro, aparecerá aquí con su estado de membresía y datos de contacto."
-            action={
-              <Link href={`/${slug}/miembros/nuevo`}>
-                <Button leftIcon={<LuPlus className="h-4 w-4" />}>
-                  Registrar primer miembro
-                </Button>
-              </Link>
+            icon={<LuUsers />}
+            title="Todavía no hay miembros"
+            description={
+              isOwner
+                ? "Da de alta al primero a mano, o sube el CSV que ya llevas y los importamos todos de una vez."
+                : "Da de alta al primero y aparece aquí con su membresía y datos de contacto."
             }
+            action={
+              <>
+                <Link href={`/${slug}/miembros/nuevo`} className={LINK_PRIMARIO}>
+                  <LuPlus className="h-4 w-4" aria-hidden="true" />
+                  Nuevo miembro
+                </Link>
+                {isOwner && (
+                  <Link
+                    href={`/${slug}/miembros/importar`}
+                    className={LINK_SECUNDARIO}
+                  >
+                    <LuUpload className="h-4 w-4" aria-hidden="true" />
+                    Importar CSV
+                  </Link>
+                )}
+              </>
+            }
+            hint="Toma 2 minutos"
           />
         )
       ) : (
@@ -162,29 +195,29 @@ export default async function MiembrosPage({
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border pt-4">
-              <p className="text-xs text-text-muted">
+              <p className="font-mono text-etiqueta uppercase text-text-muted">
                 Página {page} de {totalPages}
               </p>
               <div className="flex items-center gap-2">
                 <Link
                   href={hrefPagina(page - 1)}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary transition-colors duration-150 hover:text-text-primary",
+                    "inline-flex h-9 items-center gap-1 border border-border px-3 text-sm text-text-primary transition-colors duration-150 hover:border-text-secondary",
                     page <= 1 && "pointer-events-none opacity-40"
                   )}
                   aria-disabled={page <= 1}
                 >
-                  <LuChevronLeft className="h-3.5 w-3.5" /> Anterior
+                  <LuChevronLeft className="h-4 w-4" aria-hidden="true" /> Anterior
                 </Link>
                 <Link
                   href={hrefPagina(page + 1)}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary transition-colors duration-150 hover:text-text-primary",
+                    "inline-flex h-9 items-center gap-1 border border-border px-3 text-sm text-text-primary transition-colors duration-150 hover:border-text-secondary",
                     page >= totalPages && "pointer-events-none opacity-40"
                   )}
                   aria-disabled={page >= totalPages}
                 >
-                  Siguiente <LuChevronRight className="h-3.5 w-3.5" />
+                  Siguiente <LuChevronRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>
             </div>

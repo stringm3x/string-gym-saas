@@ -30,7 +30,7 @@ function hoyISO(): string {
 }
 
 const selectClass =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none";
+  "h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary focus:border-brand-green focus:outline-none";
 
 interface Props {
   open: boolean;
@@ -138,7 +138,7 @@ export function InscribirMiembroModal({
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="ins-plan">Plan de membresía</Label>
             <select
               id="ins-plan"
@@ -175,7 +175,7 @@ export function InscribirMiembroModal({
               onChange={(e) => setMonto(e.target.value)}
               error={state.fieldErrors.monto_pago}
             />
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="ins-metodo">Método de pago</Label>
               <select
                 id="ins-metodo"
@@ -204,7 +204,7 @@ export function InscribirMiembroModal({
             <p className="text-xs text-danger">{state.error}</p>
           )}
 
-          <div className="flex justify-end gap-2 border-t border-border pt-4">
+          <div className="flex justify-end gap-3 border-t border-border pt-4">
             <Button
               type="button"
               variant="ghost"

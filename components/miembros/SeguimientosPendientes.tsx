@@ -3,7 +3,8 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LuCalendarClock, LuCheck } from "react-icons/lu";
+import { LuCheck } from "react-icons/lu";
+import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { toggleNotaCompletadaAction } from "@/app/(tenant)/[slug]/notas/actions";
 import type { NotaSeguimiento } from "@/lib/queries/notas.queries";
@@ -11,6 +12,8 @@ import { formatFecha } from "@/lib/utils/format";
 import { hoyISO } from "@/lib/utils/dates";
 import { cn } from "@/lib/utils/cn";
 
+/** Seguimientos con fecha: tarjeta con borde warning (sin fondo lleno),
+ * filas de 44px con la fecha en mono y el botón "Hecho". */
 export function SeguimientosPendientes({
   pendientes,
   slug,
@@ -21,17 +24,21 @@ export function SeguimientosPendientes({
   if (pendientes.length === 0) return null;
 
   return (
-    <div className="space-y-2 rounded-xl border border-warning/40 bg-warning/[0.06] p-4">
-      <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-warning">
-        <LuCalendarClock className="h-3.5 w-3.5" />
-        Seguimientos pendientes ({pendientes.length})
-      </h3>
-      <ul className="space-y-1.5">
+    <section className="border border-warning/40 bg-surface">
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <h3 className="font-mono text-etiqueta uppercase text-warning">
+          Seguimientos pendientes
+        </h3>
+        <span className="font-mono text-etiqueta text-text-muted">
+          {pendientes.length}
+        </span>
+      </div>
+      <ul className="divide-y divide-border">
         {pendientes.map((n) => (
           <SeguimientoRow key={n.id} nota={n} slug={slug} />
         ))}
       </ul>
-    </div>
+    </section>
   );
 }
 
@@ -60,35 +67,36 @@ function SeguimientoRow({
   }
 
   return (
-    <li className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
-      <div className="min-w-0">
-        <Link
-          href={`/${slug}/miembros/${nota.entidad_id}`}
-          className="font-medium text-text-primary transition-colors hover:text-brand-green"
-        >
-          {nota.miembro_nombre ?? "Miembro"}
-        </Link>
-        <p className="truncate text-xs text-text-secondary">
-          {nota.contenido}
-        </p>
-        <p
+    <li className="flex items-center justify-between gap-4 px-5 py-3">
+      <div className="flex min-w-0 items-center gap-4">
+        <span
           className={cn(
-            "text-[11px]",
-            vencida ? "text-danger" : "text-text-muted"
+            "w-[76px] shrink-0 font-mono text-dato tabular-nums",
+            vencida ? "text-danger" : "text-text-secondary"
           )}
         >
-          {vencida ? "Venció" : "Programado"}:{" "}
           {formatFecha(nota.fecha_seguimiento!)}
-        </p>
+        </span>
+        <div className="min-w-0">
+          <Link
+            href={`/${slug}/miembros/${nota.entidad_id}`}
+            className="text-[15px] leading-5 text-text-primary underline-offset-4 hover:text-brand-green hover:underline"
+          >
+            {nota.miembro_nombre ?? "Miembro"}
+          </Link>
+          <p className="truncate text-sm text-text-muted">{nota.contenido}</p>
+        </div>
       </div>
-      <button
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
         onClick={marcarHecho}
-        disabled={isPending}
-        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:border-success/40 hover:text-success disabled:opacity-50"
+        loading={isPending}
+        leftIcon={<LuCheck className="h-4 w-4" />}
       >
-        <LuCheck className="h-3.5 w-3.5" /> Hecho
-      </button>
+        Hecho
+      </Button>
     </li>
   );
 }

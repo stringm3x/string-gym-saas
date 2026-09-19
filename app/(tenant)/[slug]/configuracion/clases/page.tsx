@@ -37,9 +37,11 @@ export default async function ClasesConfigPage() {
   ]);
 
   return (
-    <div className="space-y-5 pt-2">
+    <div className="space-y-6">
       <ClasesList clases={clases} slug={tenant.slug} />
-      <NoShowPenaltyForm inicial={maxNoshows} />
+      <div className="border-t border-border pt-6">
+        <NoShowPenaltyForm inicial={maxNoshows} />
+      </div>
     </div>
   );
 }

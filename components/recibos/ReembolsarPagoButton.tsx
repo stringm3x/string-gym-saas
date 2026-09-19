@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LuUndo2 } from "react-icons/lu";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
 import { formatMoneda } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
@@ -75,7 +76,7 @@ export function ReembolsarPagoButton({
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">
             {tipo === "nota_credito" ? "Se emitirá " : "Se devolverá "}
-            <span className="font-semibold text-text-primary">
+            <span className="font-mono text-dato tabular-nums text-text-primary">
               {formatMoneda(monto)}
             </span>
             {tipo === "nota_credito"
@@ -86,46 +87,47 @@ export function ReembolsarPagoButton({
             automáticamente.
           </p>
 
-          <div className="space-y-1.5">
-            <span className="block text-xs font-mono uppercase tracking-widest text-text-muted">
-              Método de devolución
-            </span>
+          <div className="space-y-2">
+            <Label>Método de devolución</Label>
             <div className="grid grid-cols-2 gap-2">
-              {TIPOS.map((op) => (
-                <button
-                  key={op.value}
-                  type="button"
-                  onClick={() => setTipo(op.value)}
-                  className={cn(
-                    "rounded-lg border px-2 py-2 text-xs font-medium transition-colors",
-                    tipo === op.value
-                      ? "border-brand-green bg-brand-green/10 text-brand-green"
-                      : "border-border bg-surface text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  {op.label}
-                </button>
-              ))}
+              {TIPOS.map((op) => {
+                const active = tipo === op.value;
+                return (
+                  <button
+                    key={op.value}
+                    type="button"
+                    onClick={() => setTipo(op.value)}
+                    aria-pressed={active}
+                    className={cn(
+                      "inline-flex h-11 items-center justify-center border px-2 text-sm font-medium transition-colors",
+                      active
+                        ? "border-brand-green bg-surface-hover text-brand-green"
+                        : "border-border bg-bg text-text-secondary hover:border-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    {op.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <span className="block text-xs font-mono uppercase tracking-widest text-text-muted">
-              Motivo (opcional)
-            </span>
+          <div className="space-y-2">
+            <Label htmlFor="reembolso-motivo">Motivo (opcional)</Label>
             <textarea
+              id="reembolso-motivo"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               rows={2}
               placeholder="Ej. cambió de opinión, cargo duplicado…"
-              className="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+              className="w-full resize-none rounded border border-border bg-bg px-3 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
             />
           </div>
 
           <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >

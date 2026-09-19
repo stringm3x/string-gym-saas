@@ -6,6 +6,8 @@ import { hasPermission } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { AlertasList } from "@/components/alertas/AlertasList";
 import { UpgradePage } from "@/components/ui/UpgradePage";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LuCircleCheck } from "react-icons/lu";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -43,7 +45,7 @@ export default async function AlertasPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+        <h2 className="text-pagina text-text-primary font-semibold">
           Centro de alertas
         </h2>
         <p className="mt-1 text-sm text-text-secondary">
@@ -53,7 +55,15 @@ export default async function AlertasPage({ params }: PageProps) {
         </p>
       </div>
 
-      <AlertasList alertas={alertas} />
+      {alertas.length === 0 ? (
+        <EmptyState
+          icon={<LuCircleCheck />}
+          title="Todo en orden"
+          description="No hay nada que requiera tu atención ahora mismo. Los vencimientos, el stock bajo y los miembros sin venir 14 días aparecen aquí."
+        />
+      ) : (
+        <AlertasList alertas={alertas} />
+      )}
     </div>
   );
 }

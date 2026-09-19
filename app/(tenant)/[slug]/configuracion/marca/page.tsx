@@ -14,21 +14,26 @@ export default async function MarcaPage() {
   ]);
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-text-secondary">
-        Personaliza la identidad visual de tu gimnasio. El logo está disponible
-        en todos los planes; los colores en Plan Pro o superior.
-      </p>
-
-      <div className="pt-2">
-        <MarcaForm
-          tenantId={tenant.id}
-          plan={tenant.plan}
-          gymNombre={gym?.nombre ?? ""}
-        />
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-text-primary">Marca</h3>
+        <p className="mt-1 text-sm text-text-secondary">
+          Personaliza la identidad visual de tu gimnasio. El logo está
+          disponible en todos los planes; los colores en Plan Pro o superior.
+        </p>
       </div>
 
-      {canOpiniones && <GooglePlaceIdForm inicial={googlePlaceId ?? ""} />}
+      <MarcaForm
+        tenantId={tenant.id}
+        plan={tenant.plan}
+        gymNombre={gym?.nombre ?? ""}
+      />
+
+      {canOpiniones && (
+        <div className="border-t border-border pt-6">
+          <GooglePlaceIdForm inicial={googlePlaceId ?? ""} />
+        </div>
+      )}
     </div>
   );
 }

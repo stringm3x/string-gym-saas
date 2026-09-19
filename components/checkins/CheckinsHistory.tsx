@@ -1,34 +1,29 @@
-import { LuScanLine } from "react-icons/lu";
 import { formatFechaHora } from "@/lib/utils/format";
-import { EmptyState } from "@/components/ui/EmptyState";
 import type { Checkin } from "@/lib/queries/checkins.queries";
 
 interface CheckinsHistoryProps {
   checkins: Checkin[];
 }
 
+/** Historial de check-ins de la ficha: una fecha por fila, en mono. Va
+ * dentro de una tarjeta con cabecera (la pone la página). */
 export function CheckinsHistory({ checkins }: CheckinsHistoryProps) {
   if (checkins.length === 0) {
     return (
-      <EmptyState
-        icon={<LuScanLine className="h-5 w-5" />}
-        title="Sin check-ins registrados"
-        description="Cuando este miembro acuda al gimnasio, sus visitas aparecerán aquí."
-      />
+      <p className="px-5 py-8 text-center text-sm text-text-muted">
+        Sin check-ins todavía.
+      </p>
     );
   }
 
   return (
-    <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+    <ul className="divide-y divide-border">
       {checkins.map((c) => (
-        <li key={c.id} className="flex items-center gap-3 px-4 py-2.5">
-          <LuScanLine
-            className="h-3.5 w-3.5 shrink-0 text-text-muted"
-            aria-hidden="true"
-          />
-          <span className="font-mono text-xs text-text-secondary">
-            {formatFechaHora(c.fecha_hora)}
-          </span>
+        <li
+          key={c.id}
+          className="flex min-h-11 items-center px-5 py-3 font-mono text-dato tabular-nums text-text-secondary"
+        >
+          {formatFechaHora(c.fecha_hora)}
         </li>
       ))}
     </ul>

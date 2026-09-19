@@ -9,7 +9,7 @@ import {
 } from "@/lib/queries/creditos.queries";
 import { CxCList } from "@/components/creditos/CxCList";
 import { money } from "@/lib/utils/creditos-calc";
-import { LuDollarSign, LuZap } from "react-icons/lu";
+import { cn } from "@/lib/utils/cn";
 
 type Filtro = "todas" | "vencidas" | "por_vencer";
 
@@ -24,6 +24,10 @@ interface PageProps {
   searchParams: Promise<{ filtro?: string }>;
 }
 
+/**
+ * Cuentas por cobrar: tres cifras en mono (pendiente, vencido, por vencer),
+ * filtros como chips con el estado seleccionado, lista de cuotas.
+ */
 export default async function CuentasPorCobrarPage({
   params,
   searchParams,
@@ -69,52 +73,35 @@ export default async function CuentasPorCobrarPage({
   });
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+    <div className="mx-auto flex max-w-4xl flex-col gap-7">
+      <div className="flex flex-col gap-1.5">
+        <p className="font-mono text-etiqueta uppercase text-text-muted">
+          {cuotas.length} {cuotas.length === 1 ? "cuota pendiente" : "cuotas pendientes"}
+        </p>
+        <h2 className="text-pagina font-semibold text-text-primary">
           Cuentas por cobrar
         </h2>
-        <p className="mt-1 text-sm text-text-secondary">
-          Cuotas pendientes de tus planes de pago a plazos.
-        </p>
       </div>
 
       {/* Resumen */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <p className="flex items-center gap-1 text-xs text-text-secondary">
-            <LuDollarSign className="h-3.5 w-3.5" /> Total pendiente
-          </p>
-          <p className="mt-1 text-2xl font-semibold text-text-primary">
-            {money(resumen.total_pendiente)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-danger/30 bg-danger/5 p-4">
-          <p className="text-xs text-danger">Vencido</p>
-          <p className="mt-1 text-2xl font-semibold text-danger">
-            {money(resumen.vencidas_monto)}
-          </p>
-          <p className="text-xs text-text-secondary">
-            {resumen.vencidas_count} cuota
-            {resumen.vencidas_count === 1 ? "" : "s"}
-          </p>
-        </div>
-        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
-          <p className="flex items-center gap-1 text-xs text-warning">
-            <LuZap className="h-3.5 w-3.5" /> Por vencer (7 días)
-          </p>
-          <p className="mt-1 text-2xl font-semibold text-warning">
-            {money(resumen.por_vencer_monto)}
-          </p>
-          <p className="text-xs text-text-secondary">
-            {resumen.por_vencer_count} cuota
-            {resumen.por_vencer_count === 1 ? "" : "s"}
-          </p>
-        </div>
+        <Cifra label="Total pendiente" valor={money(resumen.total_pendiente)} />
+        <Cifra
+          label="Vencido"
+          valor={money(resumen.vencidas_monto)}
+          hint={`${resumen.vencidas_count} ${resumen.vencidas_count === 1 ? "cuota" : "cuotas"}`}
+          tono={resumen.vencidas_count > 0 ? "danger" : "default"}
+        />
+        <Cifra
+          label="Por vencer (7 días)"
+          valor={money(resumen.por_vencer_monto)}
+          hint={`${resumen.por_vencer_count} ${resumen.por_vencer_count === 1 ? "cuota" : "cuotas"}`}
+          tono={resumen.por_vencer_count > 0 ? "warning" : "default"}
+        />
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-wrap gap-1 border-b border-border">
+      <div className="flex flex-wrap items-center gap-2">
         {FILTROS.map((f) => {
           const active = filtro === f.key;
           return (
@@ -125,22 +112,51 @@ export default async function CuentasPorCobrarPage({
                   ? `/${slug}/cuentas-por-cobrar`
                   : `/${slug}/cuentas-por-cobrar?filtro=${f.key}`
               }
-              className={`relative px-3 py-2 text-sm font-medium transition-colors ${
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "inline-flex h-11 items-center border px-4 text-sm transition-colors",
                 active
-                  ? "text-text-primary"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
+                  ? "border-brand-green bg-surface-hover text-brand-green"
+                  : "border-border text-text-secondary hover:border-text-secondary hover:text-text-primary"
+              )}
             >
               {f.label}
-              {active && (
-                <span className="absolute inset-x-0 bottom-[-1px] h-0.5 bg-brand-green" />
-              )}
             </Link>
           );
         })}
       </div>
 
       <CxCList cuotas={filtradas} />
+    </div>
+  );
+}
+
+function Cifra({
+  label,
+  valor,
+  hint,
+  tono = "default",
+}: {
+  label: string;
+  valor: string;
+  hint?: string;
+  tono?: "default" | "danger" | "warning";
+}) {
+  const color =
+    tono === "danger"
+      ? "text-danger"
+      : tono === "warning"
+        ? "text-warning"
+        : "text-text-primary";
+  return (
+    <div className="card-surface flex flex-col gap-2.5 p-5">
+      <p className="font-mono text-etiqueta uppercase text-text-secondary">
+        {label}
+      </p>
+      <p className={cn("font-mono text-cifra font-bold tabular-nums", color)}>
+        {valor}
+      </p>
+      {hint && <p className="text-sm text-text-muted">{hint}</p>}
     </div>
   );
 }

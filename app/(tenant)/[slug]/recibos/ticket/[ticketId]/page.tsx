@@ -25,6 +25,8 @@ function nombreLinea(l: {
   return l.concepto;
 }
 
+/** Ticket multi-línea: mismo papel que el recibo (tokens `paper`, mono en
+ * cifras, nombre del gimnasio en Geist). */
 export default async function TicketReciboPage({ params }: PageProps) {
   const { ticketId } = await params;
   const tenant = await getTenant();
@@ -33,48 +35,68 @@ export default async function TicketReciboPage({ params }: PageProps) {
   if (!ticket) notFound();
 
   return (
-    <div className="mx-auto max-w-lg space-y-4">
+    <div className="mx-auto flex max-w-lg flex-col gap-4">
       <ReciboActions />
 
-      <div className="rounded-2xl border border-border bg-surface p-6">
-        <div className="text-center">
-          <h1 className="font-display text-2xl uppercase tracking-wide text-text-primary">
+      <div className="mx-auto w-full max-w-md border border-paper-line bg-paper p-8 text-paper-ink print:max-w-none print:border-0 print:p-0">
+        <div className="border-b border-paper-line pb-5">
+          <h1 className="text-2xl font-bold tracking-tight text-paper-ink">
             {ticket.gym_nombre}
           </h1>
-          <p className="mt-1 text-xs text-text-muted">
-            Ticket · {formatFecha(ticket.fecha_pago)}
-            {ticket.metodo_pago &&
-              ` · ${METODO_LABEL[ticket.metodo_pago] ?? ticket.metodo_pago}`}
-          </p>
           {ticket.miembro_nombre && (
-            <p className="mt-0.5 text-sm text-text-secondary">
+            <p className="mt-1 text-sm text-paper-ink-soft">
               {ticket.miembro_nombre}
             </p>
           )}
         </div>
 
-        <ul className="mt-6 divide-y divide-border border-y border-border">
+        <div className="mt-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-etiqueta uppercase text-paper-ink-faint">
+              Ticket
+            </p>
+            <p className="mt-1 text-sm text-paper-ink-soft">
+              {ticket.metodo_pago
+                ? (METODO_LABEL[ticket.metodo_pago] ?? ticket.metodo_pago)
+                : "—"}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-mono text-etiqueta uppercase text-paper-ink-faint">
+              Fecha
+            </p>
+            <p className="mt-1 font-mono text-dato tabular-nums text-paper-ink-soft">
+              {formatFecha(ticket.fecha_pago)}
+            </p>
+          </div>
+        </div>
+
+        <ul className="mt-6 divide-y divide-paper-line border-y border-paper-line">
           {ticket.lineas.map((l) => (
             <li
               key={l.id}
-              className="flex items-center justify-between gap-3 py-2.5 text-sm"
+              className="flex items-center justify-between gap-4 py-3"
             >
-              <span className="text-text-primary">{nombreLinea(l)}</span>
-              <span className="font-mono tabular-nums text-text-primary">
+              <span className="text-sm text-paper-ink">{nombreLinea(l)}</span>
+              <span className="font-mono text-dato tabular-nums text-paper-ink">
                 {formatMoneda(l.monto)}
               </span>
             </li>
           ))}
         </ul>
 
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-sm uppercase tracking-wider text-text-muted">
+        <div className="mt-6 flex items-end justify-between gap-4">
+          <span className="font-mono text-etiqueta uppercase text-paper-ink-faint">
             Total
           </span>
-          <span className="font-mono text-2xl font-bold tabular-nums text-brand-green">
+          <span className="font-mono text-[36px] font-bold leading-10 tabular-nums text-paper-ink">
             {formatMoneda(ticket.total)}
           </span>
         </div>
+
+        <p className="mt-8 border-t border-paper-line pt-4 text-center text-xs text-paper-ink-faint">
+          Gracias por tu preferencia · {ticket.gym_nombre}
+        </p>
       </div>
     </div>
   );

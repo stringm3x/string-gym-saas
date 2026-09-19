@@ -126,7 +126,8 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface p-1">
+        {/* Filtro de estado: chip seleccionado en fondo lleno + ácido */}
+        <div className="flex flex-wrap items-center gap-2">
           {estadoOptions.map((opt) => {
             const active = currentEstado === opt.value;
             return (
@@ -134,11 +135,12 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
                 key={opt.value}
                 type="button"
                 onClick={() => setEstado(opt.value)}
+                aria-pressed={active}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+                  "inline-flex h-11 items-center border px-3 text-sm transition-colors duration-150",
                   active
-                    ? "bg-bg text-text-primary"
-                    : "text-text-secondary hover:text-text-primary"
+                    ? "border-brand-green bg-surface-hover text-brand-green"
+                    : "border-border text-text-secondary hover:border-text-secondary hover:text-text-primary"
                 )}
               >
                 {opt.label}
@@ -161,29 +163,38 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
 
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-text-muted">Origen:</span>
+          <label
+            htmlFor="miembros-origen"
+            className="font-mono text-etiqueta uppercase text-text-muted"
+          >
+            Origen
+          </label>
           <select
+            id="miembros-origen"
             value={currentOrigen}
             onChange={(e) => setOrigen(e.target.value)}
-            className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs text-text-primary focus:border-brand-green focus:outline-none"
+            className="h-11 rounded border border-border bg-bg px-3 text-sm text-text-primary focus:border-brand-green focus:outline-none"
           >
             <option value="todos">Todos</option>
-            <option value="manual">Creados manualmente</option>
+            <option value="manual">Creados a mano</option>
             <option value="csv">Importados (CSV)</option>
           </select>
         </div>
 
         {canTags && availableTags.length > 0 && (
           <div className="relative flex items-center gap-2">
-            <span className="text-xs text-text-muted">Tags:</span>
+            <span className="font-mono text-etiqueta uppercase text-text-muted">
+              Tags
+            </span>
             <button
               type="button"
               onClick={() => setTagsOpen((v) => !v)}
+              aria-expanded={tagsOpen}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors duration-150",
+                "inline-flex h-11 items-center gap-2 border px-3 text-sm transition-colors duration-150",
                 currentTags.length > 0
-                  ? "border-brand-green/40 bg-brand-green/10 text-brand-green"
-                  : "border-border bg-surface text-text-primary hover:border-text-muted"
+                  ? "border-brand-green bg-surface-hover text-brand-green"
+                  : "border-border text-text-secondary hover:border-text-secondary hover:text-text-primary"
               )}
             >
               {currentTags.length === 0
@@ -191,16 +202,17 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
                 : `${currentTags.length} seleccionado${currentTags.length === 1 ? "" : "s"}`}
               <LuChevronDown
                 className={cn(
-                  "h-3 w-3 transition-transform",
+                  "h-4 w-4 transition-transform",
                   tagsOpen && "rotate-180"
                 )}
+                aria-hidden="true"
               />
             </button>
             {currentTags.length > 0 && (
               <button
                 type="button"
                 onClick={clearTags}
-                className="text-xs text-text-muted underline hover:text-text-primary"
+                className="inline-flex h-11 items-center text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
               >
                 Limpiar
               </button>
@@ -208,23 +220,25 @@ export function MiembrosToolbar({ availableTags = [], plan }: MiembrosToolbarPro
 
             {tagsOpen && (
               <>
-                <div
-                  className="fixed inset-0 z-10"
+                <button
+                  type="button"
+                  aria-label="Cerrar lista de tags"
+                  className="fixed inset-0 z-10 cursor-default"
                   onClick={() => setTagsOpen(false)}
                 />
-                <div className="absolute left-0 top-full z-20 mt-1 w-56 rounded-xl border border-border bg-surface p-1 shadow-lg">
+                <div className="absolute left-0 top-full z-20 mt-2 w-56 border border-border bg-surface">
                   {availableTags.map((tag) => {
                     const checked = currentTags.includes(tag.id);
                     return (
                       <label
                         key={tag.id}
-                        className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-primary hover:bg-surface-hover"
+                        className="flex min-h-11 cursor-pointer items-center gap-3 px-4 py-2 text-sm text-text-primary transition-colors hover:bg-surface-hover"
                       >
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleTag(tag.id)}
-                          className="h-3.5 w-3.5 rounded border-border accent-brand-green"
+                          className="h-4 w-4 rounded border-border accent-brand-green"
                         />
                         {tag.nombre}
                       </label>

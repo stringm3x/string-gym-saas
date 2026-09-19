@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { LuSearch, LuCircleCheck, LuCircleAlert, LuUser } from "react-icons/lu";
+import { LuSearch, LuCircleCheck, LuCircleAlert } from "react-icons/lu";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { TZ_MX } from "@/lib/utils/dates";
@@ -131,10 +131,10 @@ export function CheckinKiosk() {
 
         {/* Resultados — dropdown */}
         {(results.length > 0 || (query.trim().length >= 2 && !isSearching)) && (
-          <div className="absolute inset-x-0 top-full z-10 mt-2 overflow-hidden rounded-xl border border-border bg-surface shadow-xl">
+          <div className="absolute inset-x-0 top-full z-10 mt-2 overflow-hidden border border-border bg-surface">
             {results.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm text-text-secondary">
-                Sin coincidencias para "{query}"
+              <div className="px-5 py-6 text-center text-sm text-text-muted">
+                Sin coincidencias para “{query}”
               </div>
             ) : (
               <ul className="divide-y divide-border">
@@ -147,27 +147,22 @@ export function CheckinKiosk() {
                         onClick={() => handleCheckin(m.id)}
                         disabled={isPending}
                         className={cn(
-                          "flex w-full items-center justify-between gap-4 px-4 py-3 text-left",
+                          "flex min-h-14 w-full items-center justify-between gap-4 px-5 py-3 text-left",
                           "transition-colors duration-150",
                           "hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none",
                           "disabled:cursor-wait disabled:opacity-60"
                         )}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg text-text-muted">
-                            <LuUser className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-text-primary">
-                              {m.nombre}
-                            </p>
-                            {m.telefono && (
-                              <p className="truncate font-mono text-xs text-text-secondary">
-                                {m.telefono}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                        <span className="min-w-0">
+                          <span className="block truncate text-base leading-6 text-text-primary">
+                            {m.nombre}
+                          </span>
+                          {m.telefono && (
+                            <span className="block truncate font-mono text-dato text-text-muted">
+                              {m.telefono}
+                            </span>
+                          )}
+                        </span>
 
                         <EstadoMini estado={estado} />
                       </button>
@@ -206,41 +201,42 @@ function CheckinConfirmation({ checkin }: { checkin: LastCheckin }) {
     checkin.estadoMembresia === "vencido" ||
     checkin.estadoMembresia === "sin_membresia";
 
+  // Estado con borde (verde OK, danger si no tiene membresía vigente), sin
+  // fondo lleno: el nombre en grande es lo que se lee desde lejos.
   return (
     <div
       role="status"
       aria-live="polite"
       className={cn(
-        "flex items-center gap-4 rounded-xl border p-5 transition-colors duration-200",
-        isAlert
-          ? "border-danger/30 bg-danger/10"
-          : "border-brand-green/30 bg-brand-green/10"
+        "flex items-center gap-5 border-2 bg-surface p-6 transition-colors duration-200",
+        isAlert ? "border-danger" : "border-brand-green"
       )}
     >
-      <div
-        className={cn(
-          "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
-          isAlert
-            ? "bg-danger/20 text-danger"
-            : "bg-brand-green/20 text-brand-green"
-        )}
+      <span
+        className={cn("shrink-0", isAlert ? "text-danger" : "text-brand-green")}
+        aria-hidden="true"
       >
         {isAlert ? (
-          <LuCircleAlert className="h-6 w-6" />
+          <LuCircleAlert className="h-10 w-10" />
         ) : (
-          <LuCircleCheck className="h-6 w-6" />
+          <LuCircleCheck className="h-10 w-10" />
         )}
-      </div>
+      </span>
 
-      <div className="flex-1 min-w-0">
-        <p className="text-xs uppercase tracking-wider text-text-muted">
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            "font-mono text-etiqueta uppercase",
+            isAlert ? "text-danger" : "text-text-secondary"
+          )}
+        >
           Check-in registrado · {checkin.hora}
         </p>
-        <p className="mt-0.5 truncate text-lg font-semibold text-text-primary">
+        <p className="mt-1 truncate text-pagina font-semibold text-text-primary">
           {checkin.nombre}
         </p>
         {isAlert && (
-          <p className="mt-0.5 text-xs text-danger">
+          <p className="mt-1 text-sm text-danger">
             {checkin.estadoMembresia === "vencido"
               ? "Membresía vencida — invita a renovar."
               : "Sin membresía registrada."}

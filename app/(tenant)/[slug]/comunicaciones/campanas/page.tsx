@@ -52,7 +52,7 @@ export default async function CampanasPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+        <h2 className="text-pagina text-text-primary font-semibold">
           Campañas
         </h2>
         <p className="mt-1 text-sm text-text-secondary">

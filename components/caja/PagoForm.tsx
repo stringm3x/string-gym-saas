@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   LuSearch,
   LuX,
-  LuUser,
   LuWallet,
   LuCreditCard,
   LuArrowLeftRight,
@@ -408,7 +407,7 @@ export function PagoForm({
   return (
     <div className="space-y-4">
       {lastPago && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-green/30 bg-brand-green/5 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-bg px-4 py-3">
           <p className="text-sm text-text-primary">
             Pago registrado ·{" "}
             <span className="font-medium">{lastPago.nombre}</span>
@@ -426,18 +425,18 @@ export function PagoForm({
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-whatsapp px-3 py-1.5 text-xs font-semibold text-on-brand transition-opacity hover:opacity-90"
+                className="inline-flex h-9 items-center gap-2 bg-whatsapp px-3 text-sm font-semibold text-on-brand transition-colors hover:bg-whatsapp/90"
               >
-                <LuMessageCircle className="h-3.5 w-3.5" />
+                <LuMessageCircle className="h-4 w-4" />
                 Enviar por WhatsApp
               </a>
             )}
             {lastPago.pagoId && (
               <Link
                 href={`/${slug}/recibos/${lastPago.pagoId}`}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary"
+                className="inline-flex h-9 items-center gap-2 border border-border px-3 text-sm text-text-primary transition-colors hover:border-text-secondary"
               >
-                <LuReceipt className="h-3.5 w-3.5" />
+                <LuReceipt className="h-4 w-4" />
                 Ver recibo
               </Link>
             )}
@@ -445,7 +444,7 @@ export function PagoForm({
               type="button"
               onClick={() => setLastPago(null)}
               aria-label="Cerrar"
-              className="rounded-md p-1 text-text-muted hover:bg-surface-hover hover:text-text-primary"
+              className="flex h-9 w-9 items-center justify-center text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
             >
               <LuX className="h-4 w-4" />
             </button>
@@ -465,11 +464,12 @@ export function PagoForm({
                 key={opt.value}
                 type="button"
                 onClick={() => setConcepto(opt.value)}
+                aria-pressed={active}
                 className={cn(
-                  "rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors duration-150",
+                  "inline-flex h-11 items-center justify-center border px-3 text-sm font-medium transition-colors duration-150",
                   active
-                    ? "border-brand-green bg-brand-green/10 text-brand-green"
-                    : "border-border bg-surface text-text-secondary hover:border-text-muted hover:text-text-primary"
+                    ? "border-brand-green bg-surface-hover text-brand-green"
+                    : "border-border bg-bg text-text-secondary hover:border-text-secondary hover:text-text-primary"
                 )}
               >
                 {opt.label}
@@ -510,15 +510,15 @@ export function PagoForm({
           )}
           <input type="hidden" name="miembro_id" value={miembro?.id ?? ""} />
           {state.fieldErrors.miembro_id && (
-            <p role="alert" className="text-xs text-danger">
+            <p role="alert" className="text-sm text-danger">
               {state.fieldErrors.miembro_id}
             </p>
           )}
 
           {/* Visita sin miembro: datos opcionales del visitante no inscrito. */}
           {concepto === "visita" && !miembro && (
-            <div className="grid gap-3 rounded-xl border border-border bg-bg/40 p-4 sm:grid-cols-2">
-              <p className="text-xs text-text-muted sm:col-span-2">
+            <div className="grid gap-3 border border-border bg-bg p-4 sm:grid-cols-2">
+              <p className="text-sm text-text-muted sm:col-span-2">
                 ¿No está inscrito? Registra la visita sin miembro. Si dejas el
                 nombre vacío aparecerá como “Visitante”.
               </p>
@@ -570,7 +570,7 @@ export function PagoForm({
             periodoInicio &&
             periodoFin &&
             (fechasPersonalizadas ? (
-              <div className="grid gap-3 rounded-xl border border-border bg-bg/40 p-4 sm:grid-cols-2">
+              <div className="grid gap-3 border border-border bg-bg p-4 sm:grid-cols-2">
                 <Input
                   label="Desde"
                   type="date"
@@ -588,21 +588,23 @@ export function PagoForm({
                 <button
                   type="button"
                   onClick={() => setFechasPersonalizadas(false)}
-                  className="text-left text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary sm:col-span-2"
+                  className="inline-flex h-9 items-center self-start text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline sm:col-span-2"
                 >
                   Usar la vigencia del plan
                 </button>
               </div>
             ) : (
-              <p className="flex items-center justify-between gap-2 text-xs text-text-muted">
+              <p className="flex items-center justify-between gap-2 text-sm text-text-muted">
                 <span>
-                  Vigencia: {formatFecha(periodoInicio)} →{" "}
-                  {formatFecha(periodoFin)}
+                  Vigencia:{" "}
+                  <span className="font-mono text-dato text-text-secondary">
+                    {formatFecha(periodoInicio)} → {formatFecha(periodoFin)}
+                  </span>
                 </span>
                 <button
                   type="button"
                   onClick={() => setFechasPersonalizadas(true)}
-                  className="shrink-0 text-brand-green underline underline-offset-2 hover:opacity-80"
+                  className="inline-flex h-9 shrink-0 items-center text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
                 >
                   Personalizar fechas
                 </button>
@@ -610,8 +612,8 @@ export function PagoForm({
             ))}
 
           {selMem.kind === "plan" && miembro && (
-            <div className="rounded-xl border border-border bg-bg/40 p-4">
-              <label className="flex cursor-pointer items-center gap-3">
+            <div className="border border-border bg-bg p-4">
+              <label className="flex min-h-11 cursor-pointer items-center gap-3">
                 <input
                   type="checkbox"
                   checked={esAbono}
@@ -642,9 +644,9 @@ export function PagoForm({
                   />
                   {Number(montoAbono) > 0 &&
                     Number(montoAbono) < selMem.plan.precio && (
-                      <p className="text-xs text-text-muted">
+                      <p className="text-sm text-text-muted">
                         Queda pendiente:{" "}
-                        <span className="font-medium text-text-primary">
+                        <span className="font-mono text-dato text-text-primary">
                           {formatMoneda(selMem.plan.precio - Number(montoAbono))}
                         </span>{" "}
                         — aparece en Cuentas por cobrar.
@@ -723,9 +725,10 @@ export function PagoForm({
         />
       )}
 
-      {/* Método */}
-      <div className="space-y-1.5">
-        <Label>Método de pago</Label>
+      {/* Método: el seleccionado es el único verde del formulario, junto
+          con el botón de cobrar. */}
+      <div className="space-y-2">
+        <Label>Método</Label>
         <div className="grid grid-cols-3 gap-2">
           {metodoOptions.map((opt) => {
             const active = metodo === opt.value;
@@ -734,11 +737,12 @@ export function PagoForm({
                 key={opt.value}
                 type="button"
                 onClick={() => setMetodo(opt.value)}
+                aria-pressed={active}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-medium transition-colors duration-150",
+                  "inline-flex h-11 items-center justify-center gap-2 border px-2 text-sm font-medium transition-colors duration-150",
                   active
-                    ? "border-brand-green bg-brand-green/10 text-brand-green"
-                    : "border-border bg-surface text-text-secondary hover:text-text-primary"
+                    ? "border-brand-green bg-surface-hover text-brand-green"
+                    : "border-border bg-bg text-text-secondary hover:border-text-secondary hover:text-text-primary"
                 )}
               >
                 {opt.icon}
@@ -752,9 +756,10 @@ export function PagoForm({
 
       {/* Paga con / cambio (solo efectivo) */}
       {metodo === "efectivo" && montoFinal > 0 && (
-        <div className="space-y-1.5">
-          <Label>Paga con (opcional)</Label>
+        <div className="space-y-2">
+          <Label htmlFor="pago-paga-con">Paga con (opcional)</Label>
           <input
+            id="pago-paga-con"
             type="number"
             inputMode="decimal"
             min="0"
@@ -762,20 +767,20 @@ export function PagoForm({
             value={pagaCon}
             onChange={(e) => setPagaCon(e.target.value)}
             placeholder="0.00"
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+            className="h-11 w-full rounded border border-border bg-bg px-3 font-mono text-sm tabular-nums text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
           />
           {pagaCon.trim() !== "" && Number(pagaCon) >= montoFinal && (
-            <p className="flex items-center justify-between rounded-lg bg-brand-green/10 px-3 py-2 text-sm text-brand-green">
+            <p className="flex items-center justify-between border border-border px-3 py-2 text-sm text-text-secondary">
               <span>Cambio</span>
-              <span className="font-mono font-semibold">
+              <span className="font-mono text-dato tabular-nums text-text-primary">
                 ${(Number(pagaCon) - montoFinal).toLocaleString("es-MX")}
               </span>
             </p>
           )}
           {pagaCon.trim() !== "" && Number(pagaCon) < montoFinal && (
-            <p className="flex items-center justify-between rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+            <p className="flex items-center justify-between border border-danger/40 px-3 py-2 text-sm text-danger">
               <span>Falta</span>
-              <span className="font-mono font-semibold">
+              <span className="font-mono text-dato tabular-nums">
                 ${(montoFinal - Number(pagaCon)).toLocaleString("es-MX")}
               </span>
             </p>
@@ -785,15 +790,16 @@ export function PagoForm({
 
       {/* Nota de crédito del miembro (B2b) */}
       {miembro && creditoDisponible > 0 && montoFinal > 0 && (
-        <div className="space-y-1.5 rounded-lg border border-brand-green/20 bg-brand-green/5 p-3">
+        <div className="space-y-2 border border-border bg-bg p-4">
           <div className="flex items-center justify-between">
-            <Label>Crédito disponible</Label>
-            <span className="font-mono text-sm font-semibold text-brand-green">
+            <Label htmlFor="pago-credito">Crédito disponible</Label>
+            <span className="font-mono text-dato tabular-nums text-text-primary">
               {formatMoneda(creditoDisponible)}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <input
+              id="pago-credito"
               type="number"
               inputMode="decimal"
               min="0"
@@ -801,7 +807,7 @@ export function PagoForm({
               value={creditoAplicar}
               onChange={(e) => setCreditoAplicar(e.target.value)}
               placeholder="0.00"
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+              className="h-11 w-full rounded border border-border bg-bg px-3 font-mono text-sm tabular-nums text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
             />
             <Button
               type="button"
@@ -831,26 +837,26 @@ export function PagoForm({
         value={productoId ? cantidadProducto : ""}
       />
 
-      {/* Resumen + submit */}
-      <div className="flex items-center justify-between border-t border-border pt-4">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-text-muted">
+      {/* Total + cobrar: cifra en mono 36px y botón primario a todo lo ancho */}
+      <div className="flex flex-col gap-4 border-t border-border pt-5">
+        <div className="flex items-end justify-between gap-4">
+          <p className="font-mono text-etiqueta uppercase text-text-secondary">
             {esAbono
               ? "Abono a cobrar hoy"
               : creditoAplicado > 0
                 ? "A cobrar (menos crédito)"
-                : "Total a cobrar"}
-          </p>
-          <p className="font-mono text-2xl font-bold tabular-nums text-brand-green">
-            ${(esAbono ? Number(montoAbono) || 0 : montoNeto).toLocaleString("es-MX")}
+                : "Total"}
           </p>
           {!esAbono && creditoAplicado > 0 && (
-            <p className="text-[11px] text-text-secondary">
+            <p className="text-sm text-text-muted">
               Total ${montoFinal.toLocaleString("es-MX")} − crédito $
               {creditoAplicado.toLocaleString("es-MX")}
             </p>
           )}
         </div>
+        <p className="font-mono text-[36px] font-bold leading-10 tabular-nums text-text-primary">
+          {formatMoneda(esAbono ? Number(montoAbono) || 0 : montoNeto)}
+        </p>
         {esAbono ? (
           <Button
             type="button"
@@ -858,12 +864,13 @@ export function PagoForm({
             loading={isPendingAbono}
             disabled={!montoAbono.trim() || !!abonoError}
             size="lg"
+            className="w-full"
           >
-            Registrar abono
+            Registrar abono · {formatMoneda(Number(montoAbono) || 0)}
           </Button>
         ) : (
-          <Button type="submit" loading={isPending} size="lg">
-            Registrar pago
+          <Button type="submit" loading={isPending} size="lg" className="w-full">
+            Registrar pago · {formatMoneda(montoNeto)}
           </Button>
         )}
       </div>
@@ -900,7 +907,7 @@ function CustomMembresiaInputs({
   fieldErrors: Partial<Record<string, string>>;
 }) {
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-bg/40 p-4">
+    <div className="space-y-4 border border-border bg-bg p-4">
       <div className="space-y-2">
         <Label>Duración</Label>
         <div className="flex flex-wrap gap-2">
@@ -911,11 +918,12 @@ function CustomMembresiaInputs({
                 key={p}
                 type="button"
                 onClick={() => setCustomPreset(p)}
+                aria-pressed={active}
                 className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+                  "inline-flex h-9 items-center border px-3 text-sm transition-colors duration-150",
                   active
-                    ? "border-brand-green bg-brand-green/10 text-brand-green"
-                    : "border-border bg-surface text-text-secondary hover:text-text-primary"
+                    ? "border-brand-green bg-surface-hover text-brand-green"
+                    : "border-border text-text-secondary hover:border-text-secondary hover:text-text-primary"
                 )}
               >
                 {duracionPresets[p].label}
@@ -925,11 +933,12 @@ function CustomMembresiaInputs({
           <button
             type="button"
             onClick={() => setCustomPreset("manual")}
+            aria-pressed={customPreset === "manual"}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+              "inline-flex h-9 items-center border px-3 text-sm transition-colors duration-150",
               customPreset === "manual"
-                ? "border-brand-green bg-brand-green/10 text-brand-green"
-                : "border-border bg-surface text-text-secondary hover:text-text-primary"
+                ? "border-brand-green bg-surface-hover text-brand-green"
+                : "border-border text-text-secondary hover:border-text-secondary hover:text-text-primary"
             )}
           >
             Fechas manuales
@@ -970,8 +979,11 @@ function CustomMembresiaInputs({
       />
 
       {customPreset !== "manual" && periodoInicio && periodoFin && (
-        <p className="text-xs text-text-muted">
-          Vigencia: {formatFecha(periodoInicio)} → {formatFecha(periodoFin)}
+        <p className="text-sm text-text-muted">
+          Vigencia:{" "}
+          <span className="font-mono text-dato text-text-secondary">
+            {formatFecha(periodoInicio)} → {formatFecha(periodoFin)}
+          </span>
         </p>
       )}
     </div>
@@ -986,15 +998,12 @@ function SelectedMiembroChip({
   onClear: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-brand-green/30 bg-brand-green/5 px-3 py-2.5">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg text-brand-green">
-        <LuUser className="h-4 w-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="truncate text-sm font-medium text-text-primary">
+    <div className="flex items-center gap-3 border border-border bg-bg py-1 pl-4 pr-1">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[15px] leading-5 text-text-primary">
           {miembro.nombre}
         </p>
-        <p className="truncate text-xs text-text-secondary">
+        <p className="truncate text-sm text-text-muted">
           {miembro.fecha_vencimiento
             ? `Vence el ${formatFecha(miembro.fecha_vencimiento)}`
             : "Sin membresía vigente"}
@@ -1004,7 +1013,7 @@ function SelectedMiembroChip({
         type="button"
         onClick={onClear}
         aria-label="Quitar selección"
-        className="shrink-0 rounded-md p-1 text-text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-text-primary"
+        className="flex h-11 w-11 shrink-0 items-center justify-center text-text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-text-primary"
       >
         <LuX className="h-4 w-4" />
       </button>
@@ -1049,9 +1058,9 @@ function MiembroAutocomplete({
       />
 
       {(results.length > 0 || (query.trim().length >= 2 && !isSearching)) && (
-        <div className="absolute inset-x-0 top-full z-10 mt-2 overflow-hidden rounded-xl border border-border bg-surface shadow-xl">
+        <div className="absolute inset-x-0 top-full z-10 mt-2 overflow-hidden border border-border bg-surface">
           {results.length === 0 ? (
-            <div className="px-4 py-4 text-center text-sm text-text-secondary">
+            <div className="px-4 py-4 text-center text-sm text-text-muted">
               Sin resultados
             </div>
           ) : (
@@ -1065,21 +1074,16 @@ function MiembroAutocomplete({
                       setQuery("");
                       setResults([]);
                     }}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-150 hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none"
+                    className="flex min-h-11 w-full items-center justify-between gap-4 px-4 py-2.5 text-left transition-colors duration-150 hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-none"
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg text-text-muted">
-                      <LuUser className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-text-primary">
-                        {m.nombre}
-                      </p>
-                      {m.telefono && (
-                        <p className="truncate font-mono text-xs text-text-secondary">
-                          {m.telefono}
-                        </p>
-                      )}
-                    </div>
+                    <span className="truncate text-[15px] leading-5 text-text-primary">
+                      {m.nombre}
+                    </span>
+                    {m.telefono && (
+                      <span className="shrink-0 font-mono text-dato text-text-muted">
+                        {m.telefono}
+                      </span>
+                    )}
                   </button>
                 </li>
               ))}

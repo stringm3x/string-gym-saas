@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
+import { LuChevronLeft, LuChevronRight, LuCalendarDays } from "react-icons/lu";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   diasDeSemana,
   sumarDiasYMD,
@@ -11,8 +12,16 @@ import {
   formatHora12,
   hoyYMD,
 } from "@/lib/utils/clases-format";
+import { cn } from "@/lib/utils/cn";
 import type { ClaseSesion } from "@/lib/types/clases";
 
+const BTN =
+  "inline-flex h-11 items-center gap-1 border border-border px-3 text-sm text-text-primary transition-colors hover:border-text-secondary";
+
+/**
+ * Calendario semanal: controles de 44px, día de hoy con el estado
+ * seleccionado (fondo lleno + ácido), hora y cupo en mono.
+ */
 export function CalendarioSemanal({
   sesiones,
   lunes,
@@ -45,30 +54,26 @@ export function CalendarioSemanal({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {/* Controles */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => irA(sumarDiasYMD(lunes, -7))}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+            className={BTN}
           >
-            <LuChevronLeft className="h-3.5 w-3.5" /> Semana ant.
+            <LuChevronLeft className="h-4 w-4" aria-hidden="true" /> Anterior
           </button>
-          <button
-            type="button"
-            onClick={() => irA(hoy)}
-            className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary"
-          >
+          <button type="button" onClick={() => irA(hoy)} className={BTN}>
             Hoy
           </button>
           <button
             type="button"
             onClick={() => irA(sumarDiasYMD(lunes, 7))}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+            className={BTN}
           >
-            Semana sig. <LuChevronRight className="h-3.5 w-3.5" />
+            Siguiente <LuChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
@@ -76,7 +81,8 @@ export function CalendarioSemanal({
           <select
             value={instructor}
             onChange={(e) => setInstructor(e.target.value)}
-            className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs text-text-primary focus:border-brand-green focus:outline-none"
+            aria-label="Filtrar por instructor"
+            className="h-11 rounded border border-border bg-bg px-3 text-sm text-text-primary focus:border-brand-green focus:outline-none"
           >
             <option value="">Todos los instructores</option>
             {instructores.map((i) => (
@@ -99,15 +105,16 @@ export function CalendarioSemanal({
             return (
               <div key={dia} className="min-h-[120px]">
                 <div
-                  className={`mb-2 rounded-lg px-2 py-1.5 text-center text-xs font-medium ${
+                  className={cn(
+                    "mb-2 border px-2 py-2 text-center font-mono text-etiqueta uppercase",
                     esHoy
-                      ? "bg-brand-green/10 text-brand-green"
-                      : "text-text-secondary"
-                  }`}
+                      ? "border-brand-green bg-surface-hover text-brand-green"
+                      : "border-transparent text-text-muted"
+                  )}
                 >
                   {formatDiaCorto(dia)}
                 </div>
-                <div className="space-y-1.5">
+                <div className="flex flex-col gap-2">
                   {delDia.map((s) => {
                     const confirmadas = s.cupo_maximo - s.cupo_disponible;
                     const lleno = s.cupo_disponible <= 0;
@@ -116,32 +123,38 @@ export function CalendarioSemanal({
                       <Link
                         key={s.id}
                         href={`/${slug}/clases/${s.id}`}
-                        className={`block overflow-hidden rounded-lg border border-border bg-surface hover:bg-bg ${
-                          cancelada ? "opacity-50" : ""
-                        }`}
+                        className={cn(
+                          "flex min-h-11 overflow-hidden border border-border bg-surface transition-colors hover:border-text-secondary",
+                          cancelada && "opacity-50"
+                        )}
                       >
-                        <div className="flex">
+                        <span
+                          className="w-1 shrink-0"
+                          style={{ backgroundColor: s.clase?.color ?? "#10b981" }}
+                          aria-hidden="true"
+                        />
+                        <span className="min-w-0 flex-1 px-2 py-2">
+                          <span className="block truncate text-sm text-text-primary">
+                            {s.clase?.nombre ?? "Clase"}
+                          </span>
+                          <span className="block font-mono text-xs text-text-muted">
+                            {formatHora12(s.hora_inicio)}
+                          </span>
                           <span
-                            className="w-1 shrink-0"
-                            style={{ backgroundColor: s.clase?.color ?? "#10b981" }}
-                          />
-                          <div className="min-w-0 flex-1 px-2 py-1.5">
-                            <p className="truncate text-xs font-medium text-text-primary">
-                              {s.clase?.nombre ?? "Clase"}
-                            </p>
-                            <p className="text-[10px] text-text-muted">
-                              {formatHora12(s.hora_inicio)}
-                            </p>
-                            <p className="mt-0.5 text-[10px] text-text-secondary">
-                              {confirmadas}/{s.cupo_maximo}
-                              {cancelada ? (
-                                <span className="ml-1 text-danger">cancelada</span>
-                              ) : lleno ? (
-                                <span className="ml-1 text-warning">Completo</span>
-                              ) : null}
-                            </p>
-                          </div>
-                        </div>
+                            className={cn(
+                              "mt-0.5 block font-mono text-xs tabular-nums",
+                              cancelada
+                                ? "text-danger"
+                                : lleno
+                                  ? "text-warning"
+                                  : "text-text-secondary"
+                            )}
+                          >
+                            {cancelada
+                              ? "Cancelada"
+                              : `${confirmadas}/${s.cupo_maximo}${lleno ? " · Llena" : ""}`}
+                          </span>
+                        </span>
                       </Link>
                     );
                   })}
@@ -153,9 +166,19 @@ export function CalendarioSemanal({
       </div>
 
       {sesiones.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border bg-surface px-6 py-12 text-center text-sm text-text-secondary">
-          No hay sesiones esta semana. Crea clases en Configuración → Clases.
-        </div>
+        <EmptyState
+          icon={<LuCalendarDays />}
+          title="Sin sesiones esta semana"
+          description="Cambia de semana con las flechas, o crea clases con horario y cupo para que se generen sus sesiones."
+          action={
+            <Link
+              href={`/${slug}/configuracion/clases`}
+              className="inline-flex h-11 items-center gap-2 border border-border px-4 text-sm text-text-primary transition-colors hover:border-text-secondary"
+            >
+              Configurar clases
+            </Link>
+          }
+        />
       )}
     </div>
   );

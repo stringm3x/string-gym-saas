@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LuPencil, LuCalendarDays, LuCalendarPlus } from "react-icons/lu";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { formatDiasSemana, formatHora12 } from "@/lib/utils/clases-format";
+import { cn } from "@/lib/utils/cn";
 import {
   toggleClaseActivaAction,
   generarSesionesAction,
@@ -18,6 +21,8 @@ const TIPO_LABEL: Record<Clase["tipo"], string> = {
   privada: "Privada",
 };
 
+/** Tarjeta de clase (configuración): barra de color, nombre, chip de tipo,
+ * horario y cupo en mono, acciones pequeñas (h-9). */
 export function ClaseCard({
   clase,
   slug,
@@ -59,68 +64,78 @@ export function ClaseCard({
 
   return (
     <div
-      className={`flex overflow-hidden rounded-xl border border-border bg-surface ${
-        clase.activa ? "" : "opacity-60"
-      }`}
+      className={cn(
+        "card-surface flex overflow-hidden",
+        !clase.activa && "opacity-60"
+      )}
     >
-      <div className="w-1.5 shrink-0" style={{ backgroundColor: clase.color }} />
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-text-primary">
+      <div
+        className="w-1.5 shrink-0"
+        style={{ backgroundColor: clase.color }}
+        aria-hidden="true"
+      />
+      <div className="flex flex-1 flex-col gap-3 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-semibold text-text-primary">
                 {clase.nombre}
               </h3>
-              <span className="rounded-full border border-border px-2 py-0.5 text-[10px] uppercase tracking-wide text-text-muted">
-                {TIPO_LABEL[clase.tipo]}
-              </span>
+              <Badge variant="neutral">{TIPO_LABEL[clase.tipo]}</Badge>
             </div>
             {clase.instructor && (
-              <p className="text-xs text-text-muted">{clase.instructor}</p>
+              <p className="mt-0.5 text-sm text-text-muted">{clase.instructor}</p>
             )}
           </div>
-          <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-text-secondary">
+          <label className="flex min-h-9 shrink-0 cursor-pointer items-center gap-2 text-sm text-text-secondary">
             <input
               type="checkbox"
               checked={clase.activa}
               disabled={pending}
               onChange={toggle}
-              className="h-3.5 w-3.5 accent-brand-green"
+              className="h-4 w-4 rounded accent-brand-green"
             />
             {clase.activa ? "Activa" : "Inactiva"}
           </label>
         </div>
 
-        <p className="text-xs text-text-secondary">{horario}</p>
-        <p className="text-xs text-text-muted">{clase.cupo_maximo} lugares</p>
+        <p className="font-mono text-dato text-text-secondary">{horario}</p>
+        <p className="text-sm text-text-muted">
+          <span className="font-mono">{clase.cupo_maximo}</span> lugares
+        </p>
 
-        <div className="mt-1 flex gap-2">
-          <button
+        <div className="flex flex-wrap gap-2">
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => onEdit(clase)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+            leftIcon={<LuPencil className="h-4 w-4" />}
           >
-            <LuPencil className="h-3.5 w-3.5" /> Editar
-          </button>
+            Editar
+          </Button>
           <Link
             href={`/${slug}/clases`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+            className="inline-flex h-9 items-center gap-2 border border-border px-3 text-sm text-text-primary transition-colors hover:border-text-secondary"
           >
-            <LuCalendarDays className="h-3.5 w-3.5" /> Ver sesiones
+            <LuCalendarDays className="h-4 w-4" aria-hidden="true" /> Ver
+            sesiones
           </Link>
           {clase.es_recurrente && (
-            <button
+            <Button
               type="button"
-              disabled={pending}
+              variant="secondary"
+              size="sm"
+              loading={pending}
               onClick={generar}
               title="Generar sesiones de las próximas 4 semanas"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:text-text-primary disabled:opacity-50"
+              leftIcon={<LuCalendarPlus className="h-4 w-4" />}
             >
-              <LuCalendarPlus className="h-3.5 w-3.5" /> Generar sesiones
-            </button>
+              Generar sesiones
+            </Button>
           )}
         </div>
-        {genMsg && <p className="text-[11px] text-text-muted">{genMsg}</p>}
+        {genMsg && <p className="text-sm text-text-muted">{genMsg}</p>}
       </div>
     </div>
   );

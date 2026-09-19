@@ -21,9 +21,11 @@ function Tip({ active, payload }: TipProps) {
   if (!active || !payload?.length) return null;
   const p = payload[0];
   return (
-    <div className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs shadow-lg">
-      <p className="text-text-muted">{p.payload.label}</p>
-      <p className="font-mono font-semibold text-text-primary">
+    <div className="border border-border bg-surface px-3 py-2 text-xs">
+      <p className="font-mono text-etiqueta uppercase text-text-muted">
+        {p.payload.label}
+      </p>
+      <p className="mt-1 font-mono text-dato font-bold tabular-nums text-text-primary">
         {money(p.value)}
       </p>
     </div>
@@ -40,13 +42,13 @@ export function IngresosSemanaChart({
   const total = data.reduce((s, d) => s + d.monto, 0);
   return (
     <div className="card-surface p-5">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+      <p className="font-mono text-etiqueta uppercase text-text-secondary">
         Ingresos por semana
       </p>
-      <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary">
+      <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-text-primary">
         {money(total)}
       </p>
-      <p className="text-xs text-text-secondary">últimas 4 semanas</p>
+      <p className="text-xs text-text-muted">Últimas 4 semanas</p>
 
       <div className="mt-4 h-48">
         <ResponsiveContainer width="100%" height="100%">
@@ -55,13 +57,13 @@ export function IngresosSemanaChart({
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              tick={{ fontSize: 11, fill: AXIS }}
+              tick={{ fontSize: 12, fill: AXIS, fontFamily: "var(--font-ubuntu-mono)" }}
             />
             <Tooltip
               cursor={{ fill: "var(--color-text-primary)", fillOpacity: 0.04 }}
               content={<Tip />}
             />
-            <Bar dataKey="monto" radius={[4, 4, 0, 0]} fill={color} />
+            <Bar dataKey="monto" radius={0} fill={color} />
           </BarChart>
         </ResponsiveContainer>
       </div>

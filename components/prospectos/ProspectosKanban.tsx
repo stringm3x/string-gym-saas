@@ -3,6 +3,9 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { LuPlus, LuTarget } from "react-icons/lu";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { KanbanColumn } from "./KanbanColumn";
 import { ProspectoCard } from "./ProspectoCard";
@@ -17,7 +20,7 @@ import type { PlanMembresia } from "@/lib/queries/planes.queries";
 
 const COLUMNS: { estado: ProspectoEstado; label: string; colorClass: string }[] = [
   { estado: "nuevo", label: "Nuevo", colorClass: "text-text-secondary" },
-  { estado: "contactado", label: "Contactado", colorClass: "text-gold" },
+  { estado: "contactado", label: "Contactado", colorClass: "text-text-secondary" },
   { estado: "agendado", label: "Agendado", colorClass: "text-warning" },
   { estado: "convertido", label: "Convertido", colorClass: "text-brand-green" },
   { estado: "descartado", label: "Descartado", colorClass: "text-text-muted" },
@@ -134,38 +137,55 @@ export function ProspectosKanban({ prospectos, slug, availableTags = [], plantil
   return (
     <>
       <div className="mb-4 flex justify-end">
-        <button
+        <Button
           type="button"
+          leftIcon={<LuPlus className="h-4 w-4" />}
           onClick={handleNewProspecto}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-green px-4 py-2 text-sm font-medium text-bg transition-opacity hover:opacity-90"
         >
-          + Nuevo prospecto
-        </button>
+          Nuevo prospecto
+        </Button>
       </div>
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="flex gap-3 overflow-x-auto pb-4">
-          {COLUMNS.map(({ estado, label, colorClass }) => (
-            <KanbanColumn
-              key={estado}
-              estado={estado}
-              label={label}
-              count={columns[estado].length}
-              colorClass={colorClass}
-              isConverting={estado === "convertido"}
+      {prospectos.length === 0 ? (
+        <EmptyState
+          icon={<LuTarget />}
+          title="Sin prospectos todavía"
+          description="Registra a quien pregunta por precios o pasa a conocer el gimnasio, y muévelo por el tablero hasta inscribirlo."
+          action={
+            <Button
+              type="button"
+              leftIcon={<LuPlus className="h-4 w-4" />}
+              onClick={handleNewProspecto}
             >
-              {columns[estado].map((prospecto) => (
-                <ProspectoCard
-                  key={prospecto.id}
-                  prospecto={prospecto}
-                  onClick={handleCardClick}
-                  onInscribir={setInscribirProspecto}
-                />
-              ))}
-            </KanbanColumn>
-          ))}
-        </div>
-      </DndContext>
+              Registrar primer prospecto
+            </Button>
+          }
+        />
+      ) : (
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {COLUMNS.map(({ estado, label, colorClass }) => (
+              <KanbanColumn
+                key={estado}
+                estado={estado}
+                label={label}
+                count={columns[estado].length}
+                colorClass={colorClass}
+                isConverting={estado === "convertido"}
+              >
+                {columns[estado].map((prospecto) => (
+                  <ProspectoCard
+                    key={prospecto.id}
+                    prospecto={prospecto}
+                    onClick={handleCardClick}
+                    onInscribir={setInscribirProspecto}
+                  />
+                ))}
+              </KanbanColumn>
+            ))}
+          </div>
+        </DndContext>
+      )}
 
       <ProspectoModal
         open={isModalOpen}

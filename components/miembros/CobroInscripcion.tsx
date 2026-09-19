@@ -114,8 +114,8 @@ export function CobroInscripcion({
   }, [selMem.kind]);
 
   return (
-    <div className="rounded-xl border border-border bg-bg/40">
-      <label className="flex cursor-pointer items-center gap-3 px-4 py-3">
+    <div className="border border-border bg-bg">
+      <label className="flex min-h-11 cursor-pointer items-center gap-3 px-4 py-3">
         <input
           type="checkbox"
           checked={enabled}
@@ -168,13 +168,13 @@ export function CobroInscripcion({
               allowCustom={false}
             />
             {planes.length === 0 && promocionesMembresia.length === 0 && (
-              <p className="text-xs text-text-muted">
+              <p className="text-sm text-text-muted">
                 No hay planes ni promociones configurados. Crea uno en
                 Configuración → Planes para poder cobrar la inscripción.
               </p>
             )}
             {fieldErrors.monto_pago && (
-              <p role="alert" className="text-xs text-danger">
+              <p role="alert" className="text-sm text-danger">
                 {fieldErrors.monto_pago}
               </p>
             )}
@@ -184,7 +184,7 @@ export function CobroInscripcion({
             periodoInicio &&
             periodoFin &&
             (fechasPersonalizadas ? (
-              <div className="grid gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-2">
+              <div className="grid gap-3 border border-border bg-surface p-4 sm:grid-cols-2">
                 <Input
                   label="Desde"
                   type="date"
@@ -202,21 +202,23 @@ export function CobroInscripcion({
                 <button
                   type="button"
                   onClick={() => setFechasPersonalizadas(false)}
-                  className="text-left text-xs text-text-secondary underline underline-offset-2 hover:text-text-primary sm:col-span-2"
+                  className="inline-flex h-9 items-center self-start text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline sm:col-span-2"
                 >
                   Usar la vigencia del plan
                 </button>
               </div>
             ) : (
-              <p className="flex items-center justify-between gap-2 text-xs text-text-muted">
+              <p className="flex items-center justify-between gap-2 text-sm text-text-muted">
                 <span>
-                  Vigencia: {formatFecha(periodoInicio)} →{" "}
-                  {formatFecha(periodoFin)}
+                  Vigencia:{" "}
+                  <span className="font-mono text-dato text-text-secondary">
+                    {formatFecha(periodoInicio)} → {formatFecha(periodoFin)}
+                  </span>
                 </span>
                 <button
                   type="button"
                   onClick={() => setFechasPersonalizadas(true)}
-                  className="shrink-0 text-brand-green underline underline-offset-2 hover:opacity-80"
+                  className="inline-flex h-9 shrink-0 items-center text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
                 >
                   Personalizar fechas
                 </button>
@@ -224,8 +226,8 @@ export function CobroInscripcion({
             ))}
 
           {/* Método de pago */}
-          <div className="space-y-1.5">
-            <Label>Método de pago</Label>
+          <div className="space-y-2">
+            <Label>Método</Label>
             <div className="grid grid-cols-3 gap-2">
               {metodoOptions.map((opt) => {
                 const active = metodo === opt.value;
@@ -234,11 +236,12 @@ export function CobroInscripcion({
                     key={opt.value}
                     type="button"
                     onClick={() => setMetodo(opt.value)}
+                    aria-pressed={active}
                     className={cn(
-                      "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-medium transition-colors duration-150",
+                      "inline-flex h-11 items-center justify-center gap-2 border px-2 text-sm font-medium transition-colors duration-150",
                       active
-                        ? "border-brand-green bg-brand-green/10 text-brand-green"
-                        : "border-border bg-surface text-text-secondary hover:text-text-primary"
+                        ? "border-brand-green bg-surface-hover text-brand-green"
+                        : "border-border bg-surface text-text-secondary hover:border-text-secondary hover:text-text-primary"
                     )}
                   >
                     {opt.icon}
@@ -250,11 +253,11 @@ export function CobroInscripcion({
           </div>
 
           {/* Total */}
-          <div className="flex items-center justify-between border-t border-border pt-3">
-            <p className="text-xs uppercase tracking-wider text-text-muted">
+          <div className="flex items-end justify-between gap-4 border-t border-border pt-4">
+            <p className="font-mono text-etiqueta uppercase text-text-secondary">
               Total a cobrar
             </p>
-            <p className="font-mono text-2xl font-bold tabular-nums text-brand-green">
+            <p className="font-mono text-2xl font-bold tabular-nums text-text-primary">
               ${montoFinal.toLocaleString("es-MX")}
             </p>
           </div>

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { LuWallet, LuReceipt } from "react-icons/lu";
 import {
   listPagosDelDia,
   getResumenCaja,
@@ -14,7 +13,7 @@ import { getGymFull } from "@/lib/queries/gyms.queries";
 import { listStaffParaCheckin } from "@/lib/queries/staff.queries";
 import { listCajas } from "@/lib/queries/cajas.queries";
 import { formatMoneda } from "@/lib/utils/format";
-import { hoyCDMX } from "@/lib/utils/dates";
+import { hoyCDMX, TZ_MX } from "@/lib/utils/dates";
 import { cn } from "@/lib/utils/cn";
 import {
   getCodigosPendientes,
@@ -35,6 +34,8 @@ import { CobroMpButton } from "@/components/caja/CobroMpButton";
 import { AutorizacionesPendientes } from "@/components/caja/AutorizacionesPendientes";
 import { PagosExternosPendientes } from "@/components/caja/PagosExternosPendientes";
 import { CortePanel } from "@/components/caja/CortePanel";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LuStore } from "react-icons/lu";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -52,6 +53,29 @@ function parseCategoria(value?: string): CategoriaCaja {
   return "all";
 }
 
+function horaMX(iso: string): string {
+  return new Intl.DateTimeFormat("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: TZ_MX,
+  }).format(new Date(iso));
+}
+
+function fechaHoy(): string {
+  return new Intl.DateTimeFormat("es-MX", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: TZ_MX,
+  }).format(new Date());
+}
+
+/**
+ * Caja (artboard "Caja"): a la izquierda la tarjeta "Registrar cobro"; a la
+ * derecha los totales por método, el turno y los movimientos. Verde solo en
+ * el botón de cobrar y en el método seleccionado.
+ */
 export default async function CajaPage({ params, searchParams }: PageProps) {
   const [{ slug }, sp, tenant] = await Promise.all([
     params,
@@ -155,23 +179,45 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
     return `/${slug}/caja?${params.toString()}`;
   }
 
+  // Kicker: el estado del turno cuando la caja cuadra; la fecha si no.
+  // Dice "Turno desde" y no "Turno abierto" para no duplicar el texto del
+  // toast que la prueba E2E de caja espera encontrar una sola vez.
+  const kicker = corte
+    ? `Turno desde ${horaMX(corte.abierto_at)}${
+        corte.abierto_por_nombre ? ` · ${corte.abierto_por_nombre}` : ""
+      }`
+    : cajaRequiereCuadre
+      ? "Sin turno abierto"
+      : fechaHoy();
+
+  const tituloMovimientos = corte ? "Movimientos del turno" : "Movimientos de hoy";
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-            Caja
-          </h2>
-          <p className="mt-1 text-sm text-text-secondary">
-            Registra cobros y revisa lo cobrado del día.
+    <div className="flex flex-col gap-7">
+      {/* Encabezado: kicker del turno en mono, título en Geist, acciones */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <p className="font-mono text-etiqueta uppercase text-text-muted">
+            {kicker}
           </p>
+          <h2 className="text-pagina font-semibold text-text-primary">Caja</h2>
         </div>
-        <VisitaRapidaButton />
+        <div className="flex items-center gap-3">
+          {cajaRequiereCuadre && (
+            <Link
+              href={`/${slug}/caja/cortes`}
+              className="inline-flex h-11 items-center gap-2 border border-border px-4 text-sm text-text-primary transition-colors hover:border-text-secondary"
+            >
+              Cortes
+            </Link>
+          )}
+          <VisitaRapidaButton />
+        </div>
       </div>
 
       {cajas.length > 1 && (
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-surface p-1">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {cajas.map((c) => {
               const activa = cajaActiva?.id === c.id;
               const total = totalPorCaja.get(c.id);
@@ -180,31 +226,25 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
                   key={c.id}
                   href={hrefCaja(c.id)}
                   className={cn(
-                    "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
+                    "inline-flex h-11 items-center gap-2 border px-4 text-sm transition-colors",
                     activa
-                      ? "bg-bg text-text-primary"
-                      : "text-text-secondary hover:text-text-primary"
+                      ? "border-brand-green bg-surface-hover text-brand-green"
+                      : "border-border bg-surface text-text-secondary hover:border-text-secondary hover:text-text-primary"
                   )}
                 >
                   {c.nombre}
                   {total !== undefined && (
-                    <span
-                      className={cn(
-                        "ml-1.5",
-                        activa ? "text-brand-green" : "text-text-muted"
-                      )}
-                    >
-                      · {formatMoneda(total)}
+                    <span className="font-mono text-dato tabular-nums">
+                      {formatMoneda(total)}
                     </span>
                   )}
                 </Link>
               );
             })}
           </div>
-          <p className="text-xs text-text-muted">
-            No hace falta que cambies de pestaña para cobrar bien — cada
-            producto ya sabe a qué caja pertenece. Las pestañas son solo
-            para ver el corte de cada una.
+          <p className="text-sm text-text-muted">
+            Cada producto ya sabe a qué caja pertenece: las pestañas solo
+            cambian qué corte ves.
           </p>
         </div>
       )}
@@ -213,35 +253,32 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
         <AutorizacionesPendientes codigos={codigosPendientes} />
       )}
 
-      {cajaActiva ? (
-        <CortePanel
-          slug={slug}
-          cajaId={cajaActiva.id}
-          nombreCaja={cajaActiva.nombre}
-          requiereCuadre={cajaRequiereCuadre}
-          corte={corte}
-          totales={corteTotales}
-          totalesPorConcepto={corteTotalesPorConcepto}
-          checkinRequerido={checkinRequerido}
-          staffParaCheckin={staffParaCheckin}
+      {!cajaActiva && (
+        <EmptyState
+          icon={<LuStore />}
+          title="Sin caja configurada"
+          description={
+            tenant.role === "owner"
+              ? "Para cobrar necesitas al menos una caja. Créala en Configuración → Cajas y regresa aquí."
+              : "Para cobrar hace falta una caja configurada. Pídele al dueño que la cree en Configuración → Cajas."
+          }
+          action={
+            tenant.role === "owner" ? (
+              <Link
+                href={`/${slug}/configuracion/cajas`}
+                className="inline-flex h-11 items-center gap-2 bg-brand-green px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
+              >
+                Configurar cajas
+              </Link>
+            ) : undefined
+          }
         />
-      ) : (
-        <p className="rounded-xl border border-border bg-surface px-4 py-6 text-center text-sm text-text-muted">
-          No hay ninguna caja configurada — algo salió mal al crear tu gym.
-          Contacta soporte.
-        </p>
       )}
 
       {cajaActiva && (
-        <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-          {/* ── Acción: registrar cobro ─────────────────────── */}
-          <section className="space-y-4">
-            <SectionHeader
-              icon={<LuWallet className="h-4 w-4" />}
-              title="Registrar cobro"
-              subtitle="Cobra membresías, productos o visitas."
-              accent
-            />
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,520px)]">
+          {/* ── Registrar cobro ─────────────────────────────── */}
+          <div className="flex flex-col gap-4">
             <CobroSwitcher
               slug={slug}
               planes={planes}
@@ -249,88 +286,99 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
               promocionesProducto={promocionesProducto}
               productos={productos}
             />
-
             {canMp && (
               <CobroMpButton planes={planes} gymNombre={gym?.nombre ?? ""} />
             )}
-          </section>
+          </div>
 
-          {/* ── Reporte: cobrado hoy ─────────────────────────── */}
-          <section className="space-y-4">
-            <SectionHeader
-              icon={<LuReceipt className="h-4 w-4" />}
-              title="Cobrado hoy"
-              subtitle={
-                cajas.length > 1
-                  ? `Totales y movimientos de ${cajaActiva.nombre}.`
-                  : "Totales y movimientos del día."
-              }
+          {/* ── Totales, turno y movimientos ────────────────── */}
+          <div className="flex flex-col gap-4">
+            {corteTotales && (
+              <div className="grid grid-cols-3 gap-4">
+                <TotalMetodo label="Efectivo" valor={corteTotales.efectivo} />
+                <TotalMetodo label="Tarjeta" valor={corteTotales.tarjeta} />
+                <TotalMetodo
+                  label="Transferencia"
+                  valor={corteTotales.transferencia}
+                />
+              </div>
+            )}
+
+            <CortePanel
+              slug={slug}
+              cajaId={cajaActiva.id}
+              nombreCaja={cajaActiva.nombre}
+              requiereCuadre={cajaRequiereCuadre}
+              corte={corte}
+              totales={corteTotales}
+              totalesPorConcepto={corteTotalesPorConcepto}
+              checkinRequerido={checkinRequerido}
+              staffParaCheckin={staffParaCheckin}
             />
-
-            <div className="flex justify-end">
-              <CajaFilters />
-            </div>
 
             {canMp && <PagosExternosPendientes pendientes={pagosMpPendientes} />}
 
-            <div className="divide-y divide-border rounded-xl border border-border bg-surface">
-              <ResumenRow
-                label="Hoy"
-                total={formatMoneda(resumen.dia.total)}
-                cantidad={resumen.dia.cantidad}
-                prominent
-              />
-              <ResumenRow
-                label="Esta semana"
-                total={formatMoneda(resumen.semana.total)}
-                cantidad={resumen.semana.cantidad}
-              />
-              <ResumenRow
-                label="Este mes"
-                total={formatMoneda(resumen.mes.total)}
-                cantidad={resumen.mes.cantidad}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                Movimientos de hoy
-              </h3>
+            <section className="card-surface">
+              <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                <h3 className="text-base font-semibold text-text-primary">
+                  {tituloMovimientos}
+                </h3>
+                <span className="font-mono text-etiqueta text-text-muted">
+                  {pagos.length}
+                </span>
+              </div>
+              <div className="border-b border-border px-5 py-3">
+                <CajaFilters />
+              </div>
               <PagosFeed pagos={pagos} slug={slug} />
-            </div>
-          </section>
+            </section>
+
+            <section className="card-surface">
+              <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                <h3 className="text-base font-semibold text-text-primary">
+                  Cobrado
+                </h3>
+                {cajas.length > 1 && (
+                  <span className="font-mono text-etiqueta uppercase text-text-muted">
+                    {cajaActiva.nombre}
+                  </span>
+                )}
+              </div>
+              <ul className="divide-y divide-border">
+                <ResumenRow
+                  label="Hoy"
+                  total={formatMoneda(resumen.dia.total)}
+                  cantidad={resumen.dia.cantidad}
+                />
+                <ResumenRow
+                  label="Esta semana"
+                  total={formatMoneda(resumen.semana.total)}
+                  cantidad={resumen.semana.cantidad}
+                />
+                <ResumenRow
+                  label="Este mes"
+                  total={formatMoneda(resumen.mes.total)}
+                  cantidad={resumen.mes.cantidad}
+                />
+              </ul>
+            </section>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function SectionHeader({
-  icon,
-  title,
-  subtitle,
-  accent = false,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  accent?: boolean;
-}) {
+/** Tarjeta de total por método: etiqueta en mono y cifra en mono 26px. */
+function TotalMetodo({ label, valor }: { label: string; valor: number }) {
   return (
-    <div className="flex items-center gap-3">
-      <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-          accent
-            ? "bg-brand-green/10 text-brand-green"
-            : "bg-surface-hover text-text-secondary"
-        }`}
-      >
-        {icon}
-      </span>
-      <div>
-        <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
-        <p className="text-xs text-text-muted">{subtitle}</p>
-      </div>
+    <div className="card-surface flex flex-col gap-2 p-4">
+      <p className="font-mono text-etiqueta uppercase text-text-secondary">
+        {label}
+      </p>
+      <p className="font-mono text-[26px] font-bold leading-8 tabular-nums text-text-primary">
+        {formatMoneda(valor)}
+      </p>
     </div>
   );
 }
@@ -339,32 +387,22 @@ function ResumenRow({
   label,
   total,
   cantidad,
-  prominent = false,
 }: {
   label: string;
   total: string;
   cantidad: number;
-  prominent?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3">
-      <span className="text-xs uppercase tracking-wider text-text-muted">
-        {label}
-      </span>
-      <div className="text-right">
-        <p
-          className={`font-mono tabular-nums ${
-            prominent
-              ? "text-2xl font-bold text-brand-green"
-              : "text-base font-semibold text-text-primary"
-          }`}
-        >
-          {total}
-        </p>
-        <p className="text-[11px] text-text-secondary">
-          {cantidad} {cantidad === 1 ? "pago" : "pagos"}
+    <li className="flex items-center justify-between gap-4 px-5 py-4">
+      <div className="min-w-0">
+        <p className="text-[15px] leading-5 text-text-primary">{label}</p>
+        <p className="mt-0.5 text-sm text-text-muted">
+          {cantidad} {cantidad === 1 ? "cobro" : "cobros"}
         </p>
       </div>
-    </div>
+      <span className="shrink-0 font-mono text-dato tabular-nums text-text-primary">
+        {total}
+      </span>
+    </li>
   );
 }

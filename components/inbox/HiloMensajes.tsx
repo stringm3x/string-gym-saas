@@ -55,8 +55,8 @@ export function HiloMensajes({ titulo, miembro, mensajes }: HiloMensajesProps) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Encabezado */}
-      <div className="border-b border-border px-4 py-3">
-        <h3 className="truncate text-sm font-semibold text-text-primary">
+      <div className="border-b border-border px-5 py-4">
+        <h3 className="truncate text-base font-semibold text-text-primary">
           {titulo}
         </h3>
         {miembro ? (
@@ -65,7 +65,7 @@ export function HiloMensajes({ titulo, miembro, mensajes }: HiloMensajesProps) {
             {" · "}
             <span
               className={cn(
-                "font-medium",
+                "font-mono uppercase tracking-[0.12em]",
                 miembro.vigente ? "text-brand-green" : "text-danger"
               )}
             >
@@ -90,10 +90,12 @@ export function HiloMensajes({ titulo, miembro, mensajes }: HiloMensajesProps) {
             return (
               <div key={m.id}>
                 {nuevoDia && (
-                  <div className="my-3 flex justify-center">
-                    <span className="rounded-full bg-surface px-3 py-1 text-[11px] font-medium text-text-muted">
+                  <div className="my-4 flex items-center gap-3">
+                    <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                    <span className="font-mono text-etiqueta uppercase text-text-muted">
                       {etiquetaDia(m.enviado_at)}
                     </span>
+                    <span className="h-px flex-1 bg-border" aria-hidden="true" />
                   </div>
                 )}
                 <Burbuja mensaje={m} />
@@ -110,8 +112,9 @@ export function HiloMensajes({ titulo, miembro, mensajes }: HiloMensajesProps) {
 function Burbuja({ mensaje }: { mensaje: MensajeInbox }) {
   const entrante = mensaje.direccion === "entrante";
 
-  // Estilo por dirección/tipo.
-  let estilo = "bg-surface text-text-primary"; // entrante (gris)
+  // Estilo por dirección/tipo. Los tokens bubble-bot / bubble-auto se
+  // conservan; el radio se queda en `rounded` (4px), el máximo del sistema.
+  let estilo = "border border-border bg-bg text-text-primary"; // entrante
   let tsColor = "text-text-muted";
   let badge: string | null = null;
   if (!entrante) {
@@ -124,27 +127,26 @@ function Burbuja({ mensaje }: { mensaje: MensajeInbox }) {
       tsColor = "text-text-primary/60";
       badge = "Auto";
     } else {
-      estilo = "bg-brand-green text-bg"; // manual (verde marca)
-      tsColor = "text-bg/60";
+      estilo = "bg-brand-green text-on-brand"; // manual (verde marca)
+      tsColor = "text-on-brand/60";
     }
   }
 
   return (
     <div className={cn("flex", entrante ? "justify-start" : "justify-end")}>
-      <div
-        className={cn(
-          "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
-          estilo,
-          entrante ? "rounded-bl-sm" : "rounded-br-sm"
-        )}
-      >
+      <div className={cn("max-w-[80%] rounded px-3 py-2 text-sm", estilo)}>
         {badge && (
-          <span className="mb-1 inline-block rounded bg-bg/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+          <span className="mb-1 inline-block border border-text-primary/20 px-1.5 py-0.5 font-mono text-xs uppercase tracking-[0.12em]">
             {badge}
           </span>
         )}
         <p className="whitespace-pre-wrap break-words">{mensaje.contenido}</p>
-        <p className={cn("mt-1 text-right text-[10px]", tsColor)}>
+        <p
+          className={cn(
+            "mt-1 text-right font-mono text-xs tabular-nums",
+            tsColor
+          )}
+        >
           {hora(mensaje.enviado_at)}
         </p>
       </div>

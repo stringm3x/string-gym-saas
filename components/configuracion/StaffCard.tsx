@@ -72,8 +72,11 @@ export function StaffCard({ staff }: StaffCardProps) {
   }
 
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-green/10 font-display text-lg text-brand-green">
+    <li className="flex items-center gap-4 px-5 py-4">
+      <div
+        aria-hidden="true"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-green/15 font-mono text-base font-bold text-brand-green"
+      >
         {inicial}
       </div>
 
@@ -89,10 +92,13 @@ export function StaffCard({ staff }: StaffCardProps) {
         </div>
         <p className="truncate text-xs text-text-secondary">{staff.email}</p>
         {isOwner ? (
-          <p className="text-xs text-text-muted">Dueño del gym</p>
+          <p className="text-xs text-text-muted">Dueño del gimnasio</p>
         ) : staff.estado === "activo" && staff.ultima_sesion_at ? (
           <p className="text-xs text-text-muted">
-            Última sesión: {formatFechaHora(staff.ultima_sesion_at)}
+            Última sesión:{" "}
+            <span className="font-mono tabular-nums">
+              {formatFechaHora(staff.ultima_sesion_at)}
+            </span>
           </p>
         ) : null}
       </div>
@@ -163,7 +169,7 @@ export function StaffCard({ staff }: StaffCardProps) {
           onClose={() => setPinOpen(false)}
         />
       )}
-    </div>
+    </li>
   );
 }
 
@@ -228,19 +234,21 @@ function PinModal({
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
           placeholder="0000"
+          aria-label="PIN de 4 dígitos"
           autoFocus
-          className="w-full rounded-lg border border-border bg-bg px-3 py-3 text-center font-mono text-2xl tracking-[0.5em] text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+          className="w-full rounded border border-border bg-bg px-3 py-3 text-center font-mono text-2xl tabular-nums tracking-[0.5em] text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
         />
-        <div className="flex items-center justify-between gap-2">
-          <button
+        <div className="flex items-center justify-between gap-3">
+          <Button
             type="button"
+            variant="ghost"
             onClick={quitar}
             disabled={isPending}
-            className="text-xs text-text-muted underline hover:text-danger disabled:opacity-40"
+            className="hover:text-danger"
           >
             Quitar PIN
-          </button>
-          <div className="flex gap-2">
+          </Button>
+          <div className="flex gap-3">
             <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
               Cancelar
             </Button>
@@ -270,9 +278,9 @@ function ActionLink({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-40 ${
+      className={`inline-flex h-9 items-center px-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         danger
-          ? "text-text-secondary hover:bg-danger/10 hover:text-danger"
+          ? "text-text-secondary hover:bg-surface-hover hover:text-danger"
           : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
       }`}
     >

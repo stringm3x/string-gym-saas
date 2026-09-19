@@ -107,25 +107,13 @@ export default async function DashboardPage({ params }: PageProps) {
 
   return (
     <div className="space-y-8">
-      <div className="relative">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-6 -top-10 h-40 w-72 rounded-full bg-brand-green/10 blur-3xl"
-        />
-        <div className="relative flex items-center gap-3">
-          <span
-            aria-hidden
-            className="h-9 w-1 shrink-0 rounded-full bg-gradient-to-b from-brand-green to-brand-green/10"
-          />
-          <div>
-            <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-              Dashboard
-            </h2>
-            <p className="mt-1 text-sm text-text-secondary">
-              Estado del gimnasio en tiempo real.
-            </p>
-          </div>
-        </div>
+      <div>
+        <p className="font-mono text-etiqueta uppercase text-text-muted">
+          Panel del mes
+        </p>
+        <h2 className="mt-1.5 text-pagina font-semibold text-text-primary">
+          Panel
+        </h2>
       </div>
 
       {canNegocio && <SaludNegocio metricas={metricas} slug={slug} />}

@@ -7,6 +7,8 @@ import { cancelarReservaAction } from "@/app/(tenant)/[slug]/clases/[sesionId]/a
 import { nombreDeReserva } from "./ReservasList";
 import type { ClaseReserva } from "@/lib/types/clases";
 
+/** Lista de espera: tarjeta con borde warning (sin fondo lleno), posición
+ * en mono y botón de 44px para quitar. */
 export function ListaEsperaPanel({
   sesionId,
   reservas,
@@ -20,39 +22,50 @@ export function ListaEsperaPanel({
   if (reservas.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-text-primary">
-        Lista de espera ({reservas.length})
-      </h3>
-      <ul className="divide-y divide-border rounded-xl border border-warning/30 bg-warning/5">
-        {reservas.map((r, i) => (
-          <li
-            key={r.id}
-            className="flex items-center justify-between gap-2 px-3 py-2.5"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-warning">#{i + 1}</span>
-              <span className="text-sm text-text-primary">
-                {nombreDeReserva(r)}
-              </span>
-            </div>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                start(async () => {
-                  await cancelarReservaAction(sesionId, r.id);
-                  router.refresh();
-                })
-              }
-              title="Quitar de lista de espera"
-              className="rounded-lg border border-border p-1.5 text-text-secondary hover:text-danger disabled:opacity-50"
+    <section className="border border-warning/40 bg-surface">
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <h3 className="text-base font-semibold text-text-primary">
+          Lista de espera
+        </h3>
+        <span className="font-mono text-etiqueta text-warning">
+          {reservas.length}
+        </span>
+      </div>
+      <ul className="divide-y divide-border">
+        {reservas.map((r, i) => {
+          const nombre = nombreDeReserva(r);
+          return (
+            <li
+              key={r.id}
+              className="flex items-center justify-between gap-4 px-5 py-2"
             >
-              <LuX className="h-3.5 w-3.5" />
-            </button>
-          </li>
-        ))}
+              <div className="flex min-w-0 items-center gap-4">
+                <span className="w-8 shrink-0 font-mono text-dato tabular-nums text-warning">
+                  #{i + 1}
+                </span>
+                <span className="truncate text-[15px] leading-5 text-text-primary">
+                  {nombre}
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  start(async () => {
+                    await cancelarReservaAction(sesionId, r.id);
+                    router.refresh();
+                  })
+                }
+                aria-label={`Quitar a ${nombre} de la lista de espera`}
+                title="Quitar de lista de espera"
+                className="flex h-11 w-11 shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <LuX className="h-4 w-4" />
+              </button>
+            </li>
+          );
+        })}
       </ul>
-    </div>
+    </section>
   );
 }

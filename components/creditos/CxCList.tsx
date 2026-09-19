@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { LuTriangleAlert, LuClock } from "react-icons/lu";
+import { LuCircleCheck } from "react-icons/lu";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { cn } from "@/lib/utils/cn";
 import type { CuotaPendiente } from "@/lib/types/creditos";
 import { CobroCuotaModal } from "./CobroCuotaModal";
 import { money } from "@/lib/utils/creditos-calc";
@@ -20,61 +23,71 @@ function textoDias(dias: number): string {
   return `Vence en ${dias} día${dias === 1 ? "" : "s"}`;
 }
 
+/** Cuotas pendientes: la fecha en mono a la izquierda (danger si venció),
+ * miembro y concepto, monto en mono y botón "Cobrar". Sin fondos llenos. */
 export function CxCList({ cuotas }: { cuotas: CuotaPendiente[] }) {
   const [cobrando, setCobrando] = useState<CuotaPendiente | null>(null);
 
   if (cuotas.length === 0) {
     return (
-      <p className="rounded-xl border border-border bg-surface px-4 py-10 text-center text-sm text-text-secondary">
-        No hay cuotas pendientes con este filtro.
-      </p>
+      <EmptyState
+        icon={<LuCircleCheck />}
+        title="Sin cuotas pendientes"
+        description="Nada por cobrar con este filtro. Cuando vendas a crédito, cada cuota aparece aquí con su fecha."
+      />
     );
   }
 
   return (
     <>
-      <ul className="space-y-2">
+      <ul className="card-surface divide-y divide-border">
         {cuotas.map((c) => {
           const vencida = c.estado_calc === "vencida";
-          const Icono = vencida ? LuTriangleAlert : LuClock;
           return (
             <li
               key={c.id}
-              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
-                vencida ? "border-danger/30 bg-danger/5" : "border-border bg-surface"
-              }`}
+              className="flex flex-wrap items-center justify-between gap-4 px-5 py-3"
             >
-              <div className="flex items-center gap-3">
-                <Icono
-                  className={`h-4 w-4 shrink-0 ${vencida ? "text-danger" : "text-text-muted"}`}
-                />
+              <div className="flex min-w-0 items-center gap-4">
+                <span
+                  className={cn(
+                    "w-[76px] shrink-0 font-mono text-dato tabular-nums",
+                    vencida ? "text-danger" : "text-text-secondary"
+                  )}
+                >
+                  {fecha(c.fecha_vencimiento)}
+                </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-primary">
+                  <p className="truncate text-[15px] leading-5 text-text-primary">
                     {c.miembro_nombre ?? "—"}
-                    <span className="ml-2 text-xs font-normal text-text-secondary">
+                    <span className="ml-2 text-sm text-text-muted">
                       Cuota {c.numero_cuota}
                       {c.plan_concepto ? ` · ${c.plan_concepto}` : ""}
                     </span>
                   </p>
                   <p
-                    className={`text-xs ${vencida ? "text-danger" : "text-text-secondary"}`}
+                    className={cn(
+                      "text-sm",
+                      vencida ? "text-danger" : "text-text-muted"
+                    )}
                   >
-                    {textoDias(c.dias_para_vencer)} · {fecha(c.fecha_vencimiento)}
+                    {textoDias(c.dias_para_vencer)}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-text-primary">
+              <div className="flex items-center gap-4">
+                <span className="font-mono text-dato tabular-nums text-text-primary">
                   {money(c.monto)}
                 </span>
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setCobrando(c)}
-                  className="rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-bg transition-opacity hover:opacity-90"
                 >
                   Cobrar
-                </button>
+                </Button>
               </div>
             </li>
           );

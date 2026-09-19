@@ -59,18 +59,19 @@ export function VisitaRapidaButton() {
     <>
       <Button
         variant="secondary"
-        size="sm"
         leftIcon={<LuUserPlus className="h-4 w-4" />}
         onClick={() => setOpen(true)}
       >
         Visita rápida
       </Button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Visita rápida">
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Visita rápida"
+        description="Cobra a un visitante sin registrarlo como miembro ni prospecto."
+      >
         <form action={formAction} className="space-y-4">
-          <p className="rounded-lg border border-border/60 bg-surface-hover px-3 py-2 text-xs text-text-muted">
-            Cobra a un visitante sin registrarlo como miembro ni prospecto.
-          </p>
 
           <Input
             label="Nombre del visitante"
@@ -101,8 +102,8 @@ export function VisitaRapidaButton() {
             error={state.fieldErrors.monto}
           />
 
-          <div className="space-y-1.5">
-            <Label>Método de pago</Label>
+          <div className="space-y-2">
+            <Label>Método</Label>
             <div className="grid grid-cols-3 gap-2">
               {metodoOptions.map((opt) => {
                 const active = metodo === opt.value;
@@ -111,11 +112,12 @@ export function VisitaRapidaButton() {
                     key={opt.value}
                     type="button"
                     onClick={() => setMetodo(opt.value)}
+                    aria-pressed={active}
                     className={cn(
-                      "flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-medium transition-colors duration-150",
+                      "inline-flex h-11 items-center justify-center gap-2 border px-2 text-sm font-medium transition-colors duration-150",
                       active
-                        ? "border-brand-green bg-brand-green/10 text-brand-green"
-                        : "border-border bg-surface text-text-secondary hover:text-text-primary"
+                        ? "border-brand-green bg-surface-hover text-brand-green"
+                        : "border-border bg-bg text-text-secondary hover:border-text-secondary hover:text-text-primary"
                     )}
                   >
                     {opt.icon}
@@ -130,7 +132,7 @@ export function VisitaRapidaButton() {
           <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               onClick={() => setOpen(false)}
               disabled={isPending}
             >

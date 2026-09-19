@@ -64,7 +64,7 @@ export default async function OpinionesPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+        <h2 className="text-pagina text-text-primary font-semibold">
           Opiniones
         </h2>
         <p className="mt-1 text-sm text-text-secondary">
@@ -74,17 +74,17 @@ export default async function OpinionesPage({ params }: PageProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Promedio del mes */}
-        <div className="rounded-xl border border-border bg-surface p-5">
-          <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+        <div className="border border-border bg-surface p-5">
+          <p className="text-etiqueta uppercase text-text-muted font-mono">
             Promedio del mes
           </p>
           <div className="mt-2 flex items-end gap-3">
-            <span className="font-mono text-4xl font-bold tabular-nums text-text-primary">
+            <span className="font-mono text-cifra font-bold tabular-nums text-text-primary">
               {r.promedioMes.toFixed(1)}
             </span>
             <LuStar className="mb-1.5 h-7 w-7 fill-warning text-warning" />
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs">
+          <div className="mt-2 flex items-center gap-1.5 text-sm">
             {r.promedioMesAnterior === 0 ? (
               <span className="text-text-muted">Sin datos del mes anterior</span>
             ) : Math.abs(delta) < 0.05 ? (
@@ -103,28 +103,28 @@ export default async function OpinionesPage({ params }: PageProps) {
               </span>
             )}
           </div>
-          <p className="mt-1 text-xs text-text-secondary">
+          <p className="mt-1 text-sm text-text-muted">
             {r.totalMes} opinión{r.totalMes === 1 ? "" : "es"} este mes
           </p>
         </div>
 
         {/* Distribución */}
-        <div className="rounded-xl border border-border bg-surface p-5">
-          <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+        <div className="border border-border bg-surface p-5">
+          <p className="text-etiqueta uppercase text-text-muted font-mono">
             Distribución (mes)
           </p>
-          <ul className="mt-3 space-y-1.5">
+          <ul className="mt-3 space-y-2">
             {[5, 4, 3, 2, 1].map((estrella) => {
               const c = r.distribucion[estrella - 1];
               return (
                 <li key={estrella} className="flex items-center gap-2">
-                  <span className="flex w-8 items-center gap-0.5 text-xs text-text-secondary">
+                  <span className="flex w-8 items-center gap-0.5 font-mono text-xs tabular-nums text-text-secondary">
                     {estrella}
                     <LuStar className="h-3 w-3 fill-warning text-warning" />
                   </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-bg">
+                  <div className="h-2 flex-1 overflow-hidden bg-bg">
                     <div
-                      className="h-full rounded-full bg-warning"
+                      className="h-full bg-warning"
                       style={{ width: `${(c / maxDist) * 100}%` }}
                     />
                   </div>
@@ -139,26 +139,30 @@ export default async function OpinionesPage({ params }: PageProps) {
       </div>
 
       {/* Últimas opiniones */}
-      <div>
-        <h3 className="mb-3 text-sm font-semibold text-text-primary">
-          Últimas opiniones
-        </h3>
+      <section className="border border-border bg-surface">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h3 className="text-base font-semibold text-text-primary">
+            Últimas opiniones
+          </h3>
+          <span className="font-mono text-etiqueta text-text-muted">
+            {r.ultimas.length}
+          </span>
+        </div>
         {r.ultimas.length === 0 ? (
-          <p className="rounded-xl border border-border bg-surface px-4 py-10 text-center text-sm text-text-secondary">
-            Aún no tienes opiniones.
+          <p className="px-5 py-8 text-center text-sm text-text-muted">
+            Todavía no llega ninguna opinión desde el portal.
           </p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="divide-y divide-border">
             {r.ultimas.map((o) => (
-              <li
-                key={o.id}
-                className="rounded-xl border border-border bg-surface p-4"
-              >
+              <li key={o.id} className="px-5 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Estrellas n={o.calificacion} />
-                  <span className="text-xs text-text-muted">
+                  <span className="text-sm text-text-muted">
                     {o.miembro_nombre ? `${o.miembro_nombre} · ` : ""}
-                    {fecha(o.created_at)}
+                    <span className="font-mono tabular-nums">
+                      {fecha(o.created_at)}
+                    </span>
                   </span>
                 </div>
                 {o.comentario && (
@@ -170,7 +174,7 @@ export default async function OpinionesPage({ params }: PageProps) {
             ))}
           </ul>
         )}
-      </div>
+      </section>
     </div>
   );
 }

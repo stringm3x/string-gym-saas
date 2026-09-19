@@ -34,48 +34,50 @@ export default async function NuevoMiembroPage({ params, searchParams }: PagePro
     ]);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
+    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+      <div className="flex flex-col gap-1.5">
         <Link
           href={`/${slug}/miembros`}
-          className="inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors duration-150 hover:text-text-primary"
+          className="inline-flex h-9 items-center gap-1.5 self-start text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
         >
-          <LuArrowLeft className="h-3.5 w-3.5" />
-          Volver a miembros
+          <LuArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Miembros
         </Link>
-
-        <h2 className="mt-2 font-display text-3xl uppercase tracking-wide text-text-primary">
+        <h2 className="text-pagina font-semibold text-text-primary">
           Nuevo miembro
         </h2>
-        <p className="mt-1 text-sm text-text-secondary">
-          Registra los datos básicos. Podrás registrar pagos y check-ins desde
-          su ficha.
+        <p className="text-sm text-text-secondary">
+          Registra los datos básicos. Los pagos y check-ins se registran
+          desde su ficha.
         </p>
       </div>
 
       {prospecto && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-brand-green/30 bg-brand-green/10 px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <LuArrowRightLeft className="h-4 w-4 shrink-0 text-brand-green" />
+        <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-surface px-5 py-3">
+          <div className="flex items-center gap-3">
+            <LuArrowRightLeft
+              className="h-4 w-4 shrink-0 text-text-muted"
+              aria-hidden="true"
+            />
             <div>
-              <p className="text-sm font-medium text-brand-green">
+              <p className="text-[15px] leading-5 text-text-primary">
                 Convirtiendo prospecto: {prospecto.nombre}
               </p>
-              <p className="text-xs text-brand-green/70">
-                Los datos han sido prellenados. Completa la fecha de inscripción y plan.
+              <p className="text-sm text-text-muted">
+                Datos prellenados. Completa la fecha de inscripción y el plan.
               </p>
             </div>
           </div>
           <Link
             href={`/${slug}/prospectos`}
-            className="shrink-0 text-xs font-medium text-brand-green/70 underline underline-offset-2 hover:text-brand-green"
+            className="inline-flex h-9 shrink-0 items-center text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
           >
             Cancelar conversión
           </Link>
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="card-surface p-6">
         <MiembroForm
           mode="create"
           slug={slug}

@@ -62,12 +62,13 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
           error={state.fieldErrors.nombre}
         />
 
-        <div className="space-y-1.5">
-          <Label>Rol</Label>
+        <div className="space-y-2">
+          <Label htmlFor="invite-rol">Rol</Label>
           <select
+            id="invite-rol"
             name="rol"
             defaultValue="receptionist"
-            className="w-full cursor-pointer rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+            className="h-11 w-full cursor-pointer rounded border border-border bg-bg px-3 text-sm text-text-primary focus:border-brand-green focus:outline-none"
           >
             <option value="receptionist">
               Recepcionista — caja, socios, check-in
@@ -81,12 +82,12 @@ export function InviteStaffModal({ open, onClose }: InviteStaffModalProps) {
           </select>
         </div>
 
-        <p className="rounded-lg border border-border/60 bg-surface-hover px-3 py-2 text-xs text-text-muted">
-          Le mandaremos un email con instrucciones para crear su contraseña y
+        <p className="border border-border bg-bg px-4 py-3 text-xs text-text-muted">
+          Le mandaremos un correo con instrucciones para crear su contraseña y
           acceder al sistema. La invitación expira en 7 días.
         </p>
 
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
+        <div className="flex justify-end gap-3 border-t border-border pt-4">
           <Button
             type="button"
             variant="ghost"

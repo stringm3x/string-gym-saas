@@ -30,13 +30,16 @@ export default async function PagosConfigPage() {
   const status = await getMpStatus(tenant.id);
 
   return (
-    <div className="space-y-2 pt-2">
-      <p className="text-sm text-text-secondary">
-        Conecta MercadoPago para cobrar con tarjeta, OXXO y SPEI desde la Caja.
-      </p>
-      <div className="pt-2">
-        <PagosMpPanel status={status} />
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-text-primary">
+          Pagos con MercadoPago
+        </h3>
+        <p className="mt-1 text-sm text-text-secondary">
+          Conecta MercadoPago para cobrar con tarjeta, OXXO y SPEI desde la Caja.
+        </p>
       </div>
+      <PagosMpPanel status={status} />
     </div>
   );
 }

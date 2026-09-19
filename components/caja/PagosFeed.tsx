@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { LuWallet, LuReceipt } from "react-icons/lu";
-import { formatMoneda, formatFechaHora } from "@/lib/utils/format";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { formatMoneda } from "@/lib/utils/format";
+import { TZ_MX } from "@/lib/utils/dates";
+import { cn } from "@/lib/utils/cn";
 import { Badge } from "@/components/ui/Badge";
 import type { PagoConMiembro } from "@/lib/queries/pagos.queries";
 
@@ -16,6 +16,22 @@ const conceptoLabels: Record<string, string> = {
   producto: "Producto",
   otro: "Otro",
 };
+
+const metodoLabels: Record<string, string> = {
+  efectivo: "Efectivo",
+  tarjeta: "Tarjeta",
+  transferencia: "Transferencia",
+  mercadopago: "MercadoPago",
+};
+
+function hora(iso: string): string {
+  return new Intl.DateTimeFormat("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: TZ_MX,
+  }).format(new Date(iso));
+}
 
 type Entry =
   | { kind: "single"; pago: PagoConMiembro }
@@ -41,30 +57,76 @@ function agrupar(pagos: PagoConMiembro[]): Entry[] {
   return entries;
 }
 
+/**
+ * Movimientos del turno (artboard "Caja"): tabla con encabezados en mono
+ * (HORA, SOCIO, CONCEPTO, MÉTODO, MONTO). Hora y monto en mono; el monto
+ * enlaza al recibo.
+ */
 export function PagosFeed({ pagos, slug }: PagosFeedProps) {
   if (pagos.length === 0) {
     return (
-      <EmptyState
-        icon={<LuWallet className="h-5 w-5" />}
-        title="Sin pagos hoy"
-        description="Cuando registres el primer cobro del día, aparecerá aquí."
-      />
+      <p className="px-5 py-8 text-center text-sm text-text-muted">
+        Todavía no hay cobros. El primero aparecerá aquí.
+      </p>
     );
   }
 
   const entries = agrupar(pagos);
 
   return (
-    <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
-      {entries.map((e) =>
-        e.kind === "ticket" ? (
-          <TicketRow key={e.ticketId} entry={e} slug={slug} />
-        ) : (
-          <PagoRow key={e.pago.id} pago={e.pago} slug={slug} />
-        )
-      )}
-    </ul>
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-border">
+            <Th className="w-16">Hora</Th>
+            <Th>Socio</Th>
+            <Th className="hidden md:table-cell">Concepto</Th>
+            <Th className="hidden md:table-cell">Método</Th>
+            <Th className="text-right">Monto</Th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {entries.map((e) =>
+            e.kind === "ticket" ? (
+              <TicketRow key={e.ticketId} entry={e} slug={slug} />
+            ) : (
+              <PagoRow key={e.pago.id} pago={e.pago} slug={slug} />
+            )
+          )}
+        </tbody>
+      </table>
+    </div>
   );
+}
+
+function Th({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      scope="col"
+      className={cn(
+        "px-5 py-3 text-left font-mono text-etiqueta font-normal uppercase text-text-muted",
+        className
+      )}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <td className={cn("px-5 py-3 align-middle", className)}>{children}</td>;
 }
 
 function TicketRow({
@@ -76,108 +138,120 @@ function TicketRow({
 }) {
   const first = entry.lineas[0];
   const total = entry.lineas.reduce((s, l) => s + l.monto, 0);
+  const n = entry.lineas.length;
   return (
-    <li className="flex items-center justify-between gap-4 px-4 py-4">
-      <div className="flex min-w-0 items-center gap-3.5">
-        <Badge variant="info" className="shrink-0">
-          Ticket
-        </Badge>
-        <div className="min-w-0">
-          {first.miembro_id && first.miembro_nombre ? (
-            <Link
-              href={`/${slug}/miembros/${first.miembro_id}`}
-              className="block truncate text-sm font-medium text-text-primary transition-colors hover:text-brand-green"
-            >
-              {first.miembro_nombre}
-            </Link>
-          ) : (
-            <p className="truncate text-sm font-medium text-text-primary">
-              {entry.lineas.length}{" "}
-              {entry.lineas.length === 1 ? "artículo" : "artículos"}
-            </p>
-          )}
-          <p className="text-xs text-text-muted">
-            {formatFechaHora(first.fecha_pago)} · {first.metodo_pago} ·{" "}
-            {entry.lineas.length}{" "}
-            {entry.lineas.length === 1 ? "línea" : "líneas"}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2">
-        <span className="font-mono text-sm font-semibold tabular-nums text-text-primary">
-          {formatMoneda(total)}
+    <tr className="transition-colors hover:bg-surface-hover">
+      <Td>
+        <span className="font-mono text-dato tabular-nums text-text-secondary">
+          {hora(first.fecha_pago)}
         </span>
+      </Td>
+      <Td>
+        {first.miembro_id && first.miembro_nombre ? (
+          <Link
+            href={`/${slug}/miembros/${first.miembro_id}`}
+            className="block truncate text-[15px] leading-5 text-text-primary underline-offset-4 hover:text-brand-green hover:underline"
+          >
+            {first.miembro_nombre}
+          </Link>
+        ) : (
+          <span className="block truncate text-[15px] leading-5 text-text-secondary">
+            Sin miembro
+          </span>
+        )}
+        <span className="block text-sm text-text-muted md:hidden">
+          Ticket · {n} {n === 1 ? "línea" : "líneas"}
+        </span>
+      </Td>
+      <Td className="hidden md:table-cell">
+        <span className="text-sm text-text-secondary">
+          Ticket · {n} {n === 1 ? "línea" : "líneas"}
+        </span>
+      </Td>
+      <Td className="hidden md:table-cell">
+        <span className="text-sm text-text-secondary">
+          {metodoLabels[first.metodo_pago ?? ""] ?? first.metodo_pago}
+        </span>
+      </Td>
+      <Td className="text-right">
         <Link
           href={`/${slug}/recibos/ticket/${entry.ticketId}`}
           title="Ver ticket"
-          className="rounded-md p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
+          className="font-mono text-dato tabular-nums text-text-primary underline-offset-4 hover:text-brand-green hover:underline"
         >
-          <LuReceipt className="h-4 w-4" />
+          {formatMoneda(total)}
         </Link>
-      </div>
-    </li>
+      </Td>
+    </tr>
   );
 }
 
 function PagoRow({ pago: p, slug }: { pago: PagoConMiembro; slug: string }) {
   const inactivo = !!p.anulado_at || !!p.reembolsado_at;
-  return (
-    <li
-      className={`flex items-center justify-between gap-4 px-4 py-4 ${
-        inactivo ? "opacity-50" : ""
-      }`}
-    >
-      <div className="flex min-w-0 items-center gap-3.5">
-        <Badge
-          variant={p.es_visita_rapida ? "info" : "neutral"}
-          className="shrink-0"
-        >
-          {p.es_visita_rapida
-            ? "Visita"
-            : (conceptoLabels[p.concepto] ?? p.concepto)}
-        </Badge>
-        <div className="min-w-0">
-          {p.es_visita_rapida ? (
-            <p className="truncate text-sm font-medium text-text-primary">
-              {p.nombre_visitante ?? "Visitante"}
-            </p>
-          ) : p.miembro_id && p.miembro_nombre ? (
-            <Link
-              href={`/${slug}/miembros/${p.miembro_id}`}
-              className="block truncate text-sm font-medium text-text-primary transition-colors hover:text-brand-green"
-            >
-              {p.miembro_nombre}
-            </Link>
-          ) : (
-            <p className="truncate text-sm text-text-secondary">Sin miembro</p>
-          )}
-          <p className="text-xs text-text-muted">
-            {formatFechaHora(p.fecha_pago)} · {p.metodo_pago}
-          </p>
-        </div>
-      </div>
+  const concepto = p.es_visita_rapida
+    ? "Visita"
+    : (conceptoLabels[p.concepto] ?? p.concepto);
+  const metodo = metodoLabels[p.metodo_pago ?? ""] ?? p.metodo_pago;
+  const estado = p.anulado_at ? (
+    <Badge variant="danger">Anulado</Badge>
+  ) : p.reembolsado_at ? (
+    <Badge variant="warning">Reembolsado</Badge>
+  ) : null;
 
-      <div className="flex shrink-0 items-center gap-2">
-        {p.anulado_at && <Badge variant="danger">Anulado</Badge>}
-        {!p.anulado_at && p.reembolsado_at && (
-          <Badge variant="warning">Reembolsado</Badge>
-        )}
-        <span
-          className={`font-mono text-sm font-semibold tabular-nums ${
-            inactivo ? "text-text-muted line-through" : "text-text-primary"
-          }`}
-        >
-          {formatMoneda(p.monto)}
+  return (
+    <tr
+      className={cn(
+        "transition-colors hover:bg-surface-hover",
+        inactivo && "opacity-50"
+      )}
+    >
+      <Td>
+        <span className="font-mono text-dato tabular-nums text-text-secondary">
+          {hora(p.fecha_pago)}
         </span>
+      </Td>
+      <Td>
+        {p.es_visita_rapida ? (
+          <span className="block truncate text-[15px] leading-5 text-text-primary">
+            {p.nombre_visitante ?? "Visitante"}
+          </span>
+        ) : p.miembro_id && p.miembro_nombre ? (
+          <Link
+            href={`/${slug}/miembros/${p.miembro_id}`}
+            className="block truncate text-[15px] leading-5 text-text-primary underline-offset-4 hover:text-brand-green hover:underline"
+          >
+            {p.miembro_nombre}
+          </Link>
+        ) : (
+          <span className="block truncate text-[15px] leading-5 text-text-secondary">
+            Sin miembro
+          </span>
+        )}
+        <span className="block text-sm text-text-muted md:hidden">
+          {concepto} · {metodo}
+        </span>
+      </Td>
+      <Td className="hidden md:table-cell">
+        <span className="flex items-center gap-2 text-sm text-text-secondary">
+          {concepto}
+          {estado}
+        </span>
+      </Td>
+      <Td className="hidden md:table-cell">
+        <span className="text-sm text-text-secondary">{metodo}</span>
+      </Td>
+      <Td className="text-right">
         <Link
           href={`/${slug}/recibos/${p.id}`}
           title="Ver recibo"
-          className="rounded-md p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
+          className={cn(
+            "font-mono text-dato tabular-nums underline-offset-4 hover:text-brand-green hover:underline",
+            inactivo ? "text-text-muted line-through" : "text-text-primary"
+          )}
         >
-          <LuReceipt className="h-4 w-4" />
+          {formatMoneda(p.monto)}
         </Link>
-      </div>
-    </li>
+      </Td>
+    </tr>
   );
 }

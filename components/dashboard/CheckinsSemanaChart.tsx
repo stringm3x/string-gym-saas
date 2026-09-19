@@ -22,9 +22,11 @@ function Tip({ active, payload }: TipProps) {
   if (!active || !payload?.length) return null;
   const p = payload[0];
   return (
-    <div className="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs shadow-lg">
-      <p className="text-text-muted">{p.payload.dia}</p>
-      <p className="font-mono font-semibold text-text-primary">
+    <div className="border border-border bg-surface px-3 py-2 text-xs">
+      <p className="font-mono text-etiqueta uppercase text-text-muted">
+        {p.payload.dia}
+      </p>
+      <p className="mt-1 font-mono text-dato font-bold tabular-nums text-text-primary">
         {p.value} visita{p.value === 1 ? "" : "s"}
       </p>
     </div>
@@ -41,11 +43,11 @@ export function CheckinsSemanaChart({
   const max = Math.max(...data.map((d) => d.cantidad), 1);
   return (
     <div className="card-surface p-5">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+      <p className="font-mono text-etiqueta uppercase text-text-secondary">
         Check-ins por día
       </p>
-      <p className="text-xs text-text-secondary">
-        cuándo viene más gente (últimos 60 días)
+      <p className="mt-1 text-xs text-text-muted">
+        Cuándo viene más gente (últimos 60 días)
       </p>
 
       <div className="mt-4 h-56">
@@ -62,13 +64,13 @@ export function CheckinsSemanaChart({
               tickLine={false}
               axisLine={false}
               width={34}
-              tick={{ fontSize: 12, fill: AXIS }}
+              tick={{ fontSize: 12, fill: AXIS, fontFamily: "var(--font-ubuntu-mono)" }}
             />
             <Tooltip
               cursor={{ fill: "var(--color-text-primary)", fillOpacity: 0.04 }}
               content={<Tip />}
             />
-            <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
+            <Bar dataKey="cantidad" radius={0}>
               {data.map((d, i) => (
                 <Cell
                   key={i}

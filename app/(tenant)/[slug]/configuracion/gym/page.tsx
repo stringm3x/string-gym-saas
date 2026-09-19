@@ -15,10 +15,15 @@ export default async function GymConfigPage({ params }: PageProps) {
   if (!gym) notFound();
 
   return (
-    <div>
-      <h3 className="mb-4 text-sm font-semibold text-text-primary">
-        Datos del gimnasio
-      </h3>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-text-primary">
+          Datos del gimnasio
+        </h3>
+        <p className="mt-1 text-sm text-text-secondary">
+          Nombre, contacto y reglas de acceso. Aparecen en recibos y check-in.
+        </p>
+      </div>
       <GymConfigManager gym={gym} />
     </div>
   );

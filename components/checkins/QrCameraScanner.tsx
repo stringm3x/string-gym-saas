@@ -117,17 +117,22 @@ export default function QrCameraScanner({
 
   return (
     <div className="mx-auto w-full max-w-sm">
-      <div id={containerId} className="overflow-hidden rounded-xl" />
+      <div id={containerId} className="overflow-hidden" />
       {cams.length > 1 && (
         <button
           type="button"
           onClick={() => setCamIdx((i) => (i + 1) % cams.length)}
-          className="mx-auto mt-2 flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary transition-colors hover:text-text-primary"
+          className="mx-auto mt-4 inline-flex h-11 items-center gap-2 border border-border px-4 text-sm text-text-primary transition-colors hover:border-text-secondary"
         >
-          <LuArrowLeftRight className="h-3.5 w-3.5" /> Cambiar cámara
+          <LuArrowLeftRight className="h-4 w-4" aria-hidden="true" /> Cambiar
+          cámara
         </button>
       )}
-      {error && <p className="mt-2 text-center text-sm text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-4 text-center text-sm text-danger">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

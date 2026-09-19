@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LuCheck, LuX, LuUserX } from "react-icons/lu";
+import { Badge, type BadgeVariant } from "@/components/ui/Badge";
 import {
   checkInReservaAction,
   cancelarReservaAction,
@@ -19,21 +20,17 @@ export function nombreDeReserva(r: ClaseReserva): string {
   );
 }
 
-const BADGE: Record<string, { label: string; cls: string }> = {
-  confirmada: {
-    label: "Confirmada",
-    cls: "border-brand-green/30 bg-brand-green/10 text-brand-green",
-  },
-  asistio: {
-    label: "Asistió",
-    cls: "border-brand-green/30 bg-brand-green/10 text-brand-green",
-  },
-  no_asistio: {
-    label: "No asistió",
-    cls: "border-border bg-bg text-text-muted",
-  },
+const BADGE: Record<string, { label: string; variant: BadgeVariant }> = {
+  confirmada: { label: "Confirmada", variant: "neutral" },
+  asistio: { label: "Asistió", variant: "success" },
+  no_asistio: { label: "No asistió", variant: "danger" },
 };
 
+const ICON_BTN =
+  "flex h-11 w-11 items-center justify-center border border-border transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+
+/** Reservas de la sesión: nombre, teléfono en mono, chip de estado y tres
+ * botones de 44px (asistió / no llegó / cancelar). */
 export function ReservasList({
   sesionId,
   reservas,
@@ -53,37 +50,34 @@ export function ReservasList({
 
   if (reservas.length === 0) {
     return (
-      <p className="rounded-xl border border-border bg-surface px-4 py-6 text-center text-xs text-text-secondary">
+      <p className="px-5 py-8 text-center text-sm text-text-muted">
         Sin reservas todavía.
       </p>
     );
   }
 
   return (
-    <ul className="divide-y divide-border rounded-xl border border-border">
+    <ul className="divide-y divide-border">
       {reservas.map((r) => {
         const badge = BADGE[r.estado] ?? BADGE.no_asistio;
+        const nombre = nombreDeReserva(r);
         return (
           <li
             key={r.id}
-            className="flex items-center justify-between gap-2 px-3 py-2.5"
+            className="flex items-center justify-between gap-4 px-5 py-2"
           >
             <div className="min-w-0">
-              <p className="truncate text-sm text-text-primary">
-                {nombreDeReserva(r)}
+              <p className="truncate text-[15px] leading-5 text-text-primary">
+                {nombre}
               </p>
               {r.miembro?.telefono && (
-                <p className="text-[11px] text-text-muted">
+                <p className="font-mono text-dato text-text-muted">
                   {r.miembro.telefono}
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${badge.cls}`}
-              >
-                {badge.label}
-              </span>
+            <div className="flex shrink-0 items-center gap-2">
+              <Badge variant={badge.variant}>{badge.label}</Badge>
               {r.estado === "confirmada" && (
                 <>
                   <button
@@ -92,10 +86,11 @@ export function ReservasList({
                     onClick={() =>
                       run(() => checkInReservaAction(sesionId, r.id))
                     }
-                    title="Marcar asistencia"
-                    className="rounded-lg border border-brand-green/40 p-1.5 text-brand-green hover:bg-brand-green/10 disabled:opacity-50"
+                    aria-label={`Marcar asistencia de ${nombre}`}
+                    title="Asistió"
+                    className={`${ICON_BTN} text-text-primary hover:border-brand-green hover:text-brand-green`}
                   >
-                    <LuCheck className="h-3.5 w-3.5" />
+                    <LuCheck className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
@@ -103,10 +98,11 @@ export function ReservasList({
                     onClick={() =>
                       run(() => marcarNoShowAction(sesionId, r.id))
                     }
+                    aria-label={`Marcar que ${nombre} no llegó`}
                     title="No llegó"
-                    className="rounded-lg border border-border p-1.5 text-text-secondary hover:text-warning disabled:opacity-50"
+                    className={`${ICON_BTN} text-text-secondary hover:border-warning hover:text-warning`}
                   >
-                    <LuUserX className="h-3.5 w-3.5" />
+                    <LuUserX className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
@@ -114,10 +110,11 @@ export function ReservasList({
                     onClick={() =>
                       run(() => cancelarReservaAction(sesionId, r.id))
                     }
+                    aria-label={`Cancelar reserva de ${nombre}`}
                     title="Cancelar reserva"
-                    className="rounded-lg border border-border p-1.5 text-text-secondary hover:text-danger disabled:opacity-50"
+                    className={`${ICON_BTN} text-text-secondary hover:border-danger hover:text-danger`}
                   >
-                    <LuX className="h-3.5 w-3.5" />
+                    <LuX className="h-4 w-4" />
                   </button>
                 </>
               )}

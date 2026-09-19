@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LuSend, LuBot } from "react-icons/lu";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
 interface InboxInputProps {
@@ -36,50 +37,46 @@ export function InboxInput({
   }
 
   return (
-    <div className="border-t border-border p-3">
-      {/* Toggle del bot */}
-      <div className="mb-2 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-xs text-text-secondary">
-          <LuBot size={14} />
+    <div className="border-t border-border p-4">
+      {/* Estado del bot: texto + botón de acción (sin interruptor en píldora). */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2 text-sm text-text-secondary">
+          <LuBot size={16} aria-hidden="true" />
           {botActivo
-            ? "Bot activo — responde automáticamente"
-            : "Bot en pausa — respondes tú"}
+            ? "Bot activo: responde automáticamente"
+            : "Bot en pausa: respondes tú"}
         </span>
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={onToggleBot}
-          disabled={cambiandoBot}
-          className={cn(
-            "relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50",
-            botActivo ? "bg-brand-green" : "bg-border"
-          )}
+          loading={cambiandoBot}
           aria-pressed={botActivo}
-          aria-label="Alternar bot"
         >
-          <span
-            className={cn(
-              "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform",
-              botActivo ? "translate-x-5" : "translate-x-0.5"
-            )}
-          />
-        </button>
+          {botActivo ? "Pausar bot" : "Activar bot"}
+        </Button>
       </div>
 
       {/* Composer */}
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-3">
         <textarea
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={onKeyDown}
           rows={1}
           placeholder="Escribe tu mensaje…"
-          className="max-h-32 min-h-[42px] flex-1 resize-none rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+          aria-label="Mensaje"
+          className="max-h-32 min-h-[44px] flex-1 resize-none rounded border border-border bg-bg px-3 py-3 text-sm leading-5 text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
         />
         <button
           type="button"
           onClick={() => void enviar()}
           disabled={enviando || !texto.trim()}
-          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg bg-brand-green text-bg transition-opacity disabled:opacity-40"
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center bg-brand-green text-on-brand transition-colors",
+            "hover:bg-brand-green/90 disabled:cursor-not-allowed disabled:bg-brand-green/40 disabled:text-on-brand/60"
+          )}
           aria-label="Enviar"
         >
           <LuSend size={18} />

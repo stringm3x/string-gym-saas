@@ -9,17 +9,17 @@ export function RetencionCard({ data }: { data: Retencion }) {
 
   return (
     <div className="card-surface p-5">
-      <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+      <p className="font-mono text-etiqueta uppercase text-text-secondary">
         Retención del mes
       </p>
 
       <div className="mt-2 flex items-end justify-between gap-4">
         <div>
-          <p className="font-mono text-4xl font-bold tabular-nums text-text-primary">
+          <p className="font-mono text-cifra font-bold tabular-nums text-text-primary">
             {data.pct}%
           </p>
           <p
-            className="mt-1 flex items-center gap-1 text-xs font-medium"
+            className="mt-2 flex items-center gap-1 text-xs font-medium"
             style={{ color }}
           >
             {data.sube ? (
@@ -53,9 +53,11 @@ export function RetencionCard({ data }: { data: Retencion }) {
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-text-secondary">
+      <p className="mt-3 text-xs text-text-muted">
         Tendencia:{" "}
-        {data.tendencia.map((t) => `${t.mes} ${t.renovaciones}`).join(" · ")}
+        <span className="font-mono tabular-nums">
+          {data.tendencia.map((t) => `${t.mes} ${t.renovaciones}`).join(" · ")}
+        </span>
       </p>
     </div>
   );

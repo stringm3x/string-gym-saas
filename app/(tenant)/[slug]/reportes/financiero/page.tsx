@@ -37,17 +37,20 @@ export default async function ReporteFinancieroPage({
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <div>
-        <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+        <h2 className="text-pagina text-text-primary font-semibold">
           Reporte financiero
         </h2>
         <p className="mt-1 text-sm text-text-secondary">
-          {gym?.nombre} · {formatFecha(desde)} — {formatFecha(hasta)}
+          {gym?.nombre} ·{" "}
+          <span className="font-mono tabular-nums">
+            {formatFecha(desde)} — {formatFecha(hasta)}
+          </span>
         </p>
       </div>
 
       <ReporteControls slug={slug} desde={desde} hasta={hasta} />
 
-      <div className="space-y-4 rounded-xl border border-border bg-surface p-6">
+      <div className="space-y-5 border border-border bg-surface p-6">
         <Seccion titulo="Ingresos por método">
           <Fila label="Efectivo" valor={r.ingresosPorMetodo.efectivo} />
           <Fila label="Tarjeta" valor={r.ingresosPorMetodo.tarjeta} />
@@ -76,11 +79,11 @@ export default async function ReporteFinancieroPage({
           <Fila label="Diferencia acumulada" valor={r.cortes.diferencia} />
         </Seccion>
 
-        <div className="flex items-center justify-between border-t border-border pt-4">
-          <span className="text-sm font-semibold uppercase tracking-wider text-text-muted">
+        <div className="flex items-center justify-between border-t border-border pt-5">
+          <span className="font-mono text-etiqueta uppercase text-text-muted">
             Ingreso neto
           </span>
-          <span className="font-mono text-2xl font-bold tabular-nums text-brand-green">
+          <span className="font-mono text-cifra font-bold tabular-nums text-brand-green">
             {formatMoneda(r.ingresoNeto)}
           </span>
         </div>
@@ -98,10 +101,10 @@ function Seccion({
 }) {
   return (
     <div>
-      <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-text-muted">
+      <h3 className="mb-2 font-mono text-etiqueta uppercase text-text-muted">
         {titulo}
       </h3>
-      <div className="divide-y divide-border rounded-lg border border-border">
+      <div className="divide-y divide-border border border-border">
         {children}
       </div>
     </div>
@@ -120,11 +123,11 @@ function Fila({
   fuerte?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2 text-sm">
+    <div className="flex items-center justify-between gap-4 px-5 py-3 text-sm">
       <span className="text-text-secondary">{label}</span>
       <span
-        className={`font-mono tabular-nums ${
-          fuerte ? "font-semibold text-text-primary" : "text-text-primary"
+        className={`font-mono text-dato tabular-nums ${
+          fuerte ? "font-bold text-text-primary" : "text-text-primary"
         }`}
       >
         {texto ?? (valor !== undefined ? formatMoneda(valor) : "—")}

@@ -29,11 +29,11 @@ import { cn } from "@/lib/utils/cn";
 const initialState: NotaFormState = { ok: false, error: null };
 
 const tipoIcono: Record<TipoAccion, React.ReactNode> = {
-  llamada: <LuPhone className="h-3 w-3" />,
-  whatsapp: <LuMessageCircle className="h-3 w-3" />,
-  email: <LuMail className="h-3 w-3" />,
-  visita: <LuStickyNote className="h-3 w-3" />,
-  otro: <LuStickyNote className="h-3 w-3" />,
+  llamada: <LuPhone className="h-3.5 w-3.5" aria-hidden="true" />,
+  whatsapp: <LuMessageCircle className="h-3.5 w-3.5" aria-hidden="true" />,
+  email: <LuMail className="h-3.5 w-3.5" aria-hidden="true" />,
+  visita: <LuStickyNote className="h-3.5 w-3.5" aria-hidden="true" />,
+  otro: <LuStickyNote className="h-3.5 w-3.5" aria-hidden="true" />,
 };
 
 function formatDateTime(isoString: string): string {
@@ -102,13 +102,13 @@ export function NotasTimeline({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-text-primary">
+      <h3 className="text-base font-semibold text-text-primary">
         {eventos.length > 0 ? "Notas y actividad" : "Notas"}
       </h3>
 
       {legacyNotas && (
-        <div className="rounded-lg border border-border bg-surface-hover p-3">
-          <p className="mb-1 text-xs font-medium text-text-muted">
+        <div className="border border-border bg-bg p-4">
+          <p className="mb-1 font-mono text-etiqueta uppercase text-text-muted">
             Notas anteriores
           </p>
           <p className="whitespace-pre-wrap text-sm text-text-secondary">
@@ -117,30 +117,32 @@ export function NotasTimeline({
         </div>
       )}
 
-      <form action={formAction} className="space-y-2">
+      <form action={formAction} className="space-y-3">
         <textarea
           ref={textareaRef}
           name="contenido"
           rows={3}
           placeholder="Escribe una nota…"
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+          aria-label="Nueva nota"
+          className="w-full rounded border border-border bg-bg px-3 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
           required
         />
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-text-secondary">
-            <LuCalendarClock className="h-3.5 w-3.5" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-sm text-text-secondary">
+            <LuCalendarClock className="h-4 w-4" aria-hidden="true" />
             Recordar el
             <input
               ref={fechaRef}
               type="date"
               name="fecha_seguimiento"
               min={hoyISO()}
-              className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs text-text-primary focus:border-brand-green focus:outline-none"
+              className="h-11 rounded border border-border bg-bg px-3 font-mono text-sm text-text-primary focus:border-brand-green focus:outline-none"
             />
           </label>
           <Button
             type="submit"
-            leftIcon={<LuPencilLine className="h-3.5 w-3.5" />}
+            variant="secondary"
+            leftIcon={<LuPencilLine className="h-4 w-4" />}
             loading={isPending}
           >
             Agregar nota
@@ -149,12 +151,11 @@ export function NotasTimeline({
       </form>
 
       {isEmpty ? (
-        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border py-6">
-          <LuStickyNote className="h-4 w-4 text-text-muted" />
-          <p className="text-sm text-text-muted">Sin notas aún</p>
-        </div>
+        <p className="border border-border px-5 py-8 text-center text-sm text-text-muted">
+          Sin notas todavía.
+        </p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="divide-y divide-border border border-border">
           {entradas.map((e) =>
             e.kind === "nota" ? (
               <NotaItem key={`nota-${e.nota.id}`} nota={e.nota} />
@@ -170,26 +171,28 @@ export function NotasTimeline({
 
 function EventoItem({ evento }: { evento: EventoMiembro }) {
   return (
-    <li className="flex items-start gap-3 rounded-lg border border-border bg-surface p-3">
-      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bg text-text-secondary">
+    <li className="flex items-start gap-4 px-5 py-4">
+      <span className="mt-0.5 shrink-0 text-text-muted" aria-hidden="true">
         {evento.tipo === "congelacion" ? (
-          <LuSnowflake className="h-3.5 w-3.5" />
+          <LuSnowflake className="h-4 w-4" />
         ) : (
-          <LuArrowLeftRight className="h-3.5 w-3.5" />
+          <LuArrowLeftRight className="h-4 w-4" />
         )}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-text-primary">{evento.descripcion}</p>
+        <p className="text-[15px] leading-5 text-text-primary">
+          {evento.descripcion}
+        </p>
         {evento.tipo === "congelacion" &&
           evento.fecha_inicio &&
           evento.fecha_fin && (
-            <p className="text-[11px] text-text-muted">
+            <p className="mt-0.5 font-mono text-dato text-text-secondary">
               {formatFecha(evento.fecha_inicio)} —{" "}
               {formatFecha(evento.fecha_fin)}
             </p>
           )}
-        <p className="text-[11px] text-text-muted">
-          {formatDateTime(evento.created_at)}
+        <p className="mt-0.5 text-sm text-text-muted">
+          <span className="font-mono">{formatDateTime(evento.created_at)}</span>
           {evento.creado_por_nombre && ` · ${evento.creado_por_nombre}`}
         </p>
       </div>
@@ -217,28 +220,21 @@ function NotaItem({ nota }: { nota: Nota }) {
     });
   }
 
+  // El estado del seguimiento se lee en el color del chip, no en un fondo
+  // de toda la fila.
   return (
-    <li
-      className={cn(
-        "rounded-lg border p-3",
-        vencida
-          ? "border-danger/30 bg-danger/5"
-          : pendiente
-            ? "border-warning/30 bg-warning/5"
-            : "border-border bg-surface"
-      )}
-    >
+    <li className="px-5 py-4">
       {nota.tipo_accion && (
-        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-text-muted capitalize">
+        <p className="mb-1.5 flex items-center gap-1.5 font-mono text-etiqueta uppercase text-text-muted">
           {tipoIcono[nota.tipo_accion]}
           {nota.tipo_accion}
-        </div>
+        </p>
       )}
-      <p className="whitespace-pre-wrap text-sm text-text-primary">
+      <p className="whitespace-pre-wrap text-[15px] leading-5 text-text-primary">
         {nota.contenido}
       </p>
-      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-text-muted">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <p className="font-mono text-dato text-text-muted">
           {formatDateTime(nota.created_at)}
         </p>
         {nota.fecha_seguimiento && (
@@ -246,23 +242,24 @@ function NotaItem({ nota }: { nota: Nota }) {
             type="button"
             onClick={toggle}
             disabled={isPending}
+            aria-pressed={nota.completada}
             className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors duration-150 disabled:opacity-50",
+              "inline-flex h-9 items-center gap-1.5 border px-2.5 font-mono text-xs uppercase tracking-[0.12em] transition-colors duration-150 disabled:opacity-50",
               nota.completada
-                ? "border-success/30 bg-success/10 text-success"
+                ? "border-success/40 text-success hover:border-success"
                 : vencida
-                  ? "border-danger/30 bg-danger/10 text-danger hover:bg-danger/20"
-                  : "border-warning/30 bg-warning/10 text-warning hover:bg-warning/20"
+                  ? "border-danger/40 text-danger hover:border-danger"
+                  : "border-warning/40 text-warning hover:border-warning"
             )}
           >
             {nota.completada ? (
-              <LuCheck className="h-3 w-3" />
+              <LuCheck className="h-3.5 w-3.5" aria-hidden="true" />
             ) : (
-              <LuCalendarClock className="h-3 w-3" />
+              <LuCalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
             )}
             {nota.completada
-              ? "Seguimiento hecho"
-              : `Seguimiento: ${formatFecha(nota.fecha_seguimiento)}`}
+              ? "Hecho"
+              : `Seguimiento ${formatFecha(nota.fecha_seguimiento)}`}
           </button>
         )}
       </div>

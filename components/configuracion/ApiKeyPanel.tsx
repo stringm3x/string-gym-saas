@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LuCopy, LuCheck, LuEye, LuEyeOff, LuRefreshCw, LuBookOpen } from "react-icons/lu";
+import { Button } from "@/components/ui/Button";
 import { regenerarApiKeyAction } from "@/app/(tenant)/[slug]/configuracion/api/actions";
 import type { ApiLogRow } from "@/lib/queries/api-keys.queries";
 import { TZ_MX } from "@/lib/utils/dates";
@@ -71,29 +72,32 @@ export function ApiKeyPanel({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Key */}
-      <div className="rounded-xl border border-border bg-surface p-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-text-primary">API key</h3>
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="font-mono text-etiqueta uppercase text-text-secondary">
+            API key
+          </h4>
           <Link
             href="/api-docs"
             target="_blank"
-            className="inline-flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary"
+            className="inline-flex items-center gap-1.5 text-sm text-text-secondary underline-offset-4 transition-colors hover:text-brand-green hover:underline"
           >
-            <LuBookOpen className="h-3.5 w-3.5" /> Documentación
+            <LuBookOpen className="h-4 w-4" aria-hidden="true" /> Documentación
           </Link>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <code className="flex-1 min-w-[220px] overflow-x-auto rounded-lg border border-border bg-bg px-3 py-2 font-mono text-xs text-text-primary">
+        <div className="flex flex-wrap items-center gap-3">
+          <code className="flex h-11 min-w-[220px] flex-1 items-center overflow-x-auto rounded border border-border bg-bg px-3 font-mono text-sm text-text-primary">
             {revealed ? key : mask(key)}
           </code>
           <button
             type="button"
             onClick={() => setRevealed((v) => !v)}
-            title={revealed ? "Ocultar" : "Mostrar"}
-            className="rounded-lg border border-border p-2 text-text-secondary hover:text-text-primary"
+            aria-label={revealed ? "Ocultar API key" : "Mostrar API key"}
+            aria-pressed={revealed}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-border text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary"
           >
             {revealed ? (
               <LuEyeOff className="h-4 w-4" />
@@ -101,90 +105,98 @@ export function ApiKeyPanel({
               <LuEye className="h-4 w-4" />
             )}
           </button>
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={copiar}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs text-text-secondary hover:text-text-primary"
+            leftIcon={
+              copied ? (
+                <LuCheck className="h-4 w-4 text-brand-green" />
+              ) : (
+                <LuCopy className="h-4 w-4" />
+              )
+            }
           >
-            {copied ? (
-              <LuCheck className="h-3.5 w-3.5 text-brand-green" />
-            ) : (
-              <LuCopy className="h-3.5 w-3.5" />
-            )}
             {copied ? "Copiado" : "Copiar"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            disabled={pending}
+            variant="secondary"
+            loading={pending}
             onClick={regenerar}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-danger/40 px-3 py-2 text-xs font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
+            leftIcon={<LuRefreshCw className="h-4 w-4" />}
+            className="border-danger/40 text-danger hover:border-danger"
           >
-            <LuRefreshCw className="h-3.5 w-3.5" /> Regenerar
-          </button>
+            Regenerar
+          </Button>
         </div>
 
-        {err && <p className="mt-2 text-xs text-danger">{err}</p>}
-        <p className="mt-2 text-[11px] text-text-muted">
-          Inclúyela en cada request como{" "}
+        {err && (
+          <p role="alert" className="text-xs text-danger">
+            {err}
+          </p>
+        )}
+        <p className="text-xs text-text-muted">
+          Inclúyela en cada solicitud como{" "}
           <code className="font-mono">Authorization: Bearer {"{key}"}</code>.
           No la compartas públicamente.
         </p>
-      </div>
+      </section>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-[11px] uppercase tracking-wide text-text-muted">
-            Requests (30 días)
+      {/* Cifras de uso */}
+      <div className="grid grid-cols-2 gap-4 border-t border-border pt-6">
+        <div className="border border-border bg-bg p-4">
+          <p className="font-mono text-etiqueta uppercase text-text-secondary">
+            Solicitudes (30 días)
           </p>
-          <p className="mt-1 text-lg font-semibold text-text-primary">
-            {requestsMes}
+          <p className="mt-2 font-mono text-cifra font-bold tabular-nums text-text-primary">
+            {requestsMes.toLocaleString("es-MX")}
           </p>
         </div>
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-[11px] uppercase tracking-wide text-text-muted">
+        <div className="border border-border bg-bg p-4">
+          <p className="font-mono text-etiqueta uppercase text-text-secondary">
             Último uso
           </p>
-          <p className="mt-1 text-sm text-text-primary">
+          <p className="mt-2 font-mono text-dato tabular-nums text-text-primary">
             {fechaHora(ultimoUso)}
           </p>
         </div>
       </div>
 
-      {/* Log */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-text-primary">
-          Últimas requests
-        </h3>
+      {/* Registro */}
+      <section className="space-y-3 border-t border-border pt-6">
+        <h4 className="text-base font-semibold text-text-primary">
+          Últimas solicitudes
+        </h4>
         {log.length === 0 ? (
-          <p className="rounded-xl border border-border bg-surface px-4 py-6 text-center text-xs text-text-secondary">
+          <p className="border border-border bg-bg px-5 py-8 text-center text-sm text-text-secondary">
             Sin actividad todavía.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="w-full text-xs">
+          <div className="overflow-x-auto border border-border">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-surface text-left uppercase tracking-wide text-text-muted">
-                  <th className="px-3 py-2 font-medium">Fecha</th>
-                  <th className="px-3 py-2 font-medium">Método</th>
-                  <th className="px-3 py-2 font-medium">Endpoint</th>
-                  <th className="px-3 py-2 text-right font-medium">Status</th>
+                <tr className="border-b border-border text-left">
+                  <Th>Fecha</Th>
+                  <Th>Método</Th>
+                  <Th>Endpoint</Th>
+                  <Th className="text-right">Estado</Th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border">
                 {log.map((r) => (
-                  <tr key={r.id} className="border-b border-border last:border-0">
-                    <td className="px-3 py-2 text-text-secondary">
+                  <tr key={r.id}>
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-dato tabular-nums text-text-secondary">
                       {fechaHora(r.created_at)}
                     </td>
-                    <td className="px-3 py-2 font-mono text-text-secondary">
+                    <td className="px-4 py-3 font-mono text-dato text-text-secondary">
                       {r.method}
                     </td>
-                    <td className="px-3 py-2 font-mono text-text-primary">
+                    <td className="px-4 py-3 font-mono text-dato text-text-primary">
                       {r.endpoint}
                     </td>
                     <td
-                      className={`px-3 py-2 text-right font-medium ${
+                      className={`px-4 py-3 text-right font-mono text-dato font-bold tabular-nums ${
                         r.status_code < 400
                           ? "text-brand-green"
                           : r.status_code < 500
@@ -200,7 +212,24 @@ export function ApiKeyPanel({
             </table>
           </div>
         )}
-      </div>
+      </section>
     </div>
+  );
+}
+
+function Th({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      scope="col"
+      className={`px-4 py-3 font-mono text-etiqueta font-normal uppercase text-text-muted ${className}`}
+    >
+      {children}
+    </th>
   );
 }

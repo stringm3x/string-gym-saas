@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -44,11 +45,6 @@ export function WhatsappConfigManager({ config }: WhatsappConfigManagerProps) {
 
   return (
     <form action={formAction} className="max-w-lg space-y-4">
-      <p className="text-sm text-text-secondary">
-        Conecta la subcuenta de 360dialog de tu gimnasio para activar los
-        mensajes automáticos, el bot y el inbox de WhatsApp.
-      </p>
-
       <Input
         label="Número de WhatsApp"
         name="numero"
@@ -74,25 +70,24 @@ export function WhatsappConfigManager({ config }: WhatsappConfigManagerProps) {
         error={state.fieldErrors.api_key}
       />
 
-      <div className="space-y-1.5">
-        <label className="block text-xs font-mono uppercase tracking-widest text-text-muted">
-          Alerta de visitas bajas
-        </label>
+      <div className="space-y-2">
+        <Label htmlFor="alerta_visitas_umbral">Alerta de visitas bajas</Label>
         <input
+          id="alerta_visitas_umbral"
           type="number"
           name="alerta_visitas_umbral"
           min="0"
           step="1"
           defaultValue={config.alertaVisitasUmbral}
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+          className="h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
         />
-        <p className="text-[11px] text-text-secondary">
+        <p className="text-xs text-text-muted">
           Avisa al socio por WhatsApp cuando sus visitas restantes lleguen a
           este número (planes por visitas). 0 = desactivado.
         </p>
       </div>
 
-      <label className="flex items-start gap-3 rounded-lg border border-border p-3">
+      <label className="flex items-start gap-3 border border-border p-4">
         <input
           type="checkbox"
           name="activo"
@@ -112,7 +107,7 @@ export function WhatsappConfigManager({ config }: WhatsappConfigManagerProps) {
       </label>
 
       {state.error && Object.keys(state.fieldErrors).length === 0 && (
-        <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+        <p className="border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
           {state.error}
         </p>
       )}

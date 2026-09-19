@@ -83,7 +83,7 @@ export function ProductosManager({ productos, cajas }: ProductosManagerProps) {
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <div className="w-56">
             <Input
               type="search"
@@ -105,9 +105,9 @@ export function ProductosManager({ productos, cajas }: ProductosManagerProps) {
 
       {productos.length === 0 ? (
         <EmptyState
-          icon={<LuPackage className="h-5 w-5" />}
-          title="Aún no hay productos"
-          description="Da de alta los productos que vendes en mostrador (proteínas, ropa, accesorios). Podrás controlar su stock y venderlos desde Caja."
+          icon={<LuPackage />}
+          title="Todavía no hay productos"
+          description="Da de alta lo que vendes en mostrador (proteína, ropa, accesorios) con precio y stock, y cóbralo desde caja."
           action={
             <Button
               leftIcon={<LuPlus className="h-4 w-4" />}
@@ -119,12 +119,21 @@ export function ProductosManager({ productos, cajas }: ProductosManagerProps) {
         />
       ) : filtered.length === 0 ? (
         <EmptyState
-          icon={<LuSearch className="h-5 w-5" />}
+          icon={<LuSearch />}
           title="Sin resultados"
-          description={`No hay productos que coincidan con "${search}".`}
+          description={`Ningún producto coincide con "${search}".`}
+          action={
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setSearch("")}
+            >
+              Limpiar búsqueda
+            </Button>
+          }
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-surface">
+        <div className="overflow-x-auto border border-border bg-surface">
           <table className="min-w-full divide-y divide-border">
             <thead>
               <tr>
@@ -145,12 +154,12 @@ export function ProductosManager({ productos, cajas }: ProductosManagerProps) {
                     </p>
                   </Td>
                   <Td>
-                    <span className="text-xs text-text-secondary">
+                    <span className="text-sm text-text-secondary">
                       {p.categoria ?? "—"}
                     </span>
                   </Td>
                   <Td>
-                    <span className="font-mono text-sm tabular-nums text-text-primary">
+                    <span className="font-mono text-dato tabular-nums text-text-primary">
                       {formatMoneda(p.precio)}
                     </span>
                   </Td>
@@ -158,24 +167,27 @@ export function ProductosManager({ productos, cajas }: ProductosManagerProps) {
                     <div className="flex items-center gap-2">
                       <span
                         className={cn(
-                          "font-mono text-sm font-semibold tabular-nums",
+                          "font-mono text-dato font-bold tabular-nums",
                           p.stock_bajo ? "text-danger" : "text-text-primary"
                         )}
                       >
                         {p.stock_actual}
                       </span>
                       {p.stock_bajo && (
-                        <LuTriangleAlert className="h-3.5 w-3.5 text-danger" />
+                        <LuTriangleAlert
+                          className="h-3.5 w-3.5 text-danger"
+                          aria-label="Stock bajo"
+                        />
                       )}
                       {p.stock_minimo > 0 && (
-                        <span className="text-xs text-text-muted">
+                        <span className="font-mono text-xs tabular-nums text-text-muted">
                           mín {p.stock_minimo}
                         </span>
                       )}
                     </div>
                   </Td>
                   <Td>
-                    <span className="font-mono text-xs text-text-secondary tabular-nums">
+                    <span className="font-mono text-dato tabular-nums text-text-secondary">
                       {p.unidades_vendidas}
                     </span>
                   </Td>
@@ -232,7 +244,7 @@ function Th({
     <th
       scope="col"
       className={cn(
-        "px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-text-muted",
+        "px-5 py-3 text-left font-mono text-etiqueta uppercase text-text-muted",
         className
       )}
     >
@@ -242,7 +254,7 @@ function Th({
 }
 
 function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-4 py-3 align-middle">{children}</td>;
+  return <td className="px-5 py-3 align-middle">{children}</td>;
 }
 
 // ============================================================
@@ -334,22 +346,23 @@ function ProductoFormModal({
         </div>
 
         {cajas.length > 1 && (
-          <div className="space-y-1.5">
-            <Label>Caja</Label>
+          <div className="space-y-2">
+            <Label htmlFor="producto-caja">Caja</Label>
             <select
+              id="producto-caja"
               name="caja_id"
               defaultValue={producto?.caja_id ?? ""}
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-text-primary focus:border-brand-green focus:outline-none"
+              className="h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary focus:border-brand-green focus:outline-none"
             >
               {cajas.map((c) => (
                 <option key={c.id} value={c.es_default ? "" : c.id}>
                   {c.nombre}
-                  {c.es_default ? " (default)" : ""}
+                  {c.es_default ? " (principal)" : ""}
                 </option>
               ))}
             </select>
             <p className="text-xs text-text-muted">
-              A qué caja cuenta la venta de este producto — no hace falta
+              A qué caja cuenta la venta de este producto. No hace falta
               cambiar de pestaña en Caja para cobrarlo bien.
             </p>
           </div>
@@ -385,7 +398,7 @@ function ProductoFormModal({
         {state.error && Object.keys(state.fieldErrors).length === 0 && (
           <p
             role="alert"
-            className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
+            className="border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
           >
             {state.error}
           </p>
@@ -474,22 +487,23 @@ function AjusteModal({
                   key={t.value}
                   type="button"
                   onClick={() => setTipo(t.value)}
+                  aria-pressed={active}
                   className={cn(
-                    "rounded-lg border px-3 py-2.5 text-left transition-colors duration-150",
+                    "min-h-[44px] border px-3 py-2.5 text-left transition-colors duration-150",
                     active
-                      ? "border-brand-green bg-brand-green/10"
-                      : "border-border bg-surface hover:border-text-muted"
+                      ? "border-brand-green bg-surface-hover"
+                      : "border-border bg-transparent hover:border-text-secondary"
                   )}
                 >
                   <p
                     className={cn(
-                      "text-sm font-medium",
+                      "text-sm font-semibold",
                       active ? "text-brand-green" : "text-text-primary"
                     )}
                   >
                     {t.label}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-text-muted">{t.help}</p>
+                  <p className="mt-0.5 text-xs text-text-muted">{t.help}</p>
                 </button>
               );
             })}
@@ -531,7 +545,7 @@ function AjusteModal({
         {state.error && Object.keys(state.fieldErrors).length === 0 && (
           <p
             role="alert"
-            className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
+            className="border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
           >
             {state.error}
           </p>

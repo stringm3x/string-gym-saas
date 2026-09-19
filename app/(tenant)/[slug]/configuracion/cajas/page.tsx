@@ -7,16 +7,17 @@ export default async function CajasPage() {
   const cajas = await listCajasTodas(tenant.id);
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm text-text-secondary">
-        Cada caja tiene su propio turno y su propio cuadre de efectivo — úsalo
-        si cobras en más de un punto (ej. Recepción y una caja de aguas o
-        productos aparte).
-      </p>
-
-      <div className="pt-4">
-        <CajasManager cajas={cajas} />
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-semibold text-text-primary">Cajas</h3>
+        <p className="mt-1 text-sm text-text-secondary">
+          Cada caja tiene su propio turno y su propio cuadre de efectivo. Úsalo
+          si cobras en más de un punto (ej. recepción y una caja de aguas o
+          productos aparte).
+        </p>
       </div>
+
+      <CajasManager cajas={cajas} />
     </div>
   );
 }

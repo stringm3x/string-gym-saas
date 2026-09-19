@@ -30,15 +30,15 @@ export default async function ReciboPage({ params }: PageProps) {
     hasPermission(tenant.role, "cancelar_pagos");
 
   return (
-    <div className="mx-auto max-w-lg space-y-4">
+    <div className="mx-auto flex max-w-lg flex-col gap-4">
       <ReciboActions />
 
       {pago.anulado_at ? (
-        <p className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-2 text-center text-sm font-medium text-danger print:hidden">
+        <p className="border border-danger/40 px-4 py-3 text-center text-sm text-danger print:hidden">
           Este pago fue anulado.
         </p>
       ) : pago.reembolsado_at ? (
-        <p className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-2 text-center text-sm font-medium text-warning print:hidden">
+        <p className="border border-warning/40 px-4 py-3 text-center text-sm text-warning print:hidden">
           Este pago fue reembolsado.
           {pago.reembolsado_motivo && ` (${pago.reembolsado_motivo})`}
         </p>
@@ -58,29 +58,42 @@ export default async function ReciboPage({ params }: PageProps) {
       <Recibo pago={pago} />
 
       {reembolsos.length > 0 && (
-        <div className="rounded-lg border border-border bg-surface p-4 print:hidden">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Reembolsos
-          </h3>
-          <ul className="mt-2 space-y-1.5">
+        <section className="card-surface print:hidden">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h3 className="text-base font-semibold text-text-primary">
+              Reembolsos
+            </h3>
+            <span className="font-mono text-etiqueta text-text-muted">
+              {reembolsos.length}
+            </span>
+          </div>
+          <ul className="divide-y divide-border">
             {reembolsos.map((r) => (
               <li
                 key={r.id}
-                className="flex items-center justify-between text-sm"
+                className="flex items-center justify-between gap-4 px-5 py-3"
               >
-                <span className="text-text-secondary">
-                  {formatMoneda(r.monto)} · {r.tipo}
-                  {r.creado_por_nombre && ` · ${r.creado_por_nombre}`}
+                <div className="min-w-0">
+                  <p className="text-[15px] leading-5 text-text-primary">
+                    {r.tipo}
+                    {r.creado_por_nombre && (
+                      <span className="text-text-muted">
+                        {" "}
+                        · {r.creado_por_nombre}
+                      </span>
+                    )}
+                  </p>
+                  {r.motivo && (
+                    <p className="truncate text-sm text-text-muted">{r.motivo}</p>
+                  )}
+                </div>
+                <span className="shrink-0 font-mono text-dato tabular-nums text-text-primary">
+                  {formatMoneda(r.monto)}
                 </span>
-                {r.motivo && (
-                  <span className="truncate pl-2 text-xs italic text-text-muted">
-                    {r.motivo}
-                  </span>
-                )}
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
     </div>
   );

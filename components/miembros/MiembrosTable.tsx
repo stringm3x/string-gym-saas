@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { LuPhone, LuMail } from "react-icons/lu";
 import { formatFecha } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/cn";
 import { MiembroStatusBadge } from "./MiembroStatusBadge";
 import { TagBadges } from "@/components/ui/TagSelector";
 import { Badge } from "@/components/ui/Badge";
@@ -19,6 +19,10 @@ interface MiembrosTableProps {
   selectable?: boolean;
 }
 
+/**
+ * Tabla de miembros: encabezados en mono, fechas y teléfono en mono,
+ * fila seleccionada con fondo lleno (sin verde). Filas de 44px.
+ */
 export function MiembrosTable({
   miembros,
   slug,
@@ -30,17 +34,17 @@ export function MiembrosTable({
   selectable = true,
 }: MiembrosTableProps) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface">
-      <table className="min-w-full divide-y divide-border">
+    <div className="card-surface overflow-x-auto">
+      <table className="min-w-full">
         <thead>
-          <tr>
+          <tr className="border-b border-border">
             {selectable && (
-              <th scope="col" className="w-10 px-4 py-3">
+              <th scope="col" className="w-12 px-4 py-3">
                 <input
                   type="checkbox"
                   checked={allSelected}
                   onChange={onToggleAll}
-                  className="rounded border-border accent-brand-green"
+                  className="h-4 w-4 rounded border-border accent-brand-green"
                   aria-label="Seleccionar todos"
                 />
               </th>
@@ -58,19 +62,19 @@ export function MiembrosTable({
           {miembros.map((m) => (
             <tr
               key={m.id}
-              className={`group transition-colors duration-150 ${
-                selectedIds.has(m.id)
-                  ? "bg-brand-green/5"
-                  : "hover:bg-surface-hover"
-              } ${soloArchivados ? "opacity-60" : ""}`}
+              className={cn(
+                "group transition-colors duration-150",
+                selectedIds.has(m.id) ? "bg-surface-hover" : "hover:bg-surface-hover",
+                soloArchivados && "opacity-60"
+              )}
             >
               {selectable && (
-                <td className="w-10 px-4 py-3 align-middle">
+                <td className="w-12 px-4 py-3 align-middle">
                   <input
                     type="checkbox"
                     checked={selectedIds.has(m.id)}
                     onChange={() => onToggleSelect(m.id)}
-                    className="rounded border-border accent-brand-green"
+                    className="h-4 w-4 rounded border-border accent-brand-green"
                     aria-label={`Seleccionar ${m.nombre}`}
                   />
                 </td>
@@ -79,7 +83,7 @@ export function MiembrosTable({
               <Td>
                 <Link
                   href={`/${slug}/miembros/${m.id}`}
-                  className="inline-flex items-center gap-2 font-medium text-text-primary group-hover:text-brand-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green"
+                  className="inline-flex min-h-11 items-center gap-2 text-[15px] leading-5 text-text-primary underline-offset-4 hover:text-brand-green hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green"
                 >
                   {m.nombre}
                   {soloArchivados && <Badge variant="neutral">Archivado</Badge>}
@@ -87,30 +91,22 @@ export function MiembrosTable({
               </Td>
 
               <Td>
-                <div className="flex flex-col gap-0.5 text-xs text-text-secondary">
+                <div className="flex flex-col gap-0.5 text-sm text-text-secondary">
                   {m.telefono && (
-                    <span className="flex items-center gap-1.5">
-                      <LuPhone className="h-3 w-3" aria-hidden="true" />
-                      <span className="font-mono">{m.telefono}</span>
-                    </span>
+                    <span className="font-mono text-dato">{m.telefono}</span>
                   )}
-                  {m.email && (
-                    <span className="flex items-center gap-1.5">
-                      <LuMail className="h-3 w-3" aria-hidden="true" />
-                      <span className="truncate">{m.email}</span>
-                    </span>
-                  )}
+                  {m.email && <span className="truncate">{m.email}</span>}
                 </div>
               </Td>
 
               <Td>
-                <span className="font-mono text-xs text-text-secondary">
+                <span className="font-mono text-dato tabular-nums text-text-secondary">
                   {formatFecha(m.fecha_inscripcion)}
                 </span>
               </Td>
 
               <Td>
-                <span className="font-mono text-xs text-text-secondary">
+                <span className="font-mono text-dato tabular-nums text-text-secondary">
                   {formatFecha(m.fecha_vencimiento)}
                 </span>
               </Td>
@@ -137,7 +133,7 @@ function Th({ children }: { children: React.ReactNode }) {
   return (
     <th
       scope="col"
-      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-text-muted"
+      className="px-4 py-3 text-left font-mono text-etiqueta font-normal uppercase text-text-muted"
     >
       {children}
     </th>
@@ -145,5 +141,5 @@ function Th({ children }: { children: React.ReactNode }) {
 }
 
 function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-4 py-3 align-middle">{children}</td>;
+  return <td className="px-4 py-2 align-middle">{children}</td>;
 }

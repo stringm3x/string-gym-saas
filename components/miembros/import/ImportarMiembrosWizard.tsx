@@ -9,7 +9,6 @@ import {
   LuFileSpreadsheet,
   LuLoaderCircle,
   LuCircleCheck,
-  LuArrowLeft,
 } from "react-icons/lu";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -95,7 +94,7 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
       {/* PASO 1 — Subir */}
       {step === 1 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-text-secondary">
               Sube un archivo CSV con tus miembros. Usa la plantilla para
               asegurar el formato correcto.
@@ -103,9 +102,9 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
             <a
               href={`/api/${slug}/plantilla-miembros`}
               download
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:text-text-primary"
+              className="inline-flex h-9 shrink-0 items-center gap-2 border border-border px-3 text-sm text-text-primary transition-colors hover:border-text-secondary"
             >
-              <LuDownload className="h-3.5 w-3.5" />
+              <LuDownload className="h-4 w-4" aria-hidden="true" />
               Descargar plantilla
             </a>
           </div>
@@ -124,30 +123,34 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
               pickFile(e.dataTransfer.files?.[0] ?? null);
             }}
             className={cn(
-              "flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-12 text-center transition-colors",
+              "flex w-full flex-col items-center justify-center gap-3 border border-dashed py-12 text-center transition-colors",
               dragging
-                ? "border-brand-green bg-brand-green/5"
-                : "border-border bg-surface hover:border-text-muted"
+                ? "border-brand-green bg-surface-hover"
+                : "border-border bg-bg hover:border-text-secondary"
             )}
           >
             {file ? (
               <>
-                <LuFileSpreadsheet className="h-7 w-7 text-brand-green" />
-                <span className="text-sm font-medium text-text-primary">
+                <LuFileSpreadsheet
+                  className="h-7 w-7 text-brand-green"
+                  aria-hidden="true"
+                />
+                <span className="text-[15px] leading-5 text-text-primary">
                   {file.name}
                 </span>
-                <span className="text-xs text-text-muted">
-                  {(file.size / 1024).toFixed(0)} KB · clic para cambiar
+                <span className="text-sm text-text-muted">
+                  <span className="font-mono">{(file.size / 1024).toFixed(0)} KB</span>{" "}
+                  · clic para cambiar
                 </span>
               </>
             ) : (
               <>
-                <LuUpload className="h-7 w-7 text-text-muted" />
-                <span className="text-sm font-medium text-text-primary">
+                <LuUpload className="h-7 w-7 text-text-muted" aria-hidden="true" />
+                <span className="text-[15px] leading-5 text-text-primary">
                   Arrastra tu CSV aquí o haz clic para subir
                 </span>
-                <span className="text-xs text-text-muted">
-                  UTF-8, separador coma. Máximo 5MB.
+                <span className="text-sm text-text-muted">
+                  UTF-8, separado por comas. Máximo 5 MB.
                 </span>
               </>
             )}
@@ -158,11 +161,12 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
             type="file"
             accept=".csv,text/csv"
             className="hidden"
+            aria-label="Archivo CSV"
             onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
           />
 
           {planesNombres.length > 0 && (
-            <p className="text-xs text-text-muted">
+            <p className="text-sm text-text-muted">
               Planes disponibles para la columna «plan»:{" "}
               <span className="text-text-secondary">
                 {planesNombres.join(", ")}
@@ -190,14 +194,12 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
           </div>
 
           {preview.plansNotFound.length > 0 && (
-            <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm">
-              <span className="font-medium text-text-primary">
-                Planes no encontrados:
-              </span>{" "}
+            <div className="border border-warning/40 px-4 py-3 text-sm">
+              <span className="text-text-primary">Planes no encontrados:</span>{" "}
               <span className="text-text-secondary">
                 {preview.plansNotFound.join(", ")}
               </span>
-              <p className="mt-0.5 text-xs text-text-muted">
+              <p className="mt-0.5 text-sm text-text-muted">
                 Esos miembros se importarán sin plan asignado.
               </p>
             </div>
@@ -208,7 +210,7 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
           <ImportErrorsList errors={preview.invalidRows} />
 
           <div className="flex items-center justify-between border-t border-border pt-4">
-            <Button variant="ghost" onClick={reset}>
+            <Button variant="secondary" onClick={reset}>
               Volver
             </Button>
             <Button
@@ -235,14 +237,15 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
           ) : (
             <>
               <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-green/10 text-brand-green">
-                  <LuCircleCheck className="h-7 w-7" />
-                </div>
+                <LuCircleCheck
+                  className="h-10 w-10 text-brand-green"
+                  aria-hidden="true"
+                />
                 <div>
-                  <p className="font-display text-2xl uppercase tracking-wide text-text-primary">
+                  <p className="text-pagina font-semibold text-text-primary">
                     Importación completa
                   </p>
-                  <p className="mt-1 text-sm text-text-secondary">
+                  <p className="mt-1 font-mono text-dato text-text-secondary">
                     {result.successCount} importados · {result.sinPlanCount} sin
                     plan · {result.failedCount} fallaron
                   </p>
@@ -253,14 +256,15 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
                 <ImportErrorsList errors={result.errors} />
               )}
 
-              <div className="flex items-center justify-center gap-2 border-t border-border pt-5">
-                <Button variant="ghost" onClick={reset}>
+              <div className="flex items-center justify-center gap-3 border-t border-border pt-5">
+                <Button variant="secondary" onClick={reset}>
                   Importar otro CSV
                 </Button>
-                <Link href={`/${slug}/miembros?origen=csv`}>
-                  <Button leftIcon={<LuArrowLeft className="h-4 w-4" />}>
-                    Ver miembros importados
-                  </Button>
+                <Link
+                  href={`/${slug}/miembros?origen=csv`}
+                  className="inline-flex h-11 items-center gap-2 bg-brand-green px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
+                >
+                  Ver miembros importados
                 </Link>
               </div>
             </>
@@ -271,46 +275,52 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
   );
 }
 
+/** Pasos del asistente: número en círculo (badge numérico), etiqueta mono. */
 function Stepper({ step }: { step: 1 | 2 | 3 }) {
   const labels = ["Subir archivo", "Revisar", "Resultado"];
   return (
-    <div className="flex items-center gap-2">
+    <ol className="flex flex-wrap items-center gap-3">
       {labels.map((label, i) => {
         const n = (i + 1) as 1 | 2 | 3;
         const active = step === n;
         const done = step > n;
         return (
-          <div key={label} className="flex items-center gap-2">
+          <li
+            key={label}
+            className="flex items-center gap-3"
+            aria-current={active ? "step" : undefined}
+          >
             <span
               className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
+                "flex h-7 w-7 items-center justify-center rounded-full border font-mono text-xs font-bold",
                 active
-                  ? "bg-brand-green text-bg"
+                  ? "border-brand-green bg-brand-green text-on-brand"
                   : done
-                    ? "bg-brand-green/20 text-brand-green"
-                    : "bg-surface text-text-muted"
+                    ? "border-brand-green text-brand-green"
+                    : "border-border text-text-muted"
               )}
             >
               {n}
             </span>
             <span
               className={cn(
-                "text-xs font-medium",
+                "font-mono text-etiqueta uppercase",
                 active ? "text-text-primary" : "text-text-muted"
               )}
             >
               {label}
             </span>
             {i < labels.length - 1 && (
-              <span className="mx-1 h-px w-6 bg-border" />
+              <span className="h-px w-6 bg-border" aria-hidden="true" />
             )}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
 
+/** Cifra del resumen: etiqueta en mono arriba, número en mono 26px. */
 function Stat({
   label,
   value,
@@ -321,16 +331,18 @@ function Stat({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface px-3 py-2.5">
+    <div className="flex flex-col gap-2 border border-border bg-bg p-4">
+      <p className="font-mono text-etiqueta uppercase text-text-secondary">
+        {label}
+      </p>
       <p
         className={cn(
-          "font-mono text-xl font-bold tabular-nums",
+          "font-mono text-[26px] font-bold leading-8 tabular-nums",
           accent ? "text-brand-green" : "text-text-primary"
         )}
       >
         {value}
       </p>
-      <p className="text-xs text-text-muted">{label}</p>
     </div>
   );
 }

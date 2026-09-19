@@ -5,7 +5,12 @@ import {
   getSesionesByRango,
   getNoShowStats,
 } from "@/lib/queries/clases.queries";
-import { inicioSemana, sumarDiasYMD, hoyYMD } from "@/lib/utils/clases-format";
+import {
+  inicioSemana,
+  sumarDiasYMD,
+  hoyYMD,
+  formatDiaCorto,
+} from "@/lib/utils/clases-format";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import { CalendarioSemanal } from "@/components/clases/CalendarioSemanal";
 
@@ -47,39 +52,39 @@ export default async function ClasesCalendarioPage({
   const conNoShow = noShowStats.filter((s) => s.noShows > 0);
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="font-display text-3xl uppercase tracking-wide text-text-primary">
-          Clases
-        </h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          Calendario semanal de sesiones.
+    <div className="flex flex-col gap-7">
+      <div className="flex flex-col gap-1.5">
+        <p className="font-mono text-etiqueta uppercase text-text-muted">
+          Semana del {formatDiaCorto(lunes)} al {formatDiaCorto(domingo)}
         </p>
+        <h1 className="text-pagina font-semibold text-text-primary">Clases</h1>
       </div>
 
       <CalendarioSemanal sesiones={sesiones} lunes={lunes} slug={tenant.slug} />
 
       {conNoShow.length > 0 && (
-        <div className="rounded-xl border border-border bg-surface p-5">
-          <h2 className="text-sm font-semibold text-text-primary">
-            No-shows por clase
-          </h2>
-          <p className="mt-0.5 text-xs text-text-muted">
-            Inasistencia de los últimos 30 días (asistió vs. no asistió).
-          </p>
-          <ul className="mt-3 space-y-2">
+        <section className="card-surface">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-text-primary">
+                Inasistencias por clase
+              </h2>
+              <p className="mt-0.5 text-sm text-text-muted">
+                Últimos 30 días: reservas que no llegaron sobre las resueltas.
+              </p>
+            </div>
+          </div>
+          <ul className="divide-y divide-border">
             {conNoShow.map((s) => (
               <li
                 key={s.clase_id}
-                className="flex items-center justify-between gap-3 text-sm"
+                className="flex items-center justify-between gap-4 px-5 py-3"
               >
-                <span className="truncate text-text-primary">{s.nombre}</span>
-                <span className="shrink-0 text-text-secondary">
-                  <span
-                    className={
-                      s.tasa >= 30 ? "text-warning" : "text-text-primary"
-                    }
-                  >
+                <span className="truncate text-[15px] leading-5 text-text-primary">
+                  {s.nombre}
+                </span>
+                <span className="shrink-0 font-mono text-dato tabular-nums text-text-secondary">
+                  <span className={s.tasa >= 30 ? "text-warning" : "text-text-primary"}>
                     {s.tasa}%
                   </span>{" "}
                   ({s.noShows}/{s.resueltas})
@@ -87,7 +92,7 @@ export default async function ClasesCalendarioPage({
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
     </div>
   );

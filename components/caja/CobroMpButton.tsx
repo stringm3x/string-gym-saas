@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { LuCreditCard, LuExternalLink, LuSearch, LuX } from "react-icons/lu";
 import { Modal } from "@/components/ui/Modal";
+import { Label } from "@/components/ui/Label";
+import { Button } from "@/components/ui/Button";
 import { crearCobroMpAction } from "@/app/(tenant)/[slug]/caja/mp-actions";
 import { searchMiembrosAction } from "@/app/(tenant)/[slug]/checkins/actions";
 import type { PlanMembresia } from "@/lib/queries/planes.queries";
@@ -10,7 +12,7 @@ import type { PlanMembresia } from "@/lib/queries/planes.queries";
 type MiembroLite = { id: string; nombre: string };
 
 const INPUT =
-  "w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
+  "h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
 
 export function CobroMpButton({
   planes,
@@ -19,6 +21,7 @@ export function CobroMpButton({
   planes: PlanMembresia[];
   gymNombre: string;
 }) {
+  const id = useId();
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [titulo, setTitulo] = useState("");
@@ -90,16 +93,18 @@ export function CobroMpButton({
 
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="secondary"
+        leftIcon={<LuCreditCard className="h-4 w-4" />}
         onClick={() => {
           reset();
           setOpen(true);
         }}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-brand-green/40 bg-brand-green/10 px-4 py-2.5 text-sm font-semibold text-brand-green hover:bg-brand-green/20"
+        className="w-full"
       >
-        <LuCreditCard className="h-4 w-4" /> Cobrar con MercadoPago
-      </button>
+        Cobrar con MercadoPago
+      </Button>
 
       <Modal
         open={open}
@@ -108,7 +113,7 @@ export function CobroMpButton({
         description="Genera un link de pago (tarjeta, OXXO o SPEI)."
       >
         {link ? (
-          <div className="space-y-3 text-center">
+          <div className="flex flex-col items-center gap-4 text-center">
             <p className="text-sm text-text-secondary">
               Link de pago generado. Se abrió en una pestaña nueva.
             </p>
@@ -116,31 +121,31 @@ export function CobroMpButton({
               href={link}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg hover:bg-brand-green/90"
+              className="inline-flex h-11 items-center gap-2 bg-brand-green px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
             >
               <LuExternalLink className="h-4 w-4" /> Abrir checkout
             </a>
-            <p className="text-[11px] text-text-muted">
-              El cobro se confirmará automáticamente cuando se pague.
+            <p className="text-sm text-text-muted">
+              El cobro se confirma solo cuando se pague.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {/* Miembro (opcional) — necesario para extender su vencimiento */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-secondary">
-                Miembro (opcional)
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-miembro`}>Miembro (opcional)</Label>
               {miembro ? (
-                <div className="flex items-center justify-between rounded-lg border border-border bg-bg px-3 py-2 text-sm">
-                  <span className="text-text-primary">{miembro.nombre}</span>
+                <div className="flex items-center justify-between gap-3 border border-border bg-bg py-1 pl-4 pr-1">
+                  <span className="truncate text-[15px] leading-5 text-text-primary">
+                    {miembro.nombre}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
                       setMiembro(null);
                       setQuery("");
                     }}
-                    className="text-text-muted hover:text-danger"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
                     aria-label="Quitar miembro"
                   >
                     <LuX className="h-4 w-4" />
@@ -148,15 +153,17 @@ export function CobroMpButton({
                 </div>
               ) : (
                 <div className="relative">
-                  <LuSearch className="absolute left-3 top-2.5 h-4 w-4 text-text-muted" />
+                  <LuSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                   <input
+                    id={`${id}-miembro`}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Buscar miembro…"
-                    className={`${INPUT} pl-9`}
+                    autoComplete="off"
+                    className={`${INPUT} pl-10`}
                   />
                   {resultados.length > 0 && (
-                    <ul className="absolute z-10 mt-1 w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-lg">
+                    <ul className="absolute z-10 mt-2 w-full divide-y divide-border overflow-hidden border border-border bg-surface">
                       {resultados.map((m) => (
                         <li key={m.id}>
                           <button
@@ -165,7 +172,7 @@ export function CobroMpButton({
                               setMiembro(m);
                               setResultados([]);
                             }}
-                            className="w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-bg"
+                            className="flex min-h-11 w-full items-center px-4 py-2.5 text-left text-[15px] leading-5 text-text-primary transition-colors hover:bg-surface-hover"
                           >
                             {m.nombre}
                           </button>
@@ -178,14 +185,13 @@ export function CobroMpButton({
             </div>
 
             {planes.length > 0 && (
-              <div>
-                <label className="mb-1 block text-xs font-medium text-text-secondary">
-                  Plan (opcional)
-                </label>
+              <div className="space-y-2">
+                <Label htmlFor={`${id}-plan`}>Plan (opcional)</Label>
                 <select
+                  id={`${id}-plan`}
                   value={planId}
                   onChange={(e) => elegirPlan(e.target.value)}
-                  className={INPUT}
+                  className={`${INPUT} cursor-pointer`}
                 >
                   <option value="">Personalizado…</option>
                   {planes.map((p) => (
@@ -196,39 +202,43 @@ export function CobroMpButton({
                 </select>
               </div>
             )}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-secondary">
-                Descripción
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-titulo`}>Descripción</Label>
               <input
+                id={`${id}-titulo`}
                 className={INPUT}
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
                 placeholder="Ej. Membresía mensual"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-secondary">
-                Monto (MXN)
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-monto`}>Monto (MXN)</Label>
               <input
+                id={`${id}-monto`}
                 type="number"
+                inputMode="decimal"
                 min={1}
-                className={INPUT}
+                className={`${INPUT} font-mono tabular-nums`}
                 value={monto}
                 onChange={(e) => setMonto(e.target.value)}
                 placeholder="0"
               />
             </div>
-            {error && <p className="text-xs text-danger">{error}</p>}
-            <button
+            {error && (
+              <p role="alert" className="text-sm text-danger">
+                {error}
+              </p>
+            )}
+            <Button
               type="button"
-              disabled={pending || !titulo.trim() || !monto || Number(monto) <= 0}
+              disabled={!titulo.trim() || !monto || Number(monto) <= 0}
+              loading={pending}
               onClick={generar}
-              className="w-full rounded-lg bg-brand-green px-4 py-2.5 text-sm font-semibold text-bg hover:bg-brand-green/90 disabled:opacity-50"
+              className="w-full"
             >
-              {pending ? "Generando…" : "Generar link de pago"}
-            </button>
+              Generar link de pago
+            </Button>
           </div>
         )}
       </Modal>

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { LuPlus, LuTrash2 } from "react-icons/lu";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
 import type { ComidaNutricion, PlanNutricion } from "@/lib/queries/nutricion.queries";
 import {
@@ -17,6 +19,9 @@ const OBJETIVOS = [
   "Recomposición",
 ];
 const TIEMPOS_SUGERIDOS = ["Desayuno", "Snack AM", "Comida", "Snack PM", "Cena"];
+
+const TEXTAREA =
+  "w-full rounded border border-border bg-bg px-3 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none";
 
 function comidasIniciales(plan?: PlanNutricion): ComidaNutricion[] {
   if (plan && plan.comidas.length > 0) return plan.comidas;
@@ -34,7 +39,10 @@ interface Props {
   onCancel: () => void;
 }
 
+/** Formulario del plan: etiquetas en mono, inputs de 44px, chips de
+ * objetivo con borde, comidas como filas con botón de quitar de 44px. */
 export function PlanNutricionForm({ miembroId, plan, onDone, onCancel }: Props) {
+  const id = useId();
   const { success, error: toastError } = useToast();
   const [pending, start] = useTransition();
 
@@ -95,58 +103,50 @@ export function PlanNutricionForm({ miembroId, plan, onDone, onCancel }: Props) 
   return (
     <form
       onSubmit={submit}
-      className="space-y-4 rounded-lg border border-border bg-bg p-4"
+      className="flex flex-col gap-5 border border-border bg-bg p-5"
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm">
-          <span className="mb-1 block font-medium text-text-primary">
-            Título del plan
-          </span>
-          <input
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            placeholder="Plan de definición — Julio"
-            maxLength={120}
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
-          />
-        </label>
-
-        <label className="block text-sm">
-          <span className="mb-1 block font-medium text-text-primary">
-            Calorías objetivo{" "}
-            <span className="font-normal text-text-muted">(opcional)</span>
-          </span>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={20000}
-            value={calorias}
-            onChange={(e) => setCalorias(e.target.value)}
-            placeholder="2200"
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
-          />
-        </label>
+        <Input
+          label="Título del plan"
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          placeholder="Plan de definición — Julio"
+          maxLength={120}
+          required
+        />
+        <Input
+          label="Calorías objetivo (opcional)"
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={20000}
+          value={calorias}
+          onChange={(e) => setCalorias(e.target.value)}
+          placeholder="2200"
+          className="font-mono tabular-nums"
+        />
       </div>
 
-      <div className="text-sm">
-        <span className="mb-1 block font-medium text-text-primary">
-          Objetivo <span className="font-normal text-text-muted">(opcional)</span>
-        </span>
-        <input
+      <div className="space-y-2">
+        <Input
+          label="Objetivo (opcional)"
           value={objetivo}
           onChange={(e) => setObjetivo(e.target.value)}
           placeholder="Bajar de peso"
           maxLength={200}
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
         />
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {OBJETIVOS.map((o) => (
             <button
               key={o}
               type="button"
               onClick={() => setObjetivo(o)}
-              className="rounded-full border border-border px-2.5 py-1 text-xs text-text-secondary transition-colors hover:border-brand-green/40 hover:text-text-primary"
+              aria-pressed={objetivo === o}
+              className={
+                objetivo === o
+                  ? "inline-flex h-9 items-center border border-brand-green bg-surface-hover px-3 text-sm text-brand-green"
+                  : "inline-flex h-9 items-center border border-border px-3 text-sm text-text-secondary transition-colors hover:border-text-secondary hover:text-text-primary"
+              }
             >
               {o}
             </button>
@@ -155,72 +155,75 @@ export function PlanNutricionForm({ miembroId, plan, onDone, onCancel }: Props) 
       </div>
 
       <div className="space-y-2">
-        <span className="block text-sm font-medium text-text-primary">
-          Comidas
-        </span>
-        {comidas.map((c, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 sm:flex-row sm:items-start"
-          >
-            <input
-              value={c.tiempo}
-              onChange={(e) => setComida(i, "tiempo", e.target.value)}
-              placeholder="Desayuno"
-              list="tiempos-nutricion"
-              maxLength={60}
-              className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none sm:w-40"
-            />
-            <textarea
-              value={c.alimentos}
-              onChange={(e) => setComida(i, "alimentos", e.target.value)}
-              placeholder="3 huevos, 40g avena, 1 fruta…"
-              rows={2}
-              className="w-full flex-1 resize-y rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => quitarComida(i)}
-              aria-label="Quitar comida"
-              className="self-end rounded-lg p-2 text-text-muted transition-colors hover:bg-danger/10 hover:text-danger sm:self-start"
+        <Label>Comidas</Label>
+        <div className="flex flex-col gap-2">
+          {comidas.map((c, i) => (
+            <div
+              key={i}
+              className="flex flex-col gap-2 border border-border bg-surface p-3 sm:flex-row sm:items-start"
             >
-              <LuTrash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
-        <datalist id="tiempos-nutricion">
+              <input
+                value={c.tiempo}
+                onChange={(e) => setComida(i, "tiempo", e.target.value)}
+                placeholder="Desayuno"
+                list={`${id}-tiempos`}
+                maxLength={60}
+                aria-label={`Tiempo de la comida ${i + 1}`}
+                className="h-11 w-full rounded border border-border bg-bg px-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none sm:w-40"
+              />
+              <textarea
+                value={c.alimentos}
+                onChange={(e) => setComida(i, "alimentos", e.target.value)}
+                placeholder="3 huevos, 40 g de avena, 1 fruta…"
+                rows={2}
+                aria-label={`Alimentos de la comida ${i + 1}`}
+                className={`${TEXTAREA} flex-1 resize-y`}
+              />
+              <button
+                type="button"
+                onClick={() => quitarComida(i)}
+                aria-label={`Quitar comida ${i + 1}`}
+                className="flex h-11 w-11 shrink-0 items-center justify-center self-end text-text-muted transition-colors hover:bg-surface-hover hover:text-danger sm:self-start"
+              >
+                <LuTrash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <datalist id={`${id}-tiempos`}>
           {TIEMPOS_SUGERIDOS.map((t) => (
             <option key={t} value={t} />
           ))}
         </datalist>
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={agregarComida}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-green transition-opacity hover:opacity-80"
+          leftIcon={<LuPlus className="h-4 w-4" />}
         >
-          <LuPlus className="h-3.5 w-3.5" /> Agregar comida
-        </button>
+          Agregar comida
+        </Button>
       </div>
 
-      <label className="block text-sm">
-        <span className="mb-1 block font-medium text-text-primary">
-          Notas <span className="font-normal text-text-muted">(opcional)</span>
-        </span>
+      <div className="space-y-2">
+        <Label htmlFor={`${id}-notas`}>Notas (opcional)</Label>
         <textarea
+          id={`${id}-notas`}
           value={notas}
           onChange={(e) => setNotas(e.target.value)}
-          placeholder="Tomar 3L de agua al día, evitar azúcar…"
+          placeholder="Tomar 3 L de agua al día, evitar azúcar…"
           rows={2}
           maxLength={2000}
-          className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+          className={`${TEXTAREA} resize-y`}
         />
-      </label>
+      </div>
 
-      <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+      <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button type="submit" size="sm" loading={pending}>
+        <Button type="submit" loading={pending}>
           {plan ? "Guardar cambios" : "Crear plan"}
         </Button>
       </div>

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LuPrinter, LuDownload } from "react-icons/lu";
 import { Button } from "@/components/ui/Button";
+import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
 import { getReporteCsvAction } from "@/app/(tenant)/[slug]/reportes/financiero/actions";
 
@@ -43,26 +44,39 @@ export function ReporteControls({
     });
   }
 
+  // Fechas en mono: son datos, como en las tablas.
   const inputCls =
-    "rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text-primary focus:border-brand-green focus:outline-none";
+    "h-11 w-full rounded border border-border bg-bg px-3 font-mono text-sm tabular-nums text-text-primary focus:border-brand-green focus:outline-none";
 
   return (
-    <div className="flex flex-wrap items-end gap-2 print:hidden">
-      <label className="text-xs text-text-muted">
-        <span className="mb-1 block uppercase tracking-widest">Desde</span>
-        <input type="date" value={d} onChange={(e) => setD(e.target.value)} className={inputCls} />
-      </label>
-      <label className="text-xs text-text-muted">
-        <span className="mb-1 block uppercase tracking-widest">Hasta</span>
-        <input type="date" value={h} onChange={(e) => setH(e.target.value)} className={inputCls} />
-      </label>
-      <Button type="button" variant="ghost" onClick={aplicar}>
+    <div className="flex flex-wrap items-end gap-3 print:hidden">
+      <div className="space-y-2">
+        <Label htmlFor="reporte-desde">Desde</Label>
+        <input
+          id="reporte-desde"
+          type="date"
+          value={d}
+          onChange={(e) => setD(e.target.value)}
+          className={inputCls}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="reporte-hasta">Hasta</Label>
+        <input
+          id="reporte-hasta"
+          type="date"
+          value={h}
+          onChange={(e) => setH(e.target.value)}
+          className={inputCls}
+        />
+      </div>
+      <Button type="button" variant="secondary" onClick={aplicar}>
         Aplicar
       </Button>
-      <div className="ml-auto flex gap-2">
+      <div className="ml-auto flex gap-3">
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           leftIcon={<LuDownload className="h-4 w-4" />}
           onClick={descargarCsv}
           loading={isPending}
@@ -74,7 +88,7 @@ export function ReporteControls({
           leftIcon={<LuPrinter className="h-4 w-4" />}
           onClick={() => window.print()}
         >
-          Imprimir / PDF
+          Imprimir / guardar PDF
         </Button>
       </div>
     </div>

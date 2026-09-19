@@ -72,32 +72,33 @@ export function QrScannerDisplay({ slug }: { slug: string }) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-bg">
-      {/* Barra superior */}
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
-        <span className="font-display text-lg uppercase tracking-wide text-text-primary">
+      {/* Barra superior: controles de 44px para tablet */}
+      <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-3">
+        <span className="text-base font-semibold text-text-primary">
           Escanear QR
         </span>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setModo(modo === "lector" ? "camara" : "lector")}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+            className="inline-flex h-11 items-center gap-2 border border-border px-4 text-sm text-text-primary transition-colors hover:border-text-secondary"
           >
             {modo === "lector" ? (
               <>
-                <LuCamera className="h-3.5 w-3.5" /> Usar cámara
+                <LuCamera className="h-4 w-4" aria-hidden="true" /> Usar cámara
               </>
             ) : (
               <>
-                <LuKeyboard className="h-3.5 w-3.5" /> Usar lector
+                <LuKeyboard className="h-4 w-4" aria-hidden="true" /> Usar
+                lector
               </>
             )}
           </button>
           <Link
             href={`/${slug}/checkins`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary"
+            className="inline-flex h-11 items-center gap-2 border border-border px-4 text-sm text-text-primary transition-colors hover:border-text-secondary"
           >
-            <LuX className="h-3.5 w-3.5" /> Salir
+            <LuX className="h-4 w-4" aria-hidden="true" /> Salir
           </Link>
         </div>
       </div>
@@ -106,35 +107,41 @@ export function QrScannerDisplay({ slug }: { slug: string }) {
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6">
         {result ? (
           <div
-            className={`flex w-full max-w-md flex-col items-center gap-3 rounded-2xl border p-10 text-center ${
-              ok
-                ? "border-brand-green/40 bg-brand-green/10"
-                : "border-danger/40 bg-danger/10"
+            role="status"
+            aria-live="polite"
+            className={`flex w-full max-w-lg flex-col items-center gap-4 border-2 bg-surface p-10 text-center ${
+              ok ? "border-brand-green" : "border-danger"
             }`}
           >
             {ok ? (
-              <LuCircleCheck className="h-20 w-20 text-brand-green" />
+              <LuCircleCheck
+                className="h-16 w-16 text-brand-green"
+                aria-hidden="true"
+              />
             ) : (
-              <LuCircleX className="h-20 w-20 text-danger" />
+              <LuCircleX className="h-16 w-16 text-danger" aria-hidden="true" />
             )}
             {ok ? (
               <>
-                <p className="text-3xl font-bold text-text-primary">
-                  Bienvenido, {result.nombre}
+                <p className="font-mono text-etiqueta uppercase text-text-secondary">
+                  Check-in registrado
+                </p>
+                <p className="text-[40px] font-semibold leading-none text-text-primary">
+                  {result.nombre}
                 </p>
                 {result.fechaVencimiento && (
-                  <p className="text-sm text-text-secondary">
-                    Vence: {fechaCorta(result.fechaVencimiento)}
+                  <p className="text-base text-text-secondary">
+                    Vence el {fechaCorta(result.fechaVencimiento)}
                   </p>
                 )}
               </>
             ) : (
               <>
-                <p className="text-3xl font-bold text-danger">
+                <p className="font-mono text-etiqueta uppercase text-danger">
                   {ERROR_MSG[result.error]}
                 </p>
                 {result.nombre && (
-                  <p className="text-base text-text-secondary">
+                  <p className="text-[40px] font-semibold leading-none text-text-primary">
                     {result.nombre}
                   </p>
                 )}
@@ -151,21 +158,25 @@ export function QrScannerDisplay({ slug }: { slug: string }) {
             }}
             className="w-full max-w-md text-center"
           >
-            <p className="mb-4 text-sm text-text-secondary">
-              Escanea el QR (lector bluetooth) o escribe el código y presiona
-              Enter.
-            </p>
+            <label
+              htmlFor="qr-token"
+              className="mb-4 block text-sm text-text-secondary"
+            >
+              Escanea el QR con el lector o escribe el código y presiona Enter.
+            </label>
             <input
+              id="qr-token"
               ref={inputRef}
               autoFocus
+              autoComplete="off"
               value={token}
               onChange={(e) => setToken(e.target.value)}
               onBlur={() => setTimeout(focusInput, 50)}
               placeholder="Código del QR…"
-              className="w-full rounded-xl border border-border bg-surface px-4 py-4 text-center text-lg text-text-primary placeholder:text-text-muted focus:border-brand-green focus:outline-none"
+              className="h-14 w-full rounded border border-border bg-surface px-4 text-center font-mono text-lg text-text-primary placeholder:font-sans placeholder:text-text-muted focus:border-brand-green focus:outline-none"
             />
             {pending && (
-              <p className="mt-3 text-sm text-text-muted">Verificando…</p>
+              <p className="mt-4 text-sm text-text-muted">Verificando…</p>
             )}
           </form>
         )}

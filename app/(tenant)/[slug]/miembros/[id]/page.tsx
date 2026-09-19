@@ -151,19 +151,19 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const enRiesgo = vigente && diasSinCheckin !== null && diasSinCheckin >= 14;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
+    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="flex flex-col gap-2">
         <Link
           href={`/${slug}/miembros`}
-          className="inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors duration-150 hover:text-text-primary"
+          className="inline-flex h-9 items-center gap-1.5 self-start text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
         >
-          <LuArrowLeft className="h-3.5 w-3.5" />
-          Volver a miembros
+          <LuArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Miembros
         </Link>
 
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="font-display text-3xl uppercase tracking-wide text-text-primary">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-pagina font-semibold text-text-primary">
               {miembro.nombre}
             </h2>
             <MiembroStatusBadge
@@ -232,13 +232,13 @@ export default async function MiembroDetailPage({ params }: PageProps) {
         </div>
 
         {(referidoPor || referidos.length > 0) && (
-          <p className="mt-2 text-xs text-text-secondary">
+          <p className="text-sm text-text-secondary">
             {referidoPor && (
               <>
                 Referido por{" "}
                 <Link
                   href={`/${slug}/miembros/${referidoPor.id}`}
-                  className="font-medium text-text-primary hover:text-brand-green"
+                  className="text-text-primary underline-offset-4 hover:text-brand-green hover:underline"
                 >
                   {referidoPor.nombre}
                 </Link>
@@ -259,7 +259,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
         />
       )}
 
-      <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="border border-border bg-surface p-6">
         <MiembroForm
           mode="edit"
           slug={slug}
@@ -284,7 +284,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
         <EventosTimeline eventos={eventosMembresia} />
       )}
 
-      <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="border border-border bg-surface p-6">
         {canTimeline ? (
           <NotasTimeline
             entidadTipo="miembro"
@@ -299,19 +299,29 @@ export default async function MiembroDetailPage({ params }: PageProps) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-text-primary">
-            Historial de pagos
-          </h3>
+        <section className="card-surface self-start">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h3 className="text-base font-semibold text-text-primary">
+              Pagos
+            </h3>
+            <span className="font-mono text-etiqueta text-text-muted">
+              {pagos.length}
+            </span>
+          </div>
           <PagosHistory pagos={pagos} slug={slug} />
-        </div>
+        </section>
 
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-text-primary">
-            Historial de check-ins
-          </h3>
+        <section className="card-surface self-start">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h3 className="text-base font-semibold text-text-primary">
+              Check-ins
+            </h3>
+            <span className="font-mono text-etiqueta text-text-muted">
+              {checkins.length}
+            </span>
+          </div>
           <CheckinsHistory checkins={checkins} />
-        </div>
+        </section>
       </div>
 
       {canClases && <MiembroClasesHistorial reservas={reservasClases} />}

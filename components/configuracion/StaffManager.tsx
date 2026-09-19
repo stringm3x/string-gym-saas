@@ -46,34 +46,36 @@ export function StaffManager({
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-text-primary">
+          <h3 className="text-base font-semibold text-text-primary">
             Equipo de {gymNombre}
           </h3>
-          <p className="text-xs text-text-secondary">
-            Invita a tu equipo (recepción, entrenadores, gerentes) para que
-            ayuden a operar tu gimnasio.
+          <p className="mt-1 text-sm text-text-secondary">
+            Invita a tu equipo (recepción, entrenadores, gerentes) y define con
+            qué rol entra cada quien.
           </p>
         </div>
         <Button
           leftIcon={<LuUserPlus className="h-4 w-4" />}
           onClick={() => setInviteOpen(true)}
-          size="sm"
         >
           Invitar empleado
         </Button>
       </div>
 
-      <div className="space-y-2">
+      <ul className="divide-y divide-border border border-border bg-surface">
         {ordenado.map((s) => (
           <StaffCard key={s.id} staff={s} />
         ))}
-      </div>
+      </ul>
 
-      <div className="rounded-xl border border-border bg-surface p-4">
-        <label className="flex cursor-pointer items-start gap-3">
+      <section className="border-t border-border pt-6">
+        <h3 className="text-base font-semibold text-text-primary">
+          PIN de caja
+        </h3>
+        <label className="mt-4 flex cursor-pointer items-start gap-3 border border-border p-4">
           <input
             type="checkbox"
             checked={cajaCheckinPin}
@@ -83,11 +85,11 @@ export function StaffManager({
           />
           <span>
             <span className="flex items-center gap-1.5 text-sm font-medium text-text-primary">
-              <LuKeyRound className="h-3.5 w-3.5" />
+              <LuKeyRound className="h-4 w-4" aria-hidden="true" />
               Pedir PIN al abrir/cerrar turno de caja
             </span>
-            <span className="mt-0.5 block text-xs text-text-secondary">
-              Útil si varios empleados comparten la misma tablet/computadora
+            <span className="mt-1 block text-xs text-text-secondary">
+              Útil si varios empleados comparten la misma tablet o computadora
               de recepción: en vez de confiar en qué sesión esté activa en el
               navegador, cada quien confirma su identidad con su PIN de 4
               dígitos. Asígnale un PIN a cada empleado con el botón
@@ -95,7 +97,7 @@ export function StaffManager({
             </span>
           </span>
         </label>
-      </div>
+      </section>
 
       <InviteStaffModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
     </div>

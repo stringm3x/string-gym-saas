@@ -11,6 +11,7 @@ import {
   LuX,
 } from "react-icons/lu";
 import { useToast } from "@/components/ui/Toast";
+import { Button } from "@/components/ui/Button";
 import { formatMoneda } from "@/lib/utils/format";
 import type { CodigoPendiente } from "@/lib/queries/kiosco.queries";
 import {
@@ -82,76 +83,81 @@ export function AutorizacionesPendientes({
   if (codigos.length === 0) return null;
 
   return (
-    <section className="space-y-3 rounded-xl border border-warning/40 bg-warning/[0.06] p-5">
-      <h3 className="flex items-center gap-2 text-sm font-semibold text-warning">
-        <LuBellRing className="h-4 w-4" />
-        Autorizaciones pendientes ({codigos.length})
-      </h3>
+    <section className="border border-warning/40 bg-surface">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <h3 className="flex items-center gap-2 text-base font-semibold text-text-primary">
+          <LuBellRing className="h-4 w-4 text-warning" aria-hidden="true" />
+          Autorizaciones pendientes
+        </h3>
+        <span className="font-mono text-etiqueta text-text-muted">
+          {codigos.length}
+        </span>
+      </div>
 
-      <div className="space-y-2">
+      <ul className="divide-y divide-border">
         {codigos.map((c) => (
-          <div
+          <li
             key={c.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4"
+            className="flex flex-wrap items-center justify-between gap-4 px-5 py-4"
           >
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <p className="flex items-center gap-2 text-[15px] leading-5 text-text-primary">
                 {c.tipo === "membresia" ? (
-                  <LuCreditCard className="h-4 w-4 text-brand-green" />
+                  <LuCreditCard className="h-4 w-4 text-text-muted" aria-hidden="true" />
                 ) : (
-                  <LuShoppingCart className="h-4 w-4 text-brand-green" />
+                  <LuShoppingCart className="h-4 w-4 text-text-muted" aria-hidden="true" />
                 )}
-                <span className="font-medium text-text-primary">
-                  {c.miembroNombre ?? "Miembro"}
-                </span>
-                <span className="text-xs text-text-muted">
+                {c.miembroNombre ?? "Miembro"}
+                <span className="text-sm text-text-muted">
                   · {c.tipo === "membresia" ? "Renovación" : "Compra"}
                 </span>
-              </div>
+              </p>
               <p className="mt-0.5 truncate text-sm text-text-secondary">
                 {c.detalle}
               </p>
-              <p className="mt-0.5 text-sm">
-                <span className="font-semibold text-text-primary">
+              <p className="mt-0.5 text-sm text-text-muted">
+                <span className="font-mono text-dato tabular-nums text-text-primary">
                   {formatMoneda(c.total)}
                 </span>{" "}
-                <span className="text-text-muted">
-                  · {METODO_LABEL[c.metodo] ?? c.metodo}
-                </span>
+                · {METODO_LABEL[c.metodo] ?? c.metodo}
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <div className="text-center">
-                <p className="font-mono text-2xl font-bold tracking-widest text-text-primary">
+                <p className="font-mono text-2xl font-bold tracking-[0.2em] text-text-primary">
                   {c.codigo}
                 </p>
-                <p className="inline-flex items-center gap-1 text-xs text-text-muted">
-                  <LuClock className="h-3 w-3" /> {restante(c.expiraAt, now)}
+                <p className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-text-muted">
+                  <LuClock className="h-3 w-3" aria-hidden="true" />{" "}
+                  {restante(c.expiraAt, now)}
                 </p>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <button
+              <div className="flex flex-col gap-2">
+                <Button
                   type="button"
+                  size="sm"
                   onClick={() => setConfirmar(c)}
                   disabled={pending}
-                  className="inline-flex items-center gap-1 rounded-lg bg-brand-green px-3 py-1.5 text-xs font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
+                  leftIcon={<LuCheck className="h-4 w-4" />}
                 >
-                  <LuCheck className="h-3.5 w-3.5" /> Autorizar
-                </button>
-                <button
+                  Autorizar
+                </Button>
+                <Button
                   type="button"
+                  size="sm"
+                  variant="secondary"
                   onClick={() => rechazar(c)}
                   disabled={pending}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary transition-colors hover:text-danger disabled:opacity-50"
+                  leftIcon={<LuX className="h-4 w-4" />}
                 >
-                  <LuX className="h-3.5 w-3.5" /> Rechazar
-                </button>
+                  Rechazar
+                </Button>
               </div>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
 
       {/* Modal de confirmación */}
       {confirmar && (
@@ -159,46 +165,56 @@ export function AutorizacionesPendientes({
           className="fixed inset-0 z-[70] flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
+          aria-labelledby="autorizacion-titulo"
         >
           <button
             type="button"
             aria-label="Cerrar"
             onClick={() => setConfirmar(null)}
-            className="absolute inset-0 bg-bg/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-bg/70"
           />
-          <div className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-2xl">
-            <h4 className="text-lg font-semibold text-text-primary">
-              Confirmar {confirmar.tipo === "membresia" ? "renovación" : "compra"}
-            </h4>
-            <p className="mt-2 text-sm text-text-secondary">
-              ¿Confirmas que recibiste{" "}
-              <span className="font-semibold text-text-primary">
-                {formatMoneda(confirmar.total)}
-              </span>{" "}
-              en {METODO_LABEL[confirmar.metodo]?.toLowerCase() ?? confirmar.metodo} de{" "}
-              {confirmar.miembroNombre ?? "el miembro"}?
-            </p>
-            <p className="mt-2 rounded-lg bg-bg px-3 py-2 text-sm text-text-secondary">
-              {confirmar.tipo === "membresia" ? "Plan: " : "Productos: "}
-              <span className="text-text-primary">{confirmar.detalle}</span>
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmar(null)}
-                disabled={pending}
-                className="rounded-lg border border-border px-4 py-2 text-sm text-text-secondary transition-colors hover:text-text-primary disabled:opacity-50"
+          <div className="relative w-full max-w-md border border-border bg-surface">
+            <div className="border-b border-border px-6 py-4">
+              <h4
+                id="autorizacion-titulo"
+                className="text-base font-semibold text-text-primary"
               >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => autorizar(confirmar)}
-                disabled={pending}
-                className="rounded-lg bg-brand-green px-4 py-2 text-sm font-semibold text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {pending ? "Confirmando…" : "Confirmar"}
-              </button>
+                Confirmar{" "}
+                {confirmar.tipo === "membresia" ? "renovación" : "compra"}
+              </h4>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <p className="text-sm text-text-secondary">
+                ¿Confirmas que recibiste{" "}
+                <span className="font-mono text-dato tabular-nums text-text-primary">
+                  {formatMoneda(confirmar.total)}
+                </span>{" "}
+                en{" "}
+                {METODO_LABEL[confirmar.metodo]?.toLowerCase() ??
+                  confirmar.metodo}{" "}
+                de {confirmar.miembroNombre ?? "el miembro"}?
+              </p>
+              <p className="border border-border bg-bg px-4 py-3 text-sm text-text-secondary">
+                {confirmar.tipo === "membresia" ? "Plan: " : "Productos: "}
+                <span className="text-text-primary">{confirmar.detalle}</span>
+              </p>
+              <div className="flex justify-end gap-2 border-t border-border pt-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setConfirmar(null)}
+                  disabled={pending}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => autorizar(confirmar)}
+                  loading={pending}
+                >
+                  Confirmar
+                </Button>
+              </div>
             </div>
           </div>
         </div>

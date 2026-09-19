@@ -21,25 +21,24 @@ export default async function ImportarMiembrosPage({ params }: PageProps) {
   const planes = await listPlanes(tenant.id, { soloActivos: true });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
+    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="flex flex-col gap-1.5">
         <Link
           href={`/${slug}/miembros`}
-          className="inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors duration-150 hover:text-text-primary"
+          className="inline-flex h-9 items-center gap-1.5 self-start text-sm text-text-secondary underline-offset-4 hover:text-brand-green hover:underline"
         >
-          <LuArrowLeft className="h-3.5 w-3.5" />
-          Volver a miembros
+          <LuArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Miembros
         </Link>
-
-        <h2 className="mt-2 font-display text-3xl uppercase tracking-wide text-text-primary">
+        <h2 className="text-pagina font-semibold text-text-primary">
           Importar miembros
         </h2>
-        <p className="mt-1 text-sm text-text-secondary">
-          Migra tu base de miembros desde un archivo CSV en tres pasos.
+        <p className="text-sm text-text-secondary">
+          Trae tu base de miembros desde un archivo CSV en tres pasos.
         </p>
       </div>
 
-      <div className="rounded-xl border border-border bg-surface p-6">
+      <div className="card-surface p-6">
         <ImportarMiembrosWizard
           slug={slug}
           planesNombres={planes.map((p) => p.nombre)}
