@@ -15,8 +15,8 @@ export const maxDuration = 30;
  * n8n recibe el mensaje de 360dialog y lo reenvía aquí con X-Webhook-Secret.
  * Extrae texto + remitente, corre el bot y responde por 360dialog.
  *
- * Devuelve 200 casi siempre (para no gatillar reintentos); 401 solo si el
- * secreto está configurado y no coincide.
+ * Devuelve 200 casi siempre (para no gatillar reintentos); 401 si el secreto
+ * no está configurado o no coincide (falla cerrado, igual que CRON_SECRET).
  */
 
 /** Extrae el primer mensaje de texto de los formatos v1 y Cloud de 360dialog. */
@@ -43,9 +43,9 @@ export async function POST(
 ) {
   const { slug } = await params;
 
-  // Auth: solo se exige si el secreto está configurado.
+  // Auth: falla cerrado. Sin secreto configurado se rechaza todo.
   const secreto = process.env.WHATSAPP_INCOMING_SECRET;
-  if (secreto && request.headers.get("x-webhook-secret") !== secreto) {
+  if (!secreto || request.headers.get("x-webhook-secret") !== secreto) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
