@@ -19,6 +19,7 @@ import { bulkAsignarTagAction } from "@/app/(tenant)/[slug]/miembros/actions";
 import type { MiembroConTags } from "@/lib/queries/miembros.queries";
 import type { Tag } from "@/lib/queries/tags.queries";
 import type { PlantillaMensaje } from "@/lib/queries/plantillas.queries";
+import { descargarMiembrosCsv } from "@/lib/utils/miembros-csv";
 
 interface BulkActionsBarProps {
   selectedIds: Set<string>;
@@ -55,38 +56,7 @@ export function BulkActionsBar({
     plantillas.find((p) => p.id === selectedPlantillaId) ?? null;
 
   function exportCSV() {
-    const headers = [
-      "Nombre",
-      "Teléfono",
-      "Email",
-      "Inscripción",
-      "Vencimiento",
-      "Estado",
-    ];
-    const rows = selectedMiembros.map((m) => [
-      m.nombre,
-      m.telefono ?? "",
-      m.email ?? "",
-      m.fecha_inscripcion,
-      m.fecha_vencimiento ?? "",
-      m.estado,
-    ]);
-    const csv = [headers, ...rows]
-      .map((r) =>
-        r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")
-      )
-      .join("\n");
-    const blob = new Blob(["﻿" + csv], {
-      type: "text/csv;charset=utf-8;",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `miembros-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    descargarMiembrosCsv(selectedMiembros);
   }
 
   async function handleAsignarTag(tagId: string) {

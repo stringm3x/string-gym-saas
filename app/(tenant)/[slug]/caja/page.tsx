@@ -285,6 +285,7 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
               promocionesMembresia={promocionesMembresia}
               promocionesProducto={promocionesProducto}
               productos={productos}
+              canWhatsapp={hasFeature(tenant.plan, "whatsapp_manual")}
             />
             {canMp && (
               <CobroMpButton planes={planes} gymNombre={gym?.nombre ?? ""} />

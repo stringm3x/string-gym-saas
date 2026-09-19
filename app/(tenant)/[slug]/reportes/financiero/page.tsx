@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { getTenant } from "@/lib/tenant";
 import { hasPermission } from "@/lib/permissions";
+import { hasFeature } from "@/lib/features";
 import { getReporteFinanciero } from "@/lib/queries/negocio.queries";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { formatMoneda, formatFecha } from "@/lib/utils/format";
 import { hoyISO } from "@/lib/utils/dates";
 import { ReporteControls } from "@/components/reportes/ReporteControls";
+import { UpgradePage } from "@/components/ui/UpgradePage";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -22,6 +24,25 @@ export default async function ReporteFinancieroPage({
   const tenant = await getTenant();
   if (!hasPermission(tenant.role, "ver_dashboard_ingresos")) {
     redirect(`/${slug}/dashboard`);
+  }
+
+  // Reportes CSV e impresión: Pro.
+  if (!hasFeature(tenant.plan, "reportes")) {
+    const gymUp = await getGymInfo(tenant.id);
+    return (
+      <UpgradePage
+        titulo="Reporte financiero"
+        descripcion="Ingresos por método y por concepto en el periodo que elijas, para descargar en CSV o imprimir."
+        beneficios={[
+          "Ingresos por método de pago y por concepto",
+          "Cualquier rango de fechas",
+          "Descarga en CSV e impresión",
+        ]}
+        planRequerido="pro"
+        gymNombre={gymUp?.nombre ?? ""}
+        slug={slug}
+      />
+    );
   }
 
   const sp = await searchParams;

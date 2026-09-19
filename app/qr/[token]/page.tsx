@@ -3,6 +3,7 @@ import { LuRefreshCw } from "react-icons/lu";
 import { getMiembroByQrTokenPublic } from "@/lib/queries/qr.queries";
 import { generarQRDataUrl } from "@/lib/utils/qr-generator";
 import { Badge } from "@/components/ui/Badge";
+import { hasFeature, type Plan } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 
@@ -51,9 +52,14 @@ export default async function QrPublicPage({
       ? "Membresía vencida"
       : "Membresía activa";
 
+  // Colores del gimnasio: Pro. En Starter manda el verde STRING.
   const acento = miembro.gym?.color_acento;
+  const aplicaColor =
+    !!miembro.gym && hasFeature(miembro.gym.plan as Plan, "personalizacion_colores");
   const marcaCss =
-    acento && HEX.test(acento) ? `:root{--color-brand-green:${acento};}` : null;
+    aplicaColor && acento && HEX.test(acento)
+      ? `:root{--color-brand-green:${acento};}`
+      : null;
   const gymNombre = miembro.gym?.nombre ?? "Gimnasio";
   const inicial = (gymNombre.trim()[0] ?? "G").toUpperCase();
 

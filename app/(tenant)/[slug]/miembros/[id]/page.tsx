@@ -170,9 +170,11 @@ export default async function MiembroDetailPage({ params }: PageProps) {
               fechaVencimiento={miembro.fecha_vencimiento}
               visitasRestantes={miembro.visitas_restantes}
             />
-            {enRiesgo && diasSinCheckin !== null && (
-              <RiesgoInactividadBadge dias={diasSinCheckin} />
-            )}
+            {enRiesgo &&
+              diasSinCheckin !== null &&
+              hasFeature(tenant.plan, "riesgo_panel") && (
+                <RiesgoInactividadBadge dias={diasSinCheckin} />
+              )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -217,6 +219,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
               entidadId={miembro.id}
               plantillas={canPlantillas ? plantillas : []}
               portalUrl={portalUrl}
+              canWhatsapp={hasFeature(tenant.plan, "whatsapp_manual")}
             />
 
             {!miembro.archivado && canArchivar && (

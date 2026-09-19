@@ -28,16 +28,20 @@ export default async function KioscoPage({
           {gym.nombre}
         </h1>
         <p className="max-w-md text-lg text-text-secondary">
-          El kiosco de auto check-in está disponible en el Plan Pro.
+          El kiosco no está disponible para este gimnasio.
         </p>
       </div>
     );
   }
 
-  // Marca el kiosco con el color del gym (sobre el token brand-green).
-  const accent = typeof gym.color_acento === "string" && HEX.test(gym.color_acento)
-    ? gym.color_acento
-    : null;
+  // Marca el kiosco con el color del gym (sobre el token brand-green). Los
+  // colores del gimnasio son Pro; en Starter manda el verde STRING.
+  const accent =
+    hasFeature(gym.plan as Plan, "personalizacion_colores") &&
+    typeof gym.color_acento === "string" &&
+    HEX.test(gym.color_acento)
+      ? gym.color_acento
+      : null;
 
   return (
     <>

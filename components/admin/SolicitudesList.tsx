@@ -37,7 +37,7 @@ const FILTROS: { key: string; label: string }[] = [
 ];
 
 const PLAN_LABEL: Record<string, string> = {
-  basico: "Básico",
+  basico: "Starter",
   pro: "Pro",
   escala: "Escala",
 };

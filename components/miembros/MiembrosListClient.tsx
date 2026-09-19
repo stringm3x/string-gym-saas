@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { MiembrosTable } from "./MiembrosTable";
 import { BulkActionsBar } from "./BulkActionsBar";
+import { ExportarMiembrosCsv } from "./ExportarMiembrosCsv";
 import { hasFeature, type Plan } from "@/lib/features";
 import type { MiembroConTags } from "@/lib/queries/miembros.queries";
 import type { Tag } from "@/lib/queries/tags.queries";
@@ -27,6 +28,7 @@ export function MiembrosListClient({
 }: MiembrosListClientProps) {
   const canBulk = hasFeature(plan, "bulk_actions");
   const canTags = hasFeature(plan, "tags");
+  const canExport = hasFeature(plan, "exportacion_datos");
   const selectable = canBulk || canTags;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -54,6 +56,11 @@ export function MiembrosListClient({
 
   return (
     <>
+      {canExport && (
+        <div className="mb-3 flex justify-end">
+          <ExportarMiembrosCsv miembros={miembros} />
+        </div>
+      )}
       <MiembrosTable
         miembros={miembros}
         slug={slug}

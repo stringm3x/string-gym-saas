@@ -47,7 +47,7 @@ export default async function CuentasPorCobrarPage({
           "Alertas de cuotas vencidas y por vencer",
           "Cobro de cuotas con un clic",
         ]}
-        planRequerido="escala"
+        planRequerido="pro"
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />

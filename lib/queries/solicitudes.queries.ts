@@ -146,9 +146,10 @@ export async function activarSolicitud(id: string): Promise<ActivarResult> {
   }
 
   const nombreGym = sol.nombre_gym || sol.nombre;
-  const plan = ["basico", "pro", "escala"].includes(sol.plan_interes)
-    ? sol.plan_interes
-    : "pro";
+  // La prueba de 14 días es siempre con Pro completo (así lo promete la web
+  // y así se decidió). El plan de interés queda en la solicitud para que
+  // Carlos active el plan pagado correcto al terminar la prueba.
+  const plan = "pro";
   const pass = tempPassword();
 
   // 1. Owner en Auth.

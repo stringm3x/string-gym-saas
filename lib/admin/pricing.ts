@@ -1,22 +1,14 @@
-import type { Plan } from "@/lib/features";
+import { PLAN_LABELS, PLAN_PRECIO_MENSUAL, type Plan } from "@/lib/features";
 
 /**
- * Precio mensual por plan (MXN) para estimar el MRR en el Admin.
- * Solo se usa para el cálculo de MRR/churn del panel admin; no afecta
- * cobros de gyms.
+ * Precio mensual por plan (MXN) para estimar el MRR en el Admin. Sale de
+ * lib/features.ts (fuente única). Solo se usa para el cálculo de MRR y
+ * rotación del panel admin; no afecta cobros de gyms.
  */
-export const PLAN_MRR: Record<Plan, number> = {
-  basico: 999,
-  pro: 1999,
-  escala: 2999,
-};
+export const PLAN_MRR: Record<Plan, number> = PLAN_PRECIO_MENSUAL;
 
 /** Etiqueta legible del plan. */
-export const PLAN_LABEL: Record<Plan, string> = {
-  basico: "Básico",
-  pro: "Pro",
-  escala: "Escala",
-};
+export const PLAN_LABEL: Record<Plan, string> = PLAN_LABELS;
 
 /**
  * MRR estimado de un tenant: solo cuenta si está activo (un tenant en

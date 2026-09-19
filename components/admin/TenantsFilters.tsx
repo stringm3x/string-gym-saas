@@ -60,7 +60,7 @@ export function TenantsFilters() {
         className={FIELD}
       >
         <option value="">Plan: todos</option>
-        <option value="basico">Básico</option>
+        <option value="basico">Starter</option>
         <option value="pro">Pro</option>
         <option value="escala">Escala</option>
       </select>

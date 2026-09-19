@@ -14,6 +14,7 @@ interface CobroSwitcherProps {
   promocionesMembresia: Promocion[];
   promocionesProducto: Promocion[];
   productos: ProductoConStock[];
+  canWhatsapp?: boolean;
 }
 
 /**
@@ -61,6 +62,7 @@ export function CobroSwitcher(props: CobroSwitcherProps) {
             promocionesMembresia={props.promocionesMembresia}
             promocionesProducto={props.promocionesProducto}
             productos={props.productos}
+            canWhatsapp={props.canWhatsapp}
           />
         ) : (
           <TicketCart

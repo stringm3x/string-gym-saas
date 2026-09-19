@@ -1,11 +1,16 @@
 /**
- * Mapa de features por plan — fuente única de verdad para
- * qué módulos/funciones ve cada gym según su plan.
+ * Mapa de features por plan — fuente única de verdad para qué módulos y
+ * funciones ve cada gym según su plan. Sigue el KB Maestro STRING (sept
+ * 2026, Parte 4) y lo que publica stringwebs.com/saas.
+ *
+ * Identificadores internos: `basico` (Starter), `pro`, `escala`. El id
+ * `basico` se conserva porque vive en gyms.plan, en el CHECK de
+ * solicitudes_prueba y en el formulario de alta de la web; la etiqueta
+ * comercial es "Starter" (PLAN_LABELS).
  *
  * Se usa en:
- * - components/ui/FeatureGate.tsx (bloquea UI inline con CTA)
  * - components/ui/UpgradePage.tsx (pantalla completa de upgrade)
- * - Sidebar, ConfigTabs, páginas y acciones gateadas
+ * - Sidebar, ConfigNav, páginas y server actions gateadas
  *
  * Cada plan lista SOLO las features que desbloquea; la herencia
  * (un plan incluye lo de los inferiores) se resuelve en hasFeature.
@@ -14,46 +19,69 @@
 export type Plan = "basico" | "pro" | "escala";
 
 export const planFeatures = {
-  // Tier baseline: capacidades base que TODOS los planes heredan. Son
-  // descriptivas del matrix — NO se enforcean con hasFeature (el gating real,
-  // cuando aplica, es por rol/permiso; p.ej. archivar → eliminar_archivar_miembros).
+  // STARTER — "Sal del cuaderno" ($799/mes, anual $7,990).
+  // Socios ilimitados · check-in manual, QR y kiosco · caja, corte y recibo ·
+  // membresías y planes por visitas · congelar y cambio de plan · panel del
+  // día y del mes · importación CSV · logo · exportación · 1 sucursal,
+  // 1 usuario · soporte 48 h.
   basico: [
+    // Descriptivas (no se enforcean con hasFeature; el gating real es por rol).
     "miembros",
     "checkins",
     "caja_basica",
-    "dashboard_simple",
     "catalogo_planes",
     "recibos",
-    "acciones_rapidas",
     "archivar_miembros",
     "pagar_al_inscribir",
+    "importacion_csv",
+    // Enforceadas.
+    "qr_access", // check-in por QR (scanner del staff) y kiosco de entrada
+    "pantalla_hoy", // panel del día
+    "dashboard_simple", // panel del mes (cifras y gráficas básicas)
     "personalizacion_logo",
+    "exportacion_datos", // CSV de miembros
   ],
+  // PRO — "Vende más en el mismo local" ($1,799/mes, anual $17,990).
+  // Todo Starter, más: inventario y punto de venta · promociones · clases con
+  // reservas y lista de espera · portal del socio · kiosco de autoservicio ·
+  // pagos en línea · créditos y pagos a plazos · multiusuario con roles ·
+  // panel completo (MRR, ARPU, LTV, rotación) · socios en riesgo en el panel ·
+  // WhatsApp manual a un clic · campañas · etiquetas, notas y vencimientos ·
+  // API pública y componentes web · reportes CSV y PDF · colores del gym ·
+  // 1 sucursal · soporte 24 h.
   pro: [
     "inventario",
     "promociones",
-    "prospectos",
+    "clases",
+    "portal_miembro",
+    "kiosco_autoservicio",
+    "mercadopago",
+    "creditos",
+    "multiusuario",
+    "dashboard_completo", // MRR, ARPU, LTV, rotación
+    "riesgo_panel", // lista de socios en riesgo (14 días sin check-in) en el panel
+    "whatsapp_manual", // botones "WhatsApp" a un clic con plantillas
+    "acciones_rapidas",
+    "campanas",
     "tags",
     "timeline_notas",
     "plantillas_mensaje",
     "bulk_actions",
-    "pantalla_hoy",
-    "dashboard_completo",
-    "personalizacion_colores",
-    "clases",
+    "prospectos",
     "api",
-    "qr_access",
-    "mercadopago",
-    "campanas",
-    "opiniones",
-    "nutricion",
-    "kiosco_autoservicio",
+    "reportes", // reporte financiero, CSV e impresión
+    "personalizacion_colores",
   ],
+  // ESCALA — "El sistema trabaja y te avisa" ($2,999/mes, anual $29,990).
+  // Todo Pro, más: WhatsApp automático al socio · alertas al dueño por
+  // WhatsApp · bot · inbox · Google Maps · nutrición · hasta 3 sucursales ·
+  // personalización avanzada · soporte 4 h.
+  // (Sucursales y personalización avanzada no existen en el código: sin feature.)
   escala: [
-    "alertas_dueno",
-    "whatsapp_automatico",
-    "creditos",
-    "portal_miembro",
+    "whatsapp_automatico", // avisos al socio, bot e inbox
+    "alertas_dueno", // pantalla de alertas + aviso al dueño por WhatsApp
+    "opiniones", // opiniones del socio y reseñas en Google Maps
+    "nutricion",
   ],
 } as const;
 
@@ -107,8 +135,16 @@ export function getRequiredPlan(feature: Feature): Plan {
   return "escala";
 }
 
+/** Nombre comercial del plan (el id interno de Starter sigue siendo `basico`). */
 export const PLAN_LABELS: Record<Plan, string> = {
-  basico: "Básico",
+  basico: "Starter",
   pro: "Pro",
   escala: "Escala",
+};
+
+/** Precio mensual publicado (MXN). Anual = diez meses por doce. */
+export const PLAN_PRECIO_MENSUAL: Record<Plan, number> = {
+  basico: 799,
+  pro: 1799,
+  escala: 2999,
 };

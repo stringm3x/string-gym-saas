@@ -99,7 +99,7 @@ export function TenantActionsPanel({
             aria-label="Plan"
             className={`${FIELD} max-w-[140px]`}
           >
-            <option value="basico">Básico</option>
+            <option value="basico">Starter</option>
             <option value="pro">Pro</option>
             <option value="escala">Escala</option>
           </select>
@@ -166,7 +166,7 @@ export function TenantActionsPanel({
               aria-label="Plan a activar"
               className={`${FIELD} max-w-[140px]`}
             >
-              <option value="basico">Básico</option>
+              <option value="basico">Starter</option>
               <option value="pro">Pro</option>
               <option value="escala">Escala</option>
             </select>

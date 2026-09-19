@@ -62,6 +62,8 @@ interface PagoFormProps {
   promocionesMembresia: Promocion[];
   promocionesProducto: Promocion[];
   productos: ProductoConStock[];
+  /** "Enviar por WhatsApp" tras el cobro es Pro (feature whatsapp_manual). */
+  canWhatsapp?: boolean;
 }
 
 const initial: PagoResult = { ok: false, error: null, fieldErrors: {} };
@@ -107,6 +109,7 @@ export function PagoForm({
   promocionesMembresia,
   promocionesProducto,
   productos,
+  canWhatsapp = true,
 }: PagoFormProps) {
   const { success, error: toastError } = useToast();
   const [state, formAction, isPending] = useActionState(
@@ -413,7 +416,7 @@ export function PagoForm({
             <span className="font-medium">{lastPago.nombre}</span>
           </p>
           <div className="flex items-center gap-2">
-            {lastPago.telefono && (
+            {canWhatsapp && lastPago.telefono && (
               <a
                 href={buildWhatsAppUrl(
                   lastPago.telefono,

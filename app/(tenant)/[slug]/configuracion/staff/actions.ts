@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getTenant } from "@/lib/tenant";
 import { hasPermission } from "@/lib/permissions";
+import { hasFeature } from "@/lib/features";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -52,6 +53,10 @@ export async function inviteStaffAction(
 ): Promise<StaffActionState> {
   const { tenant, allowed } = await requireOwner();
   if (!allowed) return { ...empty, error: "Sin permiso." };
+  // Starter = 1 usuario; invitar staff es Pro.
+  if (!hasFeature(tenant.plan, "multiusuario")) {
+    return { ...empty, error: "Invitar a tu equipo está disponible en Plan Pro." };
+  }
 
   const parsed = inviteStaffSchema.safeParse({
     email: formData.get("email"),

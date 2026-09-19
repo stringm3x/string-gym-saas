@@ -49,7 +49,7 @@ export default async function HoyPage({ params }: PageProps) {
   const hoy = hoyYMD();
 
   const canOpiniones = hasFeature(tenant.plan, "opiniones");
-  const [alertas, checkins, ingresos, sesionesHoy, sinTelefono, opinionesSem] =
+  const [alertasTodas, checkins, ingresos, sesionesHoy, sinTelefono, opinionesSem] =
     await Promise.all([
       getAlertas(tenant.id, slug),
       getCheckinsStats(tenant.id),
@@ -62,6 +62,19 @@ export default async function HoyPage({ params }: PageProps) {
         ? getPromedioSemana(tenant.id)
         : Promise.resolve({ promedio: 0, total: 0 }),
     ]);
+
+  // Puntos de atención según el plan: stock (inventario, Pro), prospectos
+  // (Pro) y socios en riesgo (riesgo_panel, Pro). Vencimientos: todos.
+  const alertaVisible = (tipo: (typeof alertasTodas)[number]["tipo"]) =>
+    tipo === "stock_bajo"
+      ? hasFeature(tenant.plan, "inventario")
+      : tipo === "prospecto_sin_contactar"
+        ? hasFeature(tenant.plan, "prospectos")
+        : tipo === "miembro_inactivo"
+          ? hasFeature(tenant.plan, "riesgo_panel")
+          : true;
+  const alertas = alertasTodas.filter((a) => alertaVisible(a.tipo));
+  const canRiesgo = hasFeature(tenant.plan, "riesgo_panel");
 
   const porTipo = (tipo: (typeof alertas)[number]["tipo"]) =>
     alertas.find((a) => a.tipo === tipo)?.count ?? 0;
@@ -153,7 +166,7 @@ export default async function HoyPage({ params }: PageProps) {
       </div>
 
       {/* Cifras del día */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={`grid gap-4 sm:grid-cols-2 ${canRiesgo ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>
         <StatCard index={0} label="Check-ins" value={checkins.hoy} />
         <StatCard
           index={1}
@@ -173,12 +186,14 @@ export default async function HoyPage({ params }: PageProps) {
               : undefined
           }
         />
-        <StatCard
-          index={3}
-          label="Sin venir 14 días"
-          value={sinVenir}
-          hint="con membresía vigente"
-        />
+        {canRiesgo && (
+          <StatCard
+            index={3}
+            label="Sin venir 14 días"
+            value={sinVenir}
+            hint="con membresía vigente"
+          />
+        )}
       </div>
 
       {/* Puntos de atención + clases */}

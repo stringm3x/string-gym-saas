@@ -13,6 +13,7 @@ export interface MiembroQrPublic {
     nombre: string;
     logo_url: string | null;
     color_acento: string | null;
+    plan: string;
   } | null;
 }
 
@@ -28,7 +29,7 @@ export async function getMiembroByQrTokenPublic(
   const { data } = await admin
     .from("miembros")
     .select(
-      "nombre, fecha_vencimiento, qr_token, archivado, gym:gyms(slug, nombre, logo_url, color_acento)"
+      "nombre, fecha_vencimiento, qr_token, archivado, gym:gyms(slug, nombre, logo_url, color_acento, plan)"
     )
     .eq("qr_token", token)
     .maybeSingle();

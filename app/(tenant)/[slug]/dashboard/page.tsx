@@ -80,7 +80,11 @@ export default async function DashboardPage({ params }: PageProps) {
     getMetricasNegocio(tenant.id),
   ]);
 
-  const canNegocio = hasPermission(tenant.role, "ver_dashboard_ingresos");
+  // Panel completo (MRR, ARPU, LTV, rotación) es Pro; el panel del mes
+  // básico (cifras y gráficas) está en todos los planes.
+  const canNegocio =
+    hasPermission(tenant.role, "ver_dashboard_ingresos") &&
+    hasFeature(tenant.plan, "dashboard_completo");
 
   // El color del gym en las gráficas es parte de personalizacion_colores
   // (Pro+), igual que en el layout. Sin la feature, verde STRING.

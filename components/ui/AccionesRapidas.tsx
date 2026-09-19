@@ -34,6 +34,8 @@ interface AccionesRapidasProps {
   plantillas?: PlantillaMensaje[];
   /** URL de login al portal del miembro — si viene, muestra el botón "Portal". */
   portalUrl?: string | null;
+  /** "WhatsApp manual a un clic" es Pro (feature whatsapp_manual). */
+  canWhatsapp?: boolean;
 }
 
 export function AccionesRapidas({
@@ -46,6 +48,7 @@ export function AccionesRapidas({
   entidadId,
   plantillas = [],
   portalUrl,
+  canWhatsapp = true,
 }: AccionesRapidasProps) {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -169,7 +172,8 @@ export function AccionesRapidas({
         Llamar
       </button>
 
-      {/* WhatsApp */}
+      {/* WhatsApp (Pro) */}
+      {canWhatsapp && (
       <div className="relative">
         <button
           type="button"
@@ -226,6 +230,7 @@ export function AccionesRapidas({
           </>
         )}
       </div>
+      )}
 
       {/* Email */}
       <button

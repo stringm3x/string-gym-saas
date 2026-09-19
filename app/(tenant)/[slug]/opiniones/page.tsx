@@ -50,7 +50,7 @@ export default async function OpinionesPage({ params }: PageProps) {
           "Últimos comentarios de tus miembros",
           "Impulso de reseñas en Google para 5★",
         ]}
-        planRequerido="pro"
+        planRequerido="escala"
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />
