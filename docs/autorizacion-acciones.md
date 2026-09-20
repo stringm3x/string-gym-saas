@@ -229,7 +229,7 @@ solo cambia donde hoy hay un hueco.
 | **0** | `lib/authz/`, `politicas.ts` (caja y kiosco pobladas), generador, regla ESLint, `usar_panel`, `PERMISSION_LABELS`, proxy con request headers y borrado de entrantes, `getTenant` sin default. 53 módulos en `legacy.json`. | Entregado. Cero acciones migradas. |
 | 1 | Kiosco: 7 acciones, 1 archivo, 3 componentes (`KioscoEntrada`, `KioscoComprar`, `KioscoMembresia`). | Entregado. Firma `(slug, token, ...args)`; el parámetro `miembroId` desapareció de 4 acciones. No cierra ninguna feature: `renovar_mp` pasa de `kiosco_autoservicio` a `mercadopago` (ambas Pro) y `actualizar_telefono` gana `qr_access` (Starter). |
 | 2 | Portal: 8 acciones, 6 archivos. | Entregado. 5 → `portalAction`, 3 → `anonAction` (OTP ×2, cerrar sesión). Firmas públicas sin cambio. Sin sesión ya no hay `redirect` desde la acción: devuelve `SIN_SESION` ("Tu sesión expiró"). No cierra nada: `portal_miembro` es Escala y hereda `clases`/`mercadopago`/`opiniones`. |
-| 3 | Admin: 19 acciones, 5 archivos. | Sustituye los `gate()` locales; distingue `admin` de `super_admin`. |
+| 3 | Admin: 19 acciones, 6 archivos. | Entregado. 17 → `adminAction`, 2 → `anonAction` (login, logout). Decisión nueva (2026-09-20): `super_admin` = facturación, existencia o acceso a la cuenta de un tenant (9: cancelar, suspender, cambiar plan, activar plan pagado, fundador, addon, reset password del owner, activar solicitud, pago manual); `admin` = soporte diario (8). `cerrarTodasSesionesAction` ya valida admin. Firmas sin cambio. |
 | 4 | Panel `caja/` (4 archivos, 12 acciones). | **Cierra** `creditos`, `inventario`, `kiosco_autoservicio` (ver protocolo abajo). |
 | 5 | Panel `miembros/` + `miembros/[id]/` (6 archivos). | |
 | 6 | Panel `configuracion/*` (13 archivos). | |
@@ -254,6 +254,19 @@ no quitarle nada a nadie por accidente.
   consulta; la venta de productos usa `registrar_pagos`. Se conserva así
   en `caja.vender_productos` para no cambiar comportamiento.
 - Son 25 permisos (24 + `usar_panel`), no 23.
+- **La distinción `admin`/`super_admin` vive solo en `adminAction`.**
+  `string_admins.role` tiene default `'super_admin'` y `is_super_admin()`
+  (la función de las RLS y los RPC) mira únicamente `activo`. Un admin de
+  soporte con acceso a la consola de Supabase seguiría pudiendo todo.
+  Cerrar (que `is_super_admin()` exija `role = 'super_admin'` donde toque)
+  **antes de dar de alta a un segundo admin**; hoy hay uno solo.
+- `requireOwner()` en `configuracion/cajas` y `configuracion/staff` no
+  exige owner: pide `configurar_general` / `gestionar_staff`, que el
+  gerente tiene por diseño ("owner menos planes y promociones"). Decisión:
+  el mapa de permisos no se toca; en el PR 6 las políticas declaran esos
+  permisos y el helper con nombre engañoso desaparece. Solo
+  `toggleCajaCheckinPinAction` es owner-only, y lo es por la RLS de `gyms`
+  (guard `ERROR_SOLO_OWNER`), no por el código.
 
 ## 8. Receta: agregar la acción 152
 

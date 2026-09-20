@@ -13,7 +13,7 @@ import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
 import { getPortalGym } from "@/lib/queries/portal.queries";
 import { getPortalSession } from "@/lib/portal/session";
 import { getCurrentAdmin } from "@/lib/admin/helpers";
-import { panelAction, kioscoAction, anonAction } from "./index";
+import { panelAction, kioscoAction, adminAction, anonAction } from "./index";
 import { AUTHZ, type Denegado } from "./tipos";
 
 type Cobro =
@@ -150,6 +150,37 @@ describe("kioscoAction", () => {
     gymPorSlug(null);
     const r = await compra("nadie", "tok-1", { items: 1 });
     expect(r).toEqual({ ok: false, error: "Gimnasio no encontrado." });
+  });
+});
+
+describe("adminAction", () => {
+  const base = { user_id: "u-1", email: "a@string.mx", nombre: null, activo: true, created_at: "", ultimo_acceso: null };
+  type Cancelado = { ok: true; por: string; tenantId: string } | Denegado;
+  const cancelar = adminAction(
+    "admin.cancelar_tenant",
+    {},
+    async ({ admin }, tenantId: string): Promise<Cancelado> => ({
+      ok: true,
+      por: admin.email,
+      tenantId,
+    })
+  );
+  const nota = adminAction("admin.nota_interna", {}, async () => ({ ok: true }));
+
+  it("sin sesión de admin → SIN_SESION", async () => {
+    vi.mocked(getCurrentAdmin).mockResolvedValue(null);
+    expect(await cancelar("t-1")).toEqual({ ok: false, code: "SIN_SESION", error: "Acceso denegado." });
+  });
+
+  it("admin de soporte no puede lo de super_admin, pero sí lo de admin", async () => {
+    vi.mocked(getCurrentAdmin).mockResolvedValue({ ...base, role: "admin" });
+    expect(await cancelar("t-1")).toMatchObject({ ok: false, code: "SIN_PERMISO" });
+    expect(await nota()).toEqual({ ok: true });
+  });
+
+  it("super_admin pasa y recibe ctx.admin", async () => {
+    vi.mocked(getCurrentAdmin).mockResolvedValue({ ...base, role: "super_admin" });
+    expect(await cancelar("t-1")).toEqual({ ok: true, por: "a@string.mx", tenantId: "t-1" });
   });
 });
 

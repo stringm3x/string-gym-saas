@@ -140,9 +140,54 @@ export const KIOSCO = {
 
 // ─────────────────────────────────────────────────────────────────────────
 // PANEL ADMIN DE STRING — app/admin/** (string_admins; sin plan ni rol de gym)
-// Se puebla en el PR 3.
+// Decisión 2026-09-20: `super_admin` = lo que afecta facturación, existencia
+// o acceso a la cuenta de un tenant; `admin` = soporte diario. La distinción
+// vive SOLO aquí: `is_super_admin()` en SQL mira únicamente `activo` (deuda
+// anotada en docs/autorizacion-acciones.md §7, cerrar antes de dar de alta
+// un segundo admin). Migrado en el PR 3.
 // ─────────────────────────────────────────────────────────────────────────
-export const ADMIN = {} as const satisfies Record<string, PoliticaAdmin>;
+export const ADMIN = {
+  // ── tenants/[tenantId]/actions.ts ──
+  /** cancelarTenantAction — irreversible; exporta y envía los datos del gym. */
+  "admin.cancelar_tenant": { rol: "super_admin" },
+  /** suspenderTenantAction — corta el servicio a un gym vivo. */
+  "admin.suspender_tenant": { rol: "super_admin" },
+  /** reactivarTenantAction — deshace una suspensión. */
+  "admin.reactivar_tenant": { rol: "admin" },
+  /** cambiarPlanAction — cambia lo que se cobra. */
+  "admin.cambiar_plan": { rol: "super_admin" },
+  /** activarPlanPagadoAction — prueba → pagado: nace la facturación. */
+  "admin.activar_plan_pagado": { rol: "super_admin" },
+  /** marcarFundadorAction — precio de por vida. */
+  "admin.marcar_fundador": { rol: "super_admin" },
+  /** toggleAddonAction — facturación. */
+  "admin.toggle_addon": { rol: "super_admin" },
+  /** resetPasswordOwnerAction — reset al dueño: vector de toma de cuenta. */
+  "admin.reset_password_owner": { rol: "super_admin" },
+  /** extenderPruebaAction — soporte/ventas; el schema acota los días. */
+  "admin.extender_prueba": { rol: "admin" },
+  /** registrarPagoManualAction — afirmar que entró dinero = facturación. */
+  "admin.registrar_pago_manual": { rol: "super_admin" },
+  /** agregarNotaInternaAction. */
+  "admin.nota_interna": { rol: "admin" },
+
+  // ── solicitudes/actions.ts ──
+  /** contactadoAction / descartarAction — funnel de solicitudes. */
+  "admin.solicitud_contactado": { rol: "admin" },
+  "admin.solicitud_descartar": { rol: "admin" },
+  /** activarSolicitudAction — crea el tenant y la cuenta del dueño: nacimiento de la relación comercial. */
+  "admin.solicitud_activar": { rol: "super_admin" },
+
+  // ── eventos/actions.ts ──
+  /** exportEventosCsv — lectura del audit log (la RLS ya lo acota). */
+  "admin.exportar_eventos": { rol: "admin" },
+
+  // ── cuenta/actions.ts ──
+  /** cambiarPasswordAction — sobre la propia cuenta. */
+  "admin.cambiar_password": { rol: "admin" },
+  /** cerrarTodasSesionesAction — sobre la propia cuenta; antes no validaba admin. */
+  "admin.cerrar_sesiones": { rol: "admin" },
+} as const satisfies Record<string, PoliticaAdmin>;
 
 // ─────────────────────────────────────────────────────────────────────────
 // ANÓNIMAS — sin sesión por definición. Unión cerrada: agregar un
@@ -156,7 +201,8 @@ export type PropositoAnon =
   | "otp_portal_solicitar" // app/portal/[slug]/login
   | "otp_portal_verificar"
   | "cerrar_sesion_portal" // app/portal/[slug]/actions.ts (borra cookie aunque la sesión ya expiró)
-  | "login_admin"; // app/admin/login
+  | "login_admin" // app/admin/login
+  | "cerrar_sesion_admin"; // app/admin/(panel)/actions.ts (signOut aunque la sesión ya no sea de admin)
 
 export type PoliticaPanelId = keyof typeof PANEL;
 export type PoliticaPortalId = keyof typeof PORTAL;

@@ -38,11 +38,5 @@
   "app/(tenant)/[slug]/reportes/financiero/actions.ts",
   "app/(tenant)/[slug]/suspendida/actions.ts",
   "app/(tenant)/[slug]/terminos-actions.ts",
-  "app/admin/(panel)/actions.ts",
-  "app/admin/(panel)/cuenta/actions.ts",
-  "app/admin/(panel)/eventos/actions.ts",
-  "app/admin/(panel)/solicitudes/actions.ts",
-  "app/admin/(panel)/tenants/[tenantId]/actions.ts",
-  "app/admin/login/actions.ts",
   "app/auth/accept-invite/actions.ts"
 ]

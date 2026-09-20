@@ -1,5 +1,6 @@
 "use server";
 
+import { adminAction } from "@/lib/authz";
 import {
   getAdminEventosLog,
   type EventosLogFilters,
@@ -19,28 +20,33 @@ function csvCell(v: unknown): string {
 
 /**
  * Genera un CSV con TODOS los eventos que coincidan con los filtros
- * (sin paginar). El gate is_super_admin lo aplica getAdminEventosLog.
+ * (sin paginar). La RLS de admin_events acota además la lectura.
  */
-export async function exportEventosCsv(
-  filters: EventosLogFilters
-): Promise<{ ok: boolean; csv?: string; error?: string }> {
-  try {
-    const { rows } = await getAdminEventosLog(filters, 1, 10_000);
-    const header = ["fecha", "admin", "accion", "tenant", "metadata"];
-    const lines = [header.join(",")];
-    for (const e of rows) {
-      lines.push(
-        [
-          csvCell(new Date(e.created_at).toISOString()),
-          csvCell(e.admin_email),
-          csvCell(e.accion),
-          csvCell(e.tenant_nombre ?? ""),
-          csvCell(e.metadata),
-        ].join(",")
-      );
+export const exportEventosCsv = adminAction(
+  "admin.exportar_eventos",
+  {},
+  async (
+    _ctx,
+    filters: EventosLogFilters
+  ): Promise<{ ok: boolean; csv?: string; error?: string }> => {
+    try {
+      const { rows } = await getAdminEventosLog(filters, 1, 10_000);
+      const header = ["fecha", "admin", "accion", "tenant", "metadata"];
+      const lines = [header.join(",")];
+      for (const e of rows) {
+        lines.push(
+          [
+            csvCell(new Date(e.created_at).toISOString()),
+            csvCell(e.admin_email),
+            csvCell(e.accion),
+            csvCell(e.tenant_nombre ?? ""),
+            csvCell(e.metadata),
+          ].join(",")
+        );
+      }
+      return { ok: true, csv: lines.join("\n") };
+    } catch {
+      return { ok: false, error: "No se pudo exportar." };
     }
-    return { ok: true, csv: lines.join("\n") };
-  } catch {
-    return { ok: false, error: "No se pudo exportar." };
   }
-}
+);
