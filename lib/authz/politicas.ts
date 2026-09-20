@@ -98,9 +98,9 @@ export const PORTAL = {} as const satisfies Record<string, PoliticaPortal>;
 
 // ─────────────────────────────────────────────────────────────────────────
 // KIOSCO — app/kiosco/** (público; la identidad la prueba el qr_token)
-// La firma pública de toda acción de kiosco es (slug, token, input): el
+// La firma pública de toda acción de kiosco es (slug, token, ...args): el
 // handler recibe `ctx.miembro` ya resuelto del token y NO existe un
-// `miembroId` que revalidar.
+// `miembroId` que revalidar. Migrado en el PR 1.
 // ─────────────────────────────────────────────────────────────────────────
 export const KIOSCO = {
   /** checkInKioscoAction — self check-in con QR. Starter. */

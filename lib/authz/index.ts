@@ -147,17 +147,17 @@ export interface PortalCtx {
 }
 
 /**
- * Acción del portal del socio. Firma pública: (slug, input). Verifica que
- * el gym exista y tenga `portal_miembro` más la feature declarada, y que
- * la cookie OTP sea una sesión vigente de ESE gym. Sin rol: no hay staff.
+ * Acción del portal del socio. Firma pública: (slug, ...args). Verifica
+ * que el gym exista y tenga `portal_miembro` más la feature declarada, y
+ * que la cookie OTP sea una sesión vigente de ESE gym. Sin rol: no hay staff.
  */
-export function portalAction<I, R>(
+export function portalAction<A extends unknown[], R>(
   politica: PoliticaPortalId,
   opts: OnDenied<R>,
-  handler: (ctx: PortalCtx, input: I) => Promise<R>
-): Guarded<"portal", [slug: string, input: I], R> {
+  handler: (ctx: PortalCtx, ...args: A) => Promise<R>
+): Guarded<"portal", [slug: string, ...args: A], R> {
   const { feature }: PoliticaPortal = PORTAL[politica];
-  const fn = async (slug: string, input: I): Promise<R> => {
+  const fn = async (slug: string, ...args: A): Promise<R> => {
     const gym = await getPortalGym(slug);
     if (!gym) {
       return negar(opts, "portal", politica, "GYM_NO_ENCONTRADO", MENSAJES.GYM_NO_ENCONTRADO, { slug });
@@ -179,7 +179,7 @@ export function portalAction<I, R>(
       admin: createAdminClient(),
       has: (f) => hasFeature(gym.plan, f),
     };
-    return handler(ctx, input);
+    return handler(ctx, ...args);
   };
   return marcar(fn, "portal");
 }
@@ -203,18 +203,18 @@ export interface KioscoCtx {
 }
 
 /**
- * Acción pública del kiosco. Firma pública: (slug, token, input). Sin
+ * Acción pública del kiosco. Firma pública: (slug, token, ...args). Sin
  * sesión: la identidad es el qr_token, y el handler recibe al socio ya
  * resuelto. Las reglas de negocio sobre ese socio (archivado, vencido,
  * congelado) siguen en el cuerpo, porque cambian por acción.
  */
-export function kioscoAction<I, R>(
+export function kioscoAction<A extends unknown[], R>(
   politica: PoliticaKioscoId,
   opts: OnDenied<R>,
-  handler: (ctx: KioscoCtx, input: I) => Promise<R>
-): Guarded<"kiosco", [slug: string, token: string, input: I], R> {
+  handler: (ctx: KioscoCtx, ...args: A) => Promise<R>
+): Guarded<"kiosco", [slug: string, token: string, ...args: A], R> {
   const { feature }: PoliticaKiosco = KIOSCO[politica];
-  const fn = async (slug: string, token: string, input: I): Promise<R> => {
+  const fn = async (slug: string, token: string, ...args: A): Promise<R> => {
     const admin = createAdminClient();
     const { data } = await admin
       .from("gyms")
@@ -240,7 +240,7 @@ export function kioscoAction<I, R>(
       admin,
       has: (f) => hasFeature(gym.plan, f),
     };
-    return handler(ctx, input);
+    return handler(ctx, ...args);
   };
   return marcar(fn, "kiosco");
 }

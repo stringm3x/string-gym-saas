@@ -75,9 +75,9 @@ export function KioscoEntrada({ slug }: { slug: string }) {
     });
   }
 
-  function guardarTelefono(miembroId: string) {
+  function guardarTelefono() {
     startSaveTel(async () => {
-      await actualizarTelefonoKioscoAction(slug, miembroId, telInput, tokenUsado);
+      await actualizarTelefonoKioscoAction(slug, tokenUsado, telInput);
       reset();
     });
   }
@@ -138,7 +138,7 @@ export function KioscoEntrada({ slug }: { slug: string }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => guardarTelefono(result.miembroId)}
+                    onClick={guardarTelefono}
                     disabled={savingTel || telInput.length !== 10}
                     className="h-14 bg-brand-green px-4 text-lg font-semibold text-on-brand transition-colors hover:bg-brand-green/90 disabled:opacity-50"
                   >

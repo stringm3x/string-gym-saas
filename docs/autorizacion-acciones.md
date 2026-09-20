@@ -227,7 +227,7 @@ solo cambia donde hoy hay un hueco.
 | PR | Alcance | Notas |
 |---|---|---|
 | **0** | `lib/authz/`, `politicas.ts` (caja y kiosco pobladas), generador, regla ESLint, `usar_panel`, `PERMISSION_LABELS`, proxy con request headers y borrado de entrantes, `getTenant` sin default. 53 módulos en `legacy.json`. | Entregado. Cero acciones migradas. |
-| 1 | Kiosco: 7 acciones, 1 archivo, 2 componentes (`KioscoComprar`, `KioscoMembresia`). | Primero: superficie sin sesión; el helper elimina parámetros. |
+| 1 | Kiosco: 7 acciones, 1 archivo, 3 componentes (`KioscoEntrada`, `KioscoComprar`, `KioscoMembresia`). | Entregado. Firma `(slug, token, ...args)`; el parámetro `miembroId` desapareció de 4 acciones. No cierra ninguna feature: `renovar_mp` pasa de `kiosco_autoservicio` a `mercadopago` (ambas Pro) y `actualizar_telefono` gana `qr_access` (Starter). |
 | 2 | Portal: 8 acciones, 6 archivos. `requirePortal` deja de hacer `redirect` en acciones. | Login OTP y cerrar sesión → `anonAction`. |
 | 3 | Admin: 19 acciones, 5 archivos. | Sustituye los `gate()` locales; distingue `admin` de `super_admin`. |
 | 4 | Panel `caja/` (4 archivos, 12 acciones). | **Cierra** `creditos`, `inventario`, `kiosco_autoservicio` (ver protocolo abajo). |

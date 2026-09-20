@@ -1,15 +1,14 @@
 "use server";
 
-import { createAdminClient } from "@/lib/supabase/admin";
-import { hasFeature, type Plan } from "@/lib/features";
-import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
+import { kioscoAction, type Denegado } from "@/lib/authz";
 import {
   createCheckin,
   visitasAgotadas,
   checkinReciente,
 } from "@/lib/queries/checkins.queries";
 import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
-import { randomUUID } from "node:crypto";
 import {
   getProductosKiosco,
   getPlanesMembresiaKiosco,
@@ -19,6 +18,10 @@ import {
 } from "@/lib/queries/kiosco.queries";
 import { createCheckoutPreference } from "@/lib/mercadopago/preferences";
 import { hoyISO } from "@/lib/utils/dates";
+
+// Toda acción del kiosco tiene firma pública (slug, token, ...args): el
+// socio sale del qr_token (ctx.miembro) y no existe un miembroId del
+// cliente que revalidar. Ver docs/autorizacion-acciones.md.
 
 export type KioscoError =
   | "QR_NO_ENCONTRADO"
@@ -41,6 +44,13 @@ export type KioscoResult =
     }
   | { success: false; error: KioscoError; nombre?: string };
 
+const NO_DISPONIBLE = "El autoservicio no está disponible en este gimnasio.";
+
+/** Denegación en la forma `{ ok, error }` con texto para el socio, no para el staff. */
+function denegar(d: Denegado): { ok: false; error: string } {
+  return { ok: false, error: d.code === "SIN_PLAN" ? NO_DISPONIBLE : d.error };
+}
+
 /** Teléfono ausente o placeholder → conviene pedirlo. */
 function sinTelefono(tel: string | null): boolean {
   const t = (tel ?? "").replace(/\D/g, "");
@@ -48,81 +58,65 @@ function sinTelefono(tel: string | null): boolean {
 }
 
 /**
- * Self check-in público: el miembro escanea su propio QR, sin staff ni sesión.
- * Resuelve el gym por slug (admin client), valida plan Pro+, y registra el
- * check-in si la membresía está vigente. Tenant-scoped por el id del gym.
+ * Self check-in público: el miembro escanea su propio QR, sin staff ni
+ * sesión. Registra el check-in si la membresía está vigente.
  */
-export async function checkInKioscoAction(
-  slug: string,
-  token: string
-): Promise<KioscoResult> {
-  const admin = createAdminClient();
-
-  const { data: gym } = await admin
-    .from("gyms")
-    .select("id, plan, checkin_bloquea_vencidos")
-    .eq("slug", slug)
-    .maybeSingle();
-  if (!gym) return { success: false, error: "QR_NO_ENCONTRADO" };
-  if (!hasFeature(gym.plan as Plan, "qr_access")) {
-    return { success: false, error: "NO_DISPONIBLE" };
-  }
-
-  const t = (token || "").trim();
-  if (!t) return { success: false, error: "QR_NO_ENCONTRADO" };
-
-  const miembro = await getMiembroByQrToken(gym.id, t, admin);
-  if (!miembro) return { success: false, error: "QR_NO_ENCONTRADO" };
-  if (miembro.archivado) {
-    return { success: false, error: "MIEMBRO_ARCHIVADO", nombre: miembro.nombre };
-  }
-  if (await congelacionActiva(gym.id, miembro.id, admin)) {
-    return {
+export const checkInKioscoAction = kioscoAction(
+  "kiosco.checkin",
+  {
+    onDenied: (d): KioscoResult => ({
       success: false,
-      error: "MEMBRESIA_CONGELADA",
+      error: d.code === "SIN_PLAN" ? "NO_DISPONIBLE" : "QR_NO_ENCONTRADO",
+    }),
+  },
+  async ({ gym, miembro, admin }): Promise<KioscoResult> => {
+    if (miembro.archivado) {
+      return { success: false, error: "MIEMBRO_ARCHIVADO", nombre: miembro.nombre };
+    }
+    if (await congelacionActiva(gym.id, miembro.id, admin)) {
+      return { success: false, error: "MEMBRESIA_CONGELADA", nombre: miembro.nombre };
+    }
+    if (await visitasAgotadas(gym.id, miembro.id, admin)) {
+      return { success: false, error: "SIN_VISITAS", nombre: miembro.nombre };
+    }
+    // Mismo QR sostenido frente al lector o doble tap: el lock del cliente se
+    // libera a los 3s, esto cubre el hueco del lado del servidor.
+    if (await checkinReciente(gym.id, miembro.id, admin)) {
+      return { success: false, error: "CHECKIN_RECIENTE", nombre: miembro.nombre };
+    }
+    if (
+      miembro.fecha_vencimiento &&
+      miembro.fecha_vencimiento < hoyISO() &&
+      gym.checkin_bloquea_vencidos !== false
+    ) {
+      return { success: false, error: "MEMBRESIA_VENCIDA", nombre: miembro.nombre };
+    }
+
+    const res = await createCheckin(gym.id, miembro.id, admin);
+    if (!res.ok) {
+      return { success: false, error: "ERROR", nombre: miembro.nombre };
+    }
+
+    // Nombre del plan (best-effort) para el saludo.
+    let plan: string | null = null;
+    if (miembro.plan_id) {
+      const { data: p } = await admin
+        .from("planes_membresia")
+        .select("nombre")
+        .eq("id", miembro.plan_id)
+        .maybeSingle();
+      plan = p?.nombre ?? null;
+    }
+
+    return {
+      success: true,
       nombre: miembro.nombre,
+      plan,
+      miembroId: miembro.id,
+      sinContacto: sinTelefono(miembro.telefono),
     };
   }
-  if (await visitasAgotadas(gym.id, miembro.id, admin)) {
-    return { success: false, error: "SIN_VISITAS", nombre: miembro.nombre };
-  }
-  // Mismo QR sostenido frente al lector o doble tap: el lock del cliente se
-  // libera a los 3s, esto cubre el hueco del lado del servidor.
-  if (await checkinReciente(gym.id, miembro.id, admin)) {
-    return { success: false, error: "CHECKIN_RECIENTE", nombre: miembro.nombre };
-  }
-  if (
-    miembro.fecha_vencimiento &&
-    miembro.fecha_vencimiento < hoyISO() &&
-    gym.checkin_bloquea_vencidos !== false
-  ) {
-    return { success: false, error: "MEMBRESIA_VENCIDA", nombre: miembro.nombre };
-  }
-
-  const res = await createCheckin(gym.id, miembro.id, admin);
-  if (!res.ok) {
-    return { success: false, error: "ERROR", nombre: miembro.nombre };
-  }
-
-  // Nombre del plan (best-effort) para el saludo.
-  let plan: string | null = null;
-  if (miembro.plan_id) {
-    const { data: p } = await admin
-      .from("planes_membresia")
-      .select("nombre")
-      .eq("id", miembro.plan_id)
-      .maybeSingle();
-    plan = p?.nombre ?? null;
-  }
-
-  return {
-    success: true,
-    nombre: miembro.nombre,
-    plan,
-    miembroId: miembro.id,
-    sinContacto: sinTelefono(miembro.telefono),
-  };
-}
+);
 
 // ============================================================
 // AUTOSERVICIO — COMPRAS (Bloque 2)
@@ -144,126 +138,89 @@ export type CodigoResult =
   | { ok: true; codigo: string; expiraAt: string }
   | { ok: false; error: string };
 
-/** Resuelve el gym de autoservicio por slug (valida feature). */
-async function gymAutoservicio(slug: string) {
-  const admin = createAdminClient();
-  const { data: gym } = await admin
-    .from("gyms")
-    .select("id, plan, mp_access_token")
-    .eq("slug", slug)
-    .maybeSingle();
-  if (!gym) return { error: "Gimnasio no encontrado." as const };
-  if (!hasFeature(gym.plan as Plan, "kiosco_autoservicio")) {
-    return { error: "El autoservicio no está disponible en este gimnasio." as const };
-  }
-  return { gym };
-}
-
 /**
  * Identifica al miembro por su QR (sin registrar entrada) y devuelve el
  * catálogo de productos disponibles para comprar en el kiosco.
  */
-export async function identificarMiembroKioscoAction(
-  slug: string,
-  token: string
-): Promise<IdentificarResult> {
-  const res = await gymAutoservicio(slug);
-  if (!res.gym) return { ok: false, error: res.error };
-  const gym = res.gym;
+export const identificarMiembroKioscoAction = kioscoAction(
+  "kiosco.identificar_compra",
+  { onDenied: denegar },
+  async ({ gym, miembro }): Promise<IdentificarResult> => {
+    if (miembro.archivado) return { ok: false, error: "Cuenta inactiva." };
 
-  const admin = createAdminClient();
-  const miembro = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
-  if (!miembro) return { ok: false, error: "QR no válido." };
-  if (miembro.archivado) return { ok: false, error: "Cuenta inactiva." };
+    const productos = await getProductosKiosco(gym.id);
 
-  const productos = await getProductosKiosco(gym.id);
-
-  return {
-    ok: true,
-    miembro: { id: miembro.id, nombre: miembro.nombre },
-    productos,
-    mpDisponible: !!gym.mp_access_token,
-  };
-}
+    return {
+      ok: true,
+      miembro: { id: miembro.id, nombre: miembro.nombre },
+      productos,
+      mpDisponible: !!gym.mp_access_token,
+    };
+  }
+);
 
 /**
  * Genera un código de autorización para una compra. El total y el stock se
  * recalculan en el servidor; el staff cobra y descuenta stock al autorizar.
- *
- * Revalida dueño con el qr_token (mismo patrón que actualizarTelefonoKioscoAction,
- * bloque-04b): antes solo cruzaba tenant_id + miembroId, confiando en el id
- * que manda el cliente — cualquiera con el miembroId de otro socio del mismo
- * gym podía generar un código de compra a su nombre.
  */
-export async function crearCodigoCompraAction(
-  slug: string,
-  miembroId: string,
-  items: { producto_id: string; cantidad: number }[],
-  metodo: KioscoMetodo,
-  token: string
-): Promise<CodigoResult> {
-  if (!METODOS.includes(metodo)) {
-    return { ok: false, error: "Método de pago inválido." };
-  }
-  if (!Array.isArray(items) || items.length === 0) {
-    return { ok: false, error: "Selecciona al menos un producto." };
-  }
-
-  const res = await gymAutoservicio(slug);
-  if (!res.gym) return { ok: false, error: res.error };
-  const gym = res.gym;
-
-  const admin = createAdminClient();
-  const miembro = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
-  if (!miembro || miembro.id !== miembroId) {
-    return {
-      ok: false,
-      error: "No se pudo verificar tu identidad. Vuelve a escanear tu QR.",
-    };
-  }
-
-  const productos = await getProductosKiosco(gym.id);
-  const porId = new Map(productos.map((p) => [p.id, p]));
-
-  const lineas: {
-    producto_id: string;
-    nombre: string;
-    cantidad: number;
-    precio: number;
-  }[] = [];
-  let total = 0;
-
-  for (const it of items) {
-    const p = porId.get(it.producto_id);
-    if (!p) return { ok: false, error: "Un producto ya no está disponible." };
-    const cantidad = Math.floor(it.cantidad);
-    if (!Number.isFinite(cantidad) || cantidad < 1) {
-      return { ok: false, error: "Cantidad inválida." };
+export const crearCodigoCompraAction = kioscoAction(
+  "kiosco.codigo_compra",
+  { onDenied: denegar },
+  async (
+    { gym, miembro },
+    items: { producto_id: string; cantidad: number }[],
+    metodo: KioscoMetodo
+  ): Promise<CodigoResult> => {
+    if (!METODOS.includes(metodo)) {
+      return { ok: false, error: "Método de pago inválido." };
     }
-    if (cantidad > p.stock) {
-      return { ok: false, error: `Sin stock suficiente de ${p.nombre}.` };
+    if (!Array.isArray(items) || items.length === 0) {
+      return { ok: false, error: "Selecciona al menos un producto." };
     }
-    lineas.push({
-      producto_id: p.id,
-      nombre: p.nombre,
-      cantidad,
-      precio: p.precio,
+
+    const productos = await getProductosKiosco(gym.id);
+    const porId = new Map(productos.map((p) => [p.id, p]));
+
+    const lineas: {
+      producto_id: string;
+      nombre: string;
+      cantidad: number;
+      precio: number;
+    }[] = [];
+    let total = 0;
+
+    for (const it of items) {
+      const p = porId.get(it.producto_id);
+      if (!p) return { ok: false, error: "Un producto ya no está disponible." };
+      const cantidad = Math.floor(it.cantidad);
+      if (!Number.isFinite(cantidad) || cantidad < 1) {
+        return { ok: false, error: "Cantidad inválida." };
+      }
+      if (cantidad > p.stock) {
+        return { ok: false, error: `Sin stock suficiente de ${p.nombre}.` };
+      }
+      lineas.push({
+        producto_id: p.id,
+        nombre: p.nombre,
+        cantidad,
+        precio: p.precio,
+      });
+      total += p.precio * cantidad;
+    }
+
+    if (total <= 0) return { ok: false, error: "El total debe ser mayor a 0." };
+
+    const r = await crearCodigoAutorizacion({
+      tenantId: gym.id,
+      tipo: "compra",
+      payload: { metodo, total, items: lineas },
+      miembroId: miembro.id,
     });
-    total += p.precio * cantidad;
+    if (!r.ok) return { ok: false, error: r.error ?? "No se pudo generar el código." };
+
+    return { ok: true, codigo: r.codigo!, expiraAt: r.expiraAt! };
   }
-
-  if (total <= 0) return { ok: false, error: "El total debe ser mayor a 0." };
-
-  const r = await crearCodigoAutorizacion({
-    tenantId: gym.id,
-    tipo: "compra",
-    payload: { metodo, total, items: lineas },
-    miembroId,
-  });
-  if (!r.ok) return { ok: false, error: r.error ?? "No se pudo generar el código." };
-
-  return { ok: true, codigo: r.codigo!, expiraAt: r.expiraAt! };
-}
+);
 
 // ============================================================
 // AUTOSERVICIO — MEMBRESÍA (Bloque 3)
@@ -286,36 +243,29 @@ export type RenovarMpResult =
  * Identifica al miembro por QR y devuelve su vencimiento + planes activos
  * para renovar en el kiosco.
  */
-export async function identificarMembresiaKioscoAction(
-  slug: string,
-  token: string
-): Promise<IdentificarMembresiaResult> {
-  const res = await gymAutoservicio(slug);
-  if (!res.gym) return { ok: false, error: res.error };
-  const gym = res.gym;
+export const identificarMembresiaKioscoAction = kioscoAction(
+  "kiosco.identificar_membresia",
+  { onDenied: denegar },
+  async ({ gym, miembro }): Promise<IdentificarMembresiaResult> => {
+    if (miembro.archivado) return { ok: false, error: "Cuenta inactiva." };
 
-  const admin = createAdminClient();
-  const miembro = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
-  if (!miembro) return { ok: false, error: "QR no válido." };
-  if (miembro.archivado) return { ok: false, error: "Cuenta inactiva." };
+    const planes = await getPlanesMembresiaKiosco(gym.id);
 
-  const planes = await getPlanesMembresiaKiosco(gym.id);
+    return {
+      ok: true,
+      miembro: {
+        id: miembro.id,
+        nombre: miembro.nombre,
+        fecha_vencimiento: miembro.fecha_vencimiento ?? null,
+      },
+      planes,
+      mpDisponible: !!gym.mp_access_token,
+    };
+  }
+);
 
-  return {
-    ok: true,
-    miembro: {
-      id: miembro.id,
-      nombre: miembro.nombre,
-      fecha_vencimiento: miembro.fecha_vencimiento ?? null,
-    },
-    planes,
-    mpDisponible: !!gym.mp_access_token,
-  };
-}
-
-/** Valida que el plan exista y esté activo en el gym (admin). */
-async function planValido(gymId: string, planId: string) {
-  const admin = createAdminClient();
+/** Valida que el plan exista y esté activo en el gym. */
+async function planValido(admin: SupabaseClient, gymId: string, planId: string) {
   const { data } = await admin
     .from("planes_membresia")
     .select("id, nombre, precio, activo")
@@ -329,193 +279,139 @@ async function planValido(gymId: string, planId: string) {
 /**
  * Genera un código de autorización para renovar membresía en efectivo o
  * transferencia. El staff cobra y extiende el vencimiento al autorizar.
- *
- * Revalida dueño con el qr_token — mismo motivo y patrón que
- * crearCodigoCompraAction.
  */
-export async function crearCodigoMembresiaAction(
-  slug: string,
-  miembroId: string,
-  planId: string,
-  metodo: "efectivo" | "transferencia",
-  token: string
-): Promise<CodigoResult> {
-  if (metodo !== "efectivo" && metodo !== "transferencia") {
-    return { ok: false, error: "Método de pago inválido." };
+export const crearCodigoMembresiaAction = kioscoAction(
+  "kiosco.codigo_membresia",
+  { onDenied: denegar },
+  async (
+    { gym, miembro, admin },
+    planId: string,
+    metodo: "efectivo" | "transferencia"
+  ): Promise<CodigoResult> => {
+    if (metodo !== "efectivo" && metodo !== "transferencia") {
+      return { ok: false, error: "Método de pago inválido." };
+    }
+
+    const plan = await planValido(admin, gym.id, planId);
+    if (!plan) return { ok: false, error: "Ese plan no está disponible." };
+
+    const r = await crearCodigoAutorizacion({
+      tenantId: gym.id,
+      tipo: "membresia",
+      payload: {
+        planId: plan.id,
+        planNombre: plan.nombre,
+        monto: plan.precio,
+        metodo,
+        miembroId: miembro.id,
+      },
+      miembroId: miembro.id,
+    });
+    if (!r.ok) return { ok: false, error: r.error ?? "No se pudo generar el código." };
+
+    return { ok: true, codigo: r.codigo!, expiraAt: r.expiraAt! };
   }
-
-  const res = await gymAutoservicio(slug);
-  if (!res.gym) return { ok: false, error: res.error };
-  const gym = res.gym;
-
-  const admin = createAdminClient();
-  const miembro = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
-  if (!miembro || miembro.id !== miembroId) {
-    return {
-      ok: false,
-      error: "No se pudo verificar tu identidad. Vuelve a escanear tu QR.",
-    };
-  }
-
-  const plan = await planValido(gym.id, planId);
-  if (!plan) return { ok: false, error: "Ese plan no está disponible." };
-
-  const r = await crearCodigoAutorizacion({
-    tenantId: gym.id,
-    tipo: "membresia",
-    payload: {
-      planId: plan.id,
-      planNombre: plan.nombre,
-      monto: plan.precio,
-      metodo,
-      miembroId,
-    },
-    miembroId,
-  });
-  if (!r.ok) return { ok: false, error: r.error ?? "No se pudo generar el código." };
-
-  return { ok: true, codigo: r.codigo!, expiraAt: r.expiraAt! };
-}
+);
 
 /**
  * Inicia la renovación con MercadoPago desde el kiosco. Crea `pagos_externos`
- * (pending) con miembroId+planId; el webhook de la Fase 7.9 confirma el pago
- * y extiende el vencimiento automáticamente.
- *
- * Revalida dueño con el qr_token — mismo motivo que las otras dos acciones
- * de autorización del kiosco, pero de mayor impacto aquí: sin esto, dispara
- * una extensión REAL de membresía de otro socio en cuanto el webhook de MP
- * confirma el pago (no requiere que el staff autorice nada).
+ * (pending) con miembroId+planId; el webhook confirma el pago y extiende el
+ * vencimiento automáticamente — por eso es la acción de mayor impacto del
+ * kiosco: el socio sale del token, nunca del cliente.
  */
-export async function renovarMembresiaMpKioscoAction(
-  slug: string,
-  miembroId: string,
-  planId: string,
-  token: string
-): Promise<RenovarMpResult> {
-  const res = await gymAutoservicio(slug);
-  if (!res.gym) return { ok: false, error: res.error };
-  const gym = res.gym;
+export const renovarMembresiaMpKioscoAction = kioscoAction(
+  "kiosco.renovar_mp",
+  { onDenied: denegar },
+  async ({ gym, miembro, admin, has }, planId: string): Promise<RenovarMpResult> => {
+    if (!has("kiosco_autoservicio")) return { ok: false, error: NO_DISPONIBLE };
 
-  const admin = createAdminClient();
-  const miembroQr = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
-  if (!miembroQr || miembroQr.id !== miembroId) {
-    return {
-      ok: false,
-      error: "No se pudo verificar tu identidad. Vuelve a escanear tu QR.",
-    };
-  }
-  // getMiembroByQrToken no trae email (lo usa el checkout de MP); una
-  // segunda lectura acotada, ya con la identidad confirmada arriba.
-  const { data: miembro } = await admin
-    .from("miembros")
-    .select("email")
-    .eq("tenant_id", gym.id)
-    .eq("id", miembroId)
-    .maybeSingle();
+    // getMiembroByQrToken no trae email (lo usa el checkout de MP); una
+    // segunda lectura acotada, ya con la identidad resuelta por el token.
+    const { data: datos } = await admin
+      .from("miembros")
+      .select("email")
+      .eq("tenant_id", gym.id)
+      .eq("id", miembro.id)
+      .maybeSingle();
 
-  const plan = await planValido(gym.id, planId);
-  if (!plan) return { ok: false, error: "Ese plan no está disponible." };
+    const plan = await planValido(admin, gym.id, planId);
+    if (!plan) return { ok: false, error: "Ese plan no está disponible." };
 
-  const refId = randomUUID();
-  const { error: insErr } = await admin.from("pagos_externos").insert({
-    tenant_id: gym.id,
-    proveedor: "mercadopago",
-    external_id: refId,
-    status: "pending",
-    monto: plan.precio,
-    metadata: { descripcion: plan.nombre, miembroId, planId: plan.id },
-  });
-  if (insErr) return { ok: false, error: "No se pudo iniciar el pago." };
+    const refId = randomUUID();
+    const { error: insErr } = await admin.from("pagos_externos").insert({
+      tenant_id: gym.id,
+      proveedor: "mercadopago",
+      external_id: refId,
+      status: "pending",
+      monto: plan.precio,
+      metadata: { descripcion: plan.nombre, miembroId: miembro.id, planId: plan.id },
+    });
+    if (insErr) return { ok: false, error: "No se pudo iniciar el pago." };
 
-  const domain = process.env.APP_DOMAIN ?? "app.gym.stringwebs.com";
-  const kioscoUrl = `https://${domain}/kiosco/${slug}`;
+    const domain = process.env.APP_DOMAIN ?? "app.gym.stringwebs.com";
+    const kioscoUrl = `https://${domain}/kiosco/${gym.slug}`;
 
-  const pref = await createCheckoutPreference(gym.id, {
-    titulo: plan.nombre,
-    monto: plan.precio,
-    successUrl: kioscoUrl,
-    failureUrl: kioscoUrl,
-    pendingUrl: kioscoUrl,
-    externalReference: refId,
-    payerEmail: (miembro?.email as string | null) || undefined,
-  });
+    const pref = await createCheckoutPreference(gym.id, {
+      titulo: plan.nombre,
+      monto: plan.precio,
+      successUrl: kioscoUrl,
+      failureUrl: kioscoUrl,
+      pendingUrl: kioscoUrl,
+      externalReference: refId,
+      payerEmail: (datos?.email as string | null) || undefined,
+    });
 
-  if (!pref.ok) {
+    if (!pref.ok) {
+      await admin
+        .from("pagos_externos")
+        .delete()
+        .eq("tenant_id", gym.id)
+        .eq("external_id", refId);
+      return {
+        ok: false,
+        error:
+          pref.error === "MP_NO_CONECTADO"
+            ? "El gimnasio no tiene pagos en línea configurados."
+            : pref.error,
+      };
+    }
+
     await admin
       .from("pagos_externos")
-      .delete()
+      .update({
+        metadata: {
+          descripcion: plan.nombre,
+          miembroId: miembro.id,
+          planId: plan.id,
+          preference_id: pref.id,
+        },
+      })
       .eq("tenant_id", gym.id)
       .eq("external_id", refId);
-    return {
-      ok: false,
-      error:
-        pref.error === "MP_NO_CONECTADO"
-          ? "El gimnasio no tiene pagos en línea configurados."
-          : pref.error,
-    };
+
+    return { ok: true, initPoint: pref.initPoint };
   }
-
-  await admin
-    .from("pagos_externos")
-    .update({
-      metadata: {
-        descripcion: plan.nombre,
-        miembroId,
-        planId: plan.id,
-        preference_id: pref.id,
-      },
-    })
-    .eq("tenant_id", gym.id)
-    .eq("external_id", refId);
-
-  return { ok: true, initPoint: pref.initPoint };
-}
+);
 
 /**
- * Actualiza el teléfono de un miembro desde el kiosco (público, sin sesión).
- * Scoped por gym (slug) + id del miembro. No lanza; valida 10 dígitos.
- *
- * Revalida dueño con el qr_token (línea de bloque-04): antes solo filtraba
- * por tenant_id + miembroId, confiando en el id que mandaba el cliente. Con
- * cualquier miembroId válido del mismo gym (no es adivinable, pero si algún
- * día se filtrara por cualquier vía) se podía pisar el teléfono de OTRO
- * socio y de ahí encadenar el OTP del portal — cambiar teléfono, recibir el
- * código, entrar a la cuenta ajena. Exigir el mismo token que se escaneó
- * cierra el hueco sin depender de qué tan obtenible sea el id hoy.
+ * Actualiza el teléfono del socio identificado por su QR tras el check-in.
+ * Valida 10 dígitos; no lanza.
  */
-export async function actualizarTelefonoKioscoAction(
-  slug: string,
-  miembroId: string,
-  telefono: string,
-  token: string
-): Promise<{ ok: boolean; error?: string }> {
-  const digits = (telefono || "").replace(/\D/g, "");
-  if (digits.length !== 10) {
-    return { ok: false, error: "Escribe un número de 10 dígitos." };
+export const actualizarTelefonoKioscoAction = kioscoAction(
+  "kiosco.actualizar_telefono",
+  {},
+  async ({ gym, miembro, admin }, telefono: string): Promise<{ ok: boolean; error?: string }> => {
+    const digits = (telefono || "").replace(/\D/g, "");
+    if (digits.length !== 10) {
+      return { ok: false, error: "Escribe un número de 10 dígitos." };
+    }
+
+    const { error } = await admin
+      .from("miembros")
+      .update({ telefono: digits })
+      .eq("tenant_id", gym.id)
+      .eq("id", miembro.id);
+    if (error) return { ok: false, error: "No se pudo guardar." };
+    return { ok: true };
   }
-
-  const admin = createAdminClient();
-  const { data: gym } = await admin
-    .from("gyms")
-    .select("id")
-    .eq("slug", slug)
-    .maybeSingle();
-  if (!gym) return { ok: false, error: "Gimnasio no encontrado." };
-
-  const miembro = await getMiembroByQrToken(gym.id, (token || "").trim(), admin);
-  if (!miembro || miembro.id !== miembroId) {
-    return {
-      ok: false,
-      error: "No se pudo verificar tu identidad. Vuelve a escanear tu QR.",
-    };
-  }
-
-  const { error } = await admin
-    .from("miembros")
-    .update({ telefono: digits })
-    .eq("tenant_id", gym.id)
-    .eq("id", miembroId);
-  if (error) return { ok: false, error: "No se pudo guardar." };
-  return { ok: true };
-}
+);

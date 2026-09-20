@@ -82,13 +82,7 @@ export function KioscoComprar({ slug }: { slug: string }) {
     if (items.length === 0 || !miembro) return;
     setError(null);
     start(async () => {
-      const r = await crearCodigoCompraAction(
-        slug,
-        miembro.id,
-        items,
-        metodo,
-        tokenUsado
-      );
+      const r = await crearCodigoCompraAction(slug, tokenUsado, items, metodo);
       if (!r.ok) {
         setError(r.error);
         return;

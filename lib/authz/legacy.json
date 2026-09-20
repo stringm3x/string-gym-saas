@@ -45,7 +45,6 @@
   "app/admin/(panel)/tenants/[tenantId]/actions.ts",
   "app/admin/login/actions.ts",
   "app/auth/accept-invite/actions.ts",
-  "app/kiosco/[slug]/actions.ts",
   "app/portal/[slug]/actions.ts",
   "app/portal/[slug]/clases/actions.ts",
   "app/portal/[slug]/congelar-actions.ts",

@@ -75,13 +75,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
     if (!miembro || !planSel) return;
     setError(null);
     start(async () => {
-      const r = await crearCodigoMembresiaAction(
-        slug,
-        miembro.id,
-        planSel.id,
-        metodo,
-        tokenUsado
-      );
+      const r = await crearCodigoMembresiaAction(slug, tokenUsado, planSel.id, metodo);
       if (!r.ok) {
         setError(r.error);
         return;
@@ -95,12 +89,7 @@ export function KioscoMembresia({ slug }: { slug: string }) {
     if (!miembro || !planSel) return;
     setError(null);
     start(async () => {
-      const r = await renovarMembresiaMpKioscoAction(
-        slug,
-        miembro.id,
-        planSel.id,
-        tokenUsado
-      );
+      const r = await renovarMembresiaMpKioscoAction(slug, tokenUsado, planSel.id);
       if (!r.ok) {
         setError(r.error);
         return;
