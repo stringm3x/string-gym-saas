@@ -147,6 +147,72 @@ export const PANEL = {
   "miembros.nutricion_crear": { feature: "nutricion", permission: "gestionar_nutricion" },
   "miembros.nutricion_editar": { feature: "nutricion", permission: "gestionar_nutricion" },
   "miembros.nutricion_archivar": { feature: "nutricion", permission: "gestionar_nutricion" },
+
+  // ── configuracion/** ── (migrado en el PR 6)
+  // Paridad con las páginas: cada page.tsx de configuración ya gatea con la
+  // misma feature que aquí se declara (ConfigNav también). Sin excepciones
+  // al modelo de gerente: cajas y staff declaran configurar_general /
+  // gestionar_staff (owner + gerente); el `requireOwner()` engañoso murió.
+  /** regenerarApiKeyAction (ya verificaba ambos ejes). */
+  "config.api_regenerar": { feature: "api", permission: "configurar_general" },
+  /** cajas/actions.ts — múltiples cajas es caja básica. */
+  "config.caja_crear": { feature: "caja_basica", permission: "configurar_general" },
+  "config.caja_renombrar": { feature: "caja_basica", permission: "configurar_general" },
+  "config.caja_desactivar": { feature: "caja_basica", permission: "configurar_general" },
+  "config.caja_reactivar": { feature: "caja_basica", permission: "configurar_general" },
+  "config.caja_requiere_cuadre": { feature: "caja_basica", permission: "configurar_general" },
+  /** clases/actions.ts (ya verificaban ambos ejes). */
+  "config.clases_noshow": { feature: "clases", permission: "configurar_general" },
+  "config.clase_crear": { feature: "clases", permission: "configurar_general" },
+  "config.clase_editar": { feature: "clases", permission: "configurar_general" },
+  "config.clase_toggle": { feature: "clases", permission: "configurar_general" },
+  "config.clase_generar_sesiones": { feature: "clases", permission: "configurar_general" },
+  /** updateGymConfigAction — datos del gym y reglas de check-in/congelación (Starter). */
+  "config.gym": { feature: "miembros", permission: "configurar_general" },
+  /** guardarGooglePlaceIdAction — reseñas en Google. cierra: opiniones (Pro); la página ya lo oculta. */
+  "config.google_place_id": { feature: "opiniones", permission: "configurar_general" },
+  /** updateMarcaAction (ya verificaba ambos ejes). */
+  "config.marca_color": { feature: "color_gimnasio", permission: "configurar_general" },
+  "config.logo_subir": { feature: "personalizacion_logo", permission: "configurar_general" },
+  "config.logo_borrar": { feature: "personalizacion_logo", permission: "configurar_general" },
+  /** pagos/actions.ts (ya verificaban ambos ejes). */
+  "config.mp_conectar": { feature: "mercadopago", permission: "configurar_general" },
+  "config.mp_desconectar": { feature: "mercadopago", permission: "configurar_general" },
+  /** planes/actions.ts — catálogo de planes (Starter). */
+  "config.plan_crear": { feature: "catalogo_planes", permission: "configurar_planes_promociones" },
+  "config.plan_editar": { feature: "catalogo_planes", permission: "configurar_planes_promociones" },
+  "config.plan_toggle": { feature: "catalogo_planes", permission: "configurar_planes_promociones" },
+  /** plantillas/actions.ts. cierra: plantillas_mensaje (Pro); la página ya lo gatea. */
+  "config.plantilla_crear": { feature: "plantillas_mensaje", permission: "configurar_planes_promociones" },
+  "config.plantilla_editar": { feature: "plantillas_mensaje", permission: "configurar_planes_promociones" },
+  "config.plantilla_borrar": { feature: "plantillas_mensaje", permission: "configurar_planes_promociones" },
+  "config.plantilla_toggle": { feature: "plantillas_mensaje", permission: "configurar_planes_promociones" },
+  "config.plantillas_seed": { feature: "plantillas_mensaje", permission: "configurar_planes_promociones" },
+  /** promociones/actions.ts. cierra: promociones (Pro); la página ya lo gatea. */
+  "config.promocion_crear": { feature: "promociones", permission: "configurar_planes_promociones" },
+  "config.promocion_editar": { feature: "promociones", permission: "configurar_planes_promociones" },
+  "config.promocion_toggle": { feature: "promociones", permission: "configurar_planes_promociones" },
+  /** tags/actions.ts. cierra: tags (Pro); la página ya lo gatea. */
+  "config.tag_crear": { feature: "tags", permission: "configurar_planes_promociones" },
+  "config.tag_editar": { feature: "tags", permission: "configurar_planes_promociones" },
+  "config.tag_borrar": { feature: "tags", permission: "configurar_planes_promociones" },
+  /**
+   * staff/actions.ts. inviteStaff ya exigía multiusuario; las otras 8 solo
+   * rol. cierra: multiusuario (Pro) para gestionar el equipo existente — la
+   * página entera de staff ya es Pro. toggleCajaCheckinPin conserva el
+   * guard ERROR_SOLO_OWNER por la RLS de gyms, no por el código.
+   */
+  "config.staff_invitar": { feature: "multiusuario", permission: "gestionar_staff" },
+  "config.staff_reenviar": { feature: "multiusuario", permission: "gestionar_staff" },
+  "config.staff_cancelar_invitacion": { feature: "multiusuario", permission: "gestionar_staff" },
+  "config.staff_desactivar": { feature: "multiusuario", permission: "gestionar_staff" },
+  "config.staff_reactivar": { feature: "multiusuario", permission: "gestionar_staff" },
+  "config.staff_eliminar": { feature: "multiusuario", permission: "gestionar_staff" },
+  "config.staff_pin_asignar": { feature: "multiusuario", permission: "gestionar_staff" },
+  "config.staff_pin_quitar": { feature: "multiusuario", permission: "gestionar_staff" },
+  "config.caja_pin_checkin": { feature: "multiusuario", permission: "gestionar_staff" },
+  /** updateWhatsappConfigAction (ya verificaba ambos ejes). */
+  "config.whatsapp": { feature: "whatsapp_automatico", permission: "configurar_general" },
 } as const satisfies Record<string, PoliticaPanel>;
 
 // ─────────────────────────────────────────────────────────────────────────

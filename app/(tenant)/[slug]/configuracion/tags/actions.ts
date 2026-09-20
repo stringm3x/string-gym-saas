@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getTenant } from "@/lib/tenant";
-import { hasPermission } from "@/lib/permissions";
+import { panelAction, type Denegado } from "@/lib/authz";
 import {
   createTag,
   updateTag,
@@ -17,6 +16,7 @@ export interface TagFormState {
 }
 
 const empty: TagFormState = { ok: false, error: null, fieldErrors: {} };
+const denegar = (d: Denegado): TagFormState => ({ ...empty, error: d.error });
 
 function parseFormData(formData: FormData) {
   return {
@@ -37,68 +37,59 @@ function collectFieldErrors(
   return fieldErrors;
 }
 
-export async function createTagAction(
-  _prev: TagFormState,
-  formData: FormData
-): Promise<TagFormState> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
-    return { ...empty, error: "No tienes permiso para esta acción." };
+export const createTagAction = panelAction(
+  "config.tag_crear",
+  { onDenied: denegar },
+  async (tenant, _prev: TagFormState, formData: FormData): Promise<TagFormState> => {
+    const raw = parseFormData(formData);
+
+    const parsed = tagSchema.safeParse(raw);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: "Revisa los campos marcados.",
+        fieldErrors: collectFieldErrors(parsed.error.issues),
+      };
+    }
+
+    const result = await createTag(tenant.id, parsed.data);
+    if (!result.ok) return { ...empty, error: result.error };
+
+    revalidatePath(`/${tenant.slug}/configuracion/tags`);
+    return { ok: true, error: null, fieldErrors: {} };
   }
-  const raw = parseFormData(formData);
+);
 
-  const parsed = tagSchema.safeParse(raw);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: "Revisa los campos marcados.",
-      fieldErrors: collectFieldErrors(parsed.error.issues),
-    };
+export const updateTagAction = panelAction(
+  "config.tag_editar",
+  { onDenied: denegar },
+  async (tenant, id: string, _prev: TagFormState, formData: FormData): Promise<TagFormState> => {
+    const raw = parseFormData(formData);
+
+    const parsed = tagSchema.safeParse(raw);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: "Revisa los campos marcados.",
+        fieldErrors: collectFieldErrors(parsed.error.issues),
+      };
+    }
+
+    const result = await updateTag(tenant.id, id, parsed.data);
+    if (!result.ok) return { ...empty, error: result.error };
+
+    revalidatePath(`/${tenant.slug}/configuracion/tags`);
+    return { ok: true, error: null, fieldErrors: {} };
   }
+);
 
-  const result = await createTag(tenant.id, parsed.data);
-  if (!result.ok) return { ...empty, error: result.error };
-
-  revalidatePath(`/${tenant.slug}/configuracion/tags`);
-  return { ok: true, error: null, fieldErrors: {} };
-}
-
-export async function updateTagAction(
-  id: string,
-  _prev: TagFormState,
-  formData: FormData
-): Promise<TagFormState> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
-    return { ...empty, error: "No tienes permiso para esta acción." };
+export const deleteTagAction = panelAction(
+  "config.tag_borrar",
+  {},
+  async (tenant, id: string): Promise<{ ok: boolean; error?: string }> => {
+    const result = await deleteTag(tenant.id, id);
+    if (!result.ok) return { ok: false, error: result.error };
+    revalidatePath(`/${tenant.slug}/configuracion/tags`);
+    return { ok: true };
   }
-  const raw = parseFormData(formData);
-
-  const parsed = tagSchema.safeParse(raw);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: "Revisa los campos marcados.",
-      fieldErrors: collectFieldErrors(parsed.error.issues),
-    };
-  }
-
-  const result = await updateTag(tenant.id, id, parsed.data);
-  if (!result.ok) return { ...empty, error: result.error };
-
-  revalidatePath(`/${tenant.slug}/configuracion/tags`);
-  return { ok: true, error: null, fieldErrors: {} };
-}
-
-export async function deleteTagAction(
-  id: string
-): Promise<{ ok: boolean; error?: string }> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
-    return { ok: false, error: "No tienes permiso para esta acción." };
-  }
-  const result = await deleteTag(tenant.id, id);
-  if (!result.ok) return { ok: false, error: result.error };
-  revalidatePath(`/${tenant.slug}/configuracion/tags`);
-  return { ok: true };
-}
+);

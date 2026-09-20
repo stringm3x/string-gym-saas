@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getTenant } from "@/lib/tenant";
+import { panelAction, type Denegado } from "@/lib/authz";
 import {
   createPlantilla,
   updatePlantilla,
@@ -10,7 +10,6 @@ import {
   seedPlantillas,
 } from "@/lib/queries/plantillas.queries";
 import { plantillaSchema } from "@/lib/validations/plantilla.schema";
-import { hasPermission } from "@/lib/permissions";
 
 export interface PlantillaFormState {
   ok: boolean;
@@ -19,6 +18,7 @@ export interface PlantillaFormState {
 }
 
 const empty: PlantillaFormState = { ok: false, error: null, fieldErrors: {} };
+const denegar = (d: Denegado): PlantillaFormState => ({ ...empty, error: d.error });
 
 function parseFormData(formData: FormData) {
   return {
@@ -41,97 +41,86 @@ function collectFieldErrors(
   return fieldErrors;
 }
 
-export async function createPlantillaAction(
-  _prev: PlantillaFormState,
-  formData: FormData
-): Promise<PlantillaFormState> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
-    return { ...empty, error: "No tienes permiso para esta acción." };
+export const createPlantillaAction = panelAction(
+  "config.plantilla_crear",
+  { onDenied: denegar },
+  async (tenant, _prev: PlantillaFormState, formData: FormData): Promise<PlantillaFormState> => {
+    const raw = parseFormData(formData);
+
+    const parsed = plantillaSchema.safeParse(raw);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: "Revisa los campos marcados.",
+        fieldErrors: collectFieldErrors(parsed.error.issues),
+      };
+    }
+
+    const result = await createPlantilla(tenant.id, parsed.data);
+    if (!result.ok) return { ...empty, error: result.error };
+
+    revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
+    return { ok: true, error: null, fieldErrors: {} };
   }
-  const raw = parseFormData(formData);
+);
 
-  const parsed = plantillaSchema.safeParse(raw);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: "Revisa los campos marcados.",
-      fieldErrors: collectFieldErrors(parsed.error.issues),
-    };
+export const updatePlantillaAction = panelAction(
+  "config.plantilla_editar",
+  { onDenied: denegar },
+  async (
+    tenant,
+    id: string,
+    _prev: PlantillaFormState,
+    formData: FormData
+  ): Promise<PlantillaFormState> => {
+    const raw = parseFormData(formData);
+
+    const parsed = plantillaSchema.safeParse(raw);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: "Revisa los campos marcados.",
+        fieldErrors: collectFieldErrors(parsed.error.issues),
+      };
+    }
+
+    const result = await updatePlantilla(tenant.id, id, parsed.data);
+    if (!result.ok) return { ...empty, error: result.error };
+
+    revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
+    return { ok: true, error: null, fieldErrors: {} };
   }
+);
 
-  const result = await createPlantilla(tenant.id, parsed.data);
-  if (!result.ok) return { ...empty, error: result.error };
-
-  revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
-  return { ok: true, error: null, fieldErrors: {} };
-}
-
-export async function updatePlantillaAction(
-  id: string,
-  _prev: PlantillaFormState,
-  formData: FormData
-): Promise<PlantillaFormState> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
-    return { ...empty, error: "No tienes permiso para esta acción." };
+export const deletePlantillaAction = panelAction(
+  "config.plantilla_borrar",
+  {},
+  async (tenant, id: string): Promise<{ ok: boolean; error?: string }> => {
+    const result = await deletePlantilla(tenant.id, id);
+    if (!result.ok) return { ok: false, error: result.error };
+    revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
+    return { ok: true };
   }
-  const raw = parseFormData(formData);
+);
 
-  const parsed = plantillaSchema.safeParse(raw);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: "Revisa los campos marcados.",
-      fieldErrors: collectFieldErrors(parsed.error.issues),
-    };
+export const toggleActivoAction = panelAction(
+  "config.plantilla_toggle",
+  {},
+  async (tenant, id: string, activo: boolean): Promise<{ ok: boolean; error?: string }> => {
+    const result = await toggleActivoPlantilla(tenant.id, id, activo);
+    if (!result.ok) return { ok: false, error: result.error };
+    revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
+    return { ok: true };
   }
+);
 
-  const result = await updatePlantilla(tenant.id, id, parsed.data);
-  if (!result.ok) return { ...empty, error: result.error };
-
-  revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
-  return { ok: true, error: null, fieldErrors: {} };
-}
-
-export async function deletePlantillaAction(
-  id: string
-): Promise<{ ok: boolean; error?: string }> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
-    return { ok: false, error: "No tienes permiso para esta acción." };
+export const seedPlantillasAction = panelAction(
+  "config.plantillas_seed",
+  {},
+  async (tenant): Promise<{ ok: boolean; count?: number; error?: string }> => {
+    const result = await seedPlantillas(tenant.id);
+    if (!result.ok) return { ok: false, error: result.error };
+    revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
+    return { ok: true, count: result.count };
   }
-  const result = await deletePlantilla(tenant.id, id);
-  if (!result.ok) return { ok: false, error: result.error };
-  revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
-  return { ok: true };
-}
-
-export async function toggleActivoAction(
-  id: string,
-  activo: boolean
-): Promise<{ ok: boolean; error?: string }> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
-    return { ok: false, error: "No tienes permiso para esta acción." };
-  }
-  const result = await toggleActivoPlantilla(tenant.id, id, activo);
-  if (!result.ok) return { ok: false, error: result.error };
-  revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
-  return { ok: true };
-}
-
-export async function seedPlantillasAction(): Promise<{
-  ok: boolean;
-  count?: number;
-  error?: string;
-}> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "configurar_planes_promociones")) {
-    return { ok: false, error: "No tienes permiso para esta acción." };
-  }
-  const result = await seedPlantillas(tenant.id);
-  if (!result.ok) return { ok: false, error: result.error };
-  revalidatePath(`/${tenant.slug}/configuracion/plantillas`);
-  return { ok: true, count: result.count };
-}
+);
