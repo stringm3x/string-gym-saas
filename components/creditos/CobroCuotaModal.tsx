@@ -36,7 +36,7 @@ export function CobroCuotaModal({
   miembroNombre: string;
 }) {
   const router = useRouter();
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, warning } = useToast();
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
   const [pending, start] = useTransition();
 
@@ -52,6 +52,9 @@ export function CobroCuotaModal({
           ? "Cuota pagada — plan completado"
           : "Pago de cuota registrado"
       );
+      if (r.reciboError) {
+        warning("El recibo no se pudo enviar por correo", r.reciboError);
+      }
       router.refresh();
       onClose();
     });

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createPago } from "@/lib/queries/pagos.queries";
 import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
+import { logError } from "@/lib/log";
 
 /** Producto disponible para comprar en el kiosco (admin client, público). */
 export interface KioscoProducto {
@@ -305,13 +306,31 @@ export async function autorizarCodigo(
     return { ok: false, error: "Este código ya fue procesado por otra caja." };
   }
 
-  async function revertir() {
-    await supabase
+  // Revierte el claim (usado=false) para que el mismo código pueda
+  // reintentarse. Devuelve si el revert en sí funcionó: si falla, el código
+  // queda "usado" para siempre y el staff necesita saber que ESE código ya
+  // no sirve — antes se le mostraba el error del pago como si reintentar
+  // con el mismo código fuera a funcionar, y no había manera de reintentar
+  // ni de saber por qué.
+  async function revertir(): Promise<boolean> {
+    const { error } = await supabase
       .from("codigos_autorizacion")
       .update({ usado: false })
       .eq("tenant_id", tenantId)
       .eq("id", codigoId);
+    if (error) {
+      logError("kiosco.revertir_codigo_fallo", {
+        tenantId,
+        codigoId,
+        error: error.message,
+      });
+      return false;
+    }
+    return true;
   }
+
+  const CODIGO_ATASCADO =
+    "No se pudo procesar el pago ni liberar este código. Pídele al socio que genere uno nuevo desde el kiosco.";
 
   if (tipo === "compra") {
     const payload = cod.payload as CompraPayload;
@@ -326,8 +345,8 @@ export async function autorizarCodigo(
         miembro_id: miembroId,
       });
       if (!r.ok) {
-        await revertir();
-        return { ok: false, error: r.error };
+        const revertido = await revertir();
+        return { ok: false, error: revertido ? r.error : CODIGO_ATASCADO };
       }
     }
     return { ok: true, tipo };
@@ -342,8 +361,11 @@ export async function autorizarCodigo(
     .eq("id", payload.planId)
     .maybeSingle();
   if (!plan) {
-    await revertir();
-    return { ok: false, error: "El plan ya no existe." };
+    const revertido = await revertir();
+    return {
+      ok: false,
+      error: revertido ? "El plan ya no existe." : CODIGO_ATASCADO,
+    };
   }
 
   const { data: miembro } = await supabase
@@ -368,8 +390,8 @@ export async function autorizarCodigo(
     periodo_fin: rango.periodo_fin,
   });
   if (!r.ok) {
-    await revertir();
-    return { ok: false, error: r.error };
+    const revertido = await revertir();
+    return { ok: false, error: revertido ? r.error : CODIGO_ATASCADO };
   }
 
   return { ok: true, tipo };

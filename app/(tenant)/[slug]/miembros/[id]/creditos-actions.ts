@@ -36,7 +36,12 @@ export const pagarCuotaAction = panelAction(
     tenant,
     cuotaId: string,
     metodo: Metodo
-  ): Promise<{ ok: boolean; error?: string; planCompletado?: boolean }> => {
+  ): Promise<{
+    ok: boolean;
+    error?: string;
+    planCompletado?: boolean;
+    reciboError?: string;
+  }> => {
     if (!METODOS.includes(metodo)) {
       return { ok: false, error: "Método de pago inválido." };
     }
@@ -46,6 +51,6 @@ export const pagarCuotaAction = panelAction(
 
     // Revalida ficha del miembro y vista de CxC (ambas dependen de las cuotas).
     revalidatePath(`/${tenant.slug}`, "layout");
-    return { ok: true, planCompletado: r.planCompletado };
+    return { ok: true, planCompletado: r.planCompletado, reciboError: r.reciboError };
   }
 );

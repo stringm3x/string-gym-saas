@@ -7,6 +7,7 @@
  * que entrante (52155…) y saliente (10 dígitos del miembro) caigan en la misma.
  */
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/log";
 
 function ultimos10(s: string | null): string {
   return (s ?? "").replace(/\D/g, "").slice(-10);
@@ -23,6 +24,16 @@ export interface RegistrarMensajeParams {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Registra un mensaje del inbox. Fire-and-forget: nunca lanza. El `catch`
+ * de abajo solo atrapa excepciones reales (red, `createAdminClient` sin
+ * env vars) — Supabase-js RESUELVE con `{ error }` ante un fallo de la
+ * query, no rechaza la promesa, así que antes ninguno de los cuatro writes
+ * de aquí abajo (upsert, update, insert) podía disparar ese catch: si
+ * cualquiera fallaba, la función terminaba igual, sin loguear nada, y el
+ * mensaje simplemente no quedaba en wa_mensajes — el mismo patrón de
+ * logApiRequest, encontrado al barrer el repo por este bug.
+ */
 export async function registrarMensaje(
   p: RegistrarMensajeParams
 ): Promise<void> {
@@ -53,7 +64,7 @@ export async function registrarMensaje(
     const inc = p.direccion === "entrante" ? 1 : 0;
 
     // Asegura la conversación (upsert idempotente, sin pisar contadores).
-    await admin.from("wa_conversaciones").upsert(
+    const { error: upsertErr } = await admin.from("wa_conversaciones").upsert(
       {
         tenant_id: p.tenantId,
         telefono: tel,
@@ -64,6 +75,12 @@ export async function registrarMensaje(
       },
       { onConflict: "tenant_id,telefono", ignoreDuplicates: true }
     );
+    if (upsertErr) {
+      logError("wa.registrar_mensaje_upsert_fallo", {
+        tenantId: p.tenantId,
+        error: upsertErr.message,
+      });
+    }
 
     const { data: conv } = await admin
       .from("wa_conversaciones")
@@ -73,7 +90,7 @@ export async function registrarMensaje(
       .maybeSingle();
     if (!conv) return;
 
-    await admin
+    const { error: updErr } = await admin
       .from("wa_conversaciones")
       .update({
         ultimo_mensaje_at: ahora,
@@ -82,8 +99,15 @@ export async function registrarMensaje(
         nombre_contacto: (conv.nombre_contacto as string | null) ?? nombre,
       })
       .eq("id", conv.id as string);
+    if (updErr) {
+      logError("wa.registrar_mensaje_update_conversacion_fallo", {
+        tenantId: p.tenantId,
+        conversacionId: conv.id,
+        error: updErr.message,
+      });
+    }
 
-    await admin.from("wa_mensajes").insert({
+    const { error: insErr } = await admin.from("wa_mensajes").insert({
       tenant_id: p.tenantId,
       conversacion_id: conv.id as string,
       direccion: p.direccion,
@@ -91,8 +115,21 @@ export async function registrarMensaje(
       contenido: p.contenido,
       metadata: p.metadata ?? {},
     });
+    if (insErr) {
+      // Este es el que más importa: si falla, el mensaje nunca aparece en
+      // el inbox aunque la conversación sí se haya actualizado.
+      logError("wa.registrar_mensaje_insert_fallo", {
+        tenantId: p.tenantId,
+        conversacionId: conv.id,
+        direccion: p.direccion,
+        error: insErr.message,
+      });
+    }
   } catch (err) {
-    console.error("[wa] registrarMensaje:", err);
+    logError("wa.registrar_mensaje_excepcion", {
+      tenantId: p.tenantId,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 

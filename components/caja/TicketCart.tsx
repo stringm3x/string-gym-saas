@@ -43,7 +43,7 @@ interface TicketCartProps {
 
 export function TicketCart({ slug, productos, planes }: TicketCartProps) {
   const router = useRouter();
-  const { error: toastError } = useToast();
+  const { error: toastError, warning } = useToast();
   const [isPending, startTransition] = useTransition();
 
   const [lineas, setLineas] = useState<LineaProducto[]>([]);
@@ -128,6 +128,9 @@ export function TicketCart({ slug, productos, planes }: TicketCartProps) {
       if (!r.ok) {
         toastError("No se pudo cobrar", r.error ?? "Inténtalo de nuevo");
         return;
+      }
+      if (r.reciboError) {
+        warning("El recibo no se pudo enviar por correo", r.reciboError);
       }
       if (r.ticketId) router.push(`/${slug}/recibos/ticket/${r.ticketId}`);
       else router.refresh();

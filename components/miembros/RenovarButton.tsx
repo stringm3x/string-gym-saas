@@ -40,7 +40,7 @@ export function RenovarButton({
   disabled = false,
 }: RenovarButtonProps) {
   const router = useRouter();
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, warning } = useToast();
   const [open, setOpen] = useState(false);
   const [planId, setPlanId] = useState(planActualId ?? planes[0]?.id ?? "");
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
@@ -88,6 +88,9 @@ export function RenovarButton({
         return;
       }
       success("Membresía renovada");
+      if (r.reciboError) {
+        warning("El recibo no se pudo enviar por correo", r.reciboError);
+      }
       setOpen(false);
       setFechasPersonalizadas(false);
       if (r.pagoId) router.push(`/${slug}/recibos/${r.pagoId}`);

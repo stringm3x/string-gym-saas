@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createPago } from "@/lib/queries/pagos.queries";
+import { logError } from "@/lib/log";
 import { aplicarMovimiento } from "@/lib/queries/productos.queries";
 import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
 import { hoyISO } from "@/lib/utils/dates";
@@ -21,6 +22,32 @@ import type {
 type MetodoPago = "efectivo" | "tarjeta" | "transferencia";
 
 // ─────────────────────────── mutaciones ───────────────────────────
+
+/**
+ * Borra un `planes_pago` que quedó a medias (sin cuotas, o sin el movimiento
+ * de stock que le corresponde) cuando un paso posterior de su creación
+ * falló. Créditos ya arrastra tres bugs conocidos (cuota 1 sin cobrar,
+ * pagarCuota no atómico, reembolso sin desmarcar cuota) — este rollback no
+ * le suma un cuarto: si el propio delete de limpieza falla, el plan queda
+ * huérfano y Cuentas por Cobrar lo mostraría como un plan real que nadie va
+ * a cobrar nunca. Se loguea para que no pase inadvertido.
+ */
+async function borrarPlanPagoHuerfano(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  planId: string,
+  motivo: string
+): Promise<void> {
+  const { error } = await supabase.from("planes_pago").delete().eq("id", planId);
+  if (error) {
+    logError("credito.rollback_plan_huerfano", {
+      tenantId,
+      planId,
+      motivo,
+      error: error.message,
+    });
+  }
+}
 
 /** Crea un plan de pago y genera sus N cuotas espaciadas por la frecuencia. */
 export async function createPlanPago(
@@ -80,7 +107,7 @@ export async function createPlanPago(
       plan.id
     );
     if (!mov.ok) {
-      await supabase.from("planes_pago").delete().eq("id", plan.id);
+      await borrarPlanPagoHuerfano(supabase, tenantId, plan.id, "movimiento_stock_fallo");
       return { ok: false, error: mov.error };
     }
   }
@@ -101,7 +128,7 @@ export async function createPlanPago(
 
   if (cuotasErr) {
     // Rollback: no quedan planes sin cuotas, y se regresa el stock.
-    await supabase.from("planes_pago").delete().eq("id", plan.id);
+    await borrarPlanPagoHuerfano(supabase, tenantId, plan.id, "cuotas_insert_fallo");
     await restaurarStock();
     return { ok: false, error: cuotasErr.message };
   }
@@ -120,7 +147,7 @@ export async function pagarCuota(
   cuotaId: string,
   metodo: MetodoPago = "efectivo"
 ): Promise<
-  | { ok: true; pagoId: string; planCompletado: boolean }
+  | { ok: true; pagoId: string; planCompletado: boolean; reciboError?: string }
   | { ok: false; error: string }
 > {
   const supabase = await createClient();
@@ -212,14 +239,29 @@ export async function pagarCuota(
     .is("pagado_at", null);
   const planCompletado = (pendientes ?? 0) === 0;
   if (planCompletado) {
-    await supabase
+    const { error: completarErr } = await supabase
       .from("planes_pago")
       .update({ estado: "completado" })
       .eq("tenant_id", tenantId)
       .eq("id", plan.id);
+    // El pago de la última cuota ya se registró arriba (dinero real
+    // cobrado); si esto falla, Cuentas por Cobrar seguiría mostrando el
+    // plan como pendiente aunque ya esté saldado.
+    if (completarErr) {
+      logError("credito.marcar_plan_completado_fallo", {
+        tenantId,
+        planPagoId: plan.id,
+        error: completarErr.message,
+      });
+    }
   }
 
-  return { ok: true, pagoId: pagoRes.id, planCompletado };
+  return {
+    ok: true,
+    pagoId: pagoRes.id,
+    planCompletado,
+    reciboError: pagoRes.reciboError,
+  };
 }
 
 /**
@@ -239,7 +281,7 @@ export async function createAbonoMembresia(
     metodoPago: MetodoPago;
   }
 ): Promise<
-  | { ok: true; pagoId: string; montoRestante: number }
+  | { ok: true; pagoId: string; montoRestante: number; reciboError?: string }
   | { ok: false; error: string }
 > {
   const supabase = await createClient();
@@ -309,13 +351,13 @@ export async function createAbonoMembresia(
     ])
     .select("id, numero_cuota");
   if (cuotasErr || !cuotasIns) {
-    await supabase.from("planes_pago").delete().eq("id", planPago.id);
+    await borrarPlanPagoHuerfano(supabase, tenantId, planPago.id, "cuotas_insert_fallo");
     return { ok: false, error: cuotasErr?.message ?? "No se pudieron crear las cuotas." };
   }
 
   const cuota1 = cuotasIns.find((c) => c.numero_cuota === 1);
   if (!cuota1) {
-    await supabase.from("planes_pago").delete().eq("id", planPago.id);
+    await borrarPlanPagoHuerfano(supabase, tenantId, planPago.id, "cuota_1_no_encontrada");
     return { ok: false, error: "No se pudo registrar el abono." };
   }
 
@@ -326,7 +368,12 @@ export async function createAbonoMembresia(
     return { ok: false, error: pagoRes.error };
   }
 
-  return { ok: true, pagoId: pagoRes.pagoId, montoRestante };
+  return {
+    ok: true,
+    pagoId: pagoRes.pagoId,
+    montoRestante,
+    reciboError: pagoRes.reciboError,
+  };
 }
 
 // ─────────────────────────── lecturas ───────────────────────────

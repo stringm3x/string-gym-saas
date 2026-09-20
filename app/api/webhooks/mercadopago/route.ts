@@ -5,7 +5,8 @@ import { verifyAndProcessWebhook } from "@/lib/mercadopago/webhook";
 import { calcularRangoPorDias } from "@/lib/utils/membresia-rango";
 import { createNotification } from "@/lib/utils/notifications";
 import { generarTokenRecibo } from "@/lib/utils/tokens";
-import { registrarCajaDePagos } from "@/lib/queries/pagos.queries";
+import { registrarCajaDePagos, enviarReciboDePago } from "@/lib/queries/pagos.queries";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 
@@ -57,7 +58,7 @@ async function logWebhookSilencioso(
  * miembro a la fecha previa (periodo_inicio del pago) y refleja el estado.
  * Idempotente: si el pago ya está reembolsado, solo actualiza el estado.
  */
-async function revertirPagoMp(
+export async function revertirPagoMp(
   admin: Admin,
   tenantId: string,
   ext: { id: string; pago_id: string | null },
@@ -68,10 +69,17 @@ async function revertirPagoMp(
       ? "Contracargo MercadoPago"
       : "Reembolso MercadoPago";
 
-  await admin
+  const { error: extErr } = await admin
     .from("pagos_externos")
     .update({ status: mpStatus })
     .eq("id", ext.id);
+  if (extErr) {
+    logError("mp_webhook.revertir_status_externo_fallo", {
+      tenantId,
+      pagosExternosId: ext.id,
+      error: extErr.message,
+    });
+  }
 
   if (!ext.pago_id) return;
 
@@ -83,7 +91,7 @@ async function revertirPagoMp(
     .maybeSingle();
   if (!pago || pago.reembolsado_at) return; // ya revertido
 
-  await admin
+  const { error: pagoErr } = await admin
     .from("pagos")
     .update({
       reembolsado_at: new Date().toISOString(),
@@ -91,14 +99,32 @@ async function revertirPagoMp(
     })
     .eq("tenant_id", tenantId)
     .eq("id", pago.id);
+  if (pagoErr) {
+    // Dinero real reembolsado en MP que seguiría contando como ingreso en
+    // el corte de caja del gym — el caso exacto que este bloque existe para
+    // que no quede enterrado.
+    logError("mp_webhook.marcar_pago_reembolsado_fallo", {
+      tenantId,
+      pagoId: pago.id,
+      error: pagoErr.message,
+    });
+  }
 
   // Revertir la vigencia a la fecha previa a este pago.
   if (pago.miembro_id && pago.periodo_inicio) {
-    await admin
+    const { error: vencErr } = await admin
       .from("miembros")
       .update({ fecha_vencimiento: pago.periodo_inicio })
       .eq("tenant_id", tenantId)
       .eq("id", pago.miembro_id);
+    if (vencErr) {
+      logError("mp_webhook.revertir_vigencia_fallo", {
+        tenantId,
+        pagoId: pago.id,
+        miembroId: pago.miembro_id,
+        error: vencErr.message,
+      });
+    }
   }
 
   await createNotification(
@@ -226,6 +252,7 @@ export async function POST(request: NextRequest) {
     // dos pagos para un solo cobro real.
     const montoPago = result.monto || Number(ext.monto);
     const metodoPago = mapMetodo(result.metodo);
+    const token = generarTokenRecibo();
     const { data: pagoId, error: confirmError } = await admin.rpc(
       "confirmar_pago_externo",
       {
@@ -233,7 +260,7 @@ export async function POST(request: NextRequest) {
         p_tenant_id: result.tenantId,
         p_monto: montoPago,
         p_metodo_pago: metodoPago,
-        p_token: generarTokenRecibo(),
+        p_token: token,
         p_miembro_id: miembroId,
         p_periodo_inicio: periodoInicio,
         p_periodo_fin: periodoFin,
@@ -267,12 +294,41 @@ export async function POST(request: NextRequest) {
       undefined,
       "caja"
     );
+
+    // Recibo por email (mismo camino que caja/ticket/cuota — ver
+    // enviarReciboDePago en pagos.queries.ts). Best-effort: el cobro ya
+    // quedó registrado arriba pase lo que pase aquí; el fallo solo se loguea.
+    if (miembroId) {
+      const recibo = await enviarReciboDePago(result.tenantId, {
+        miembroId,
+        monto: montoPago,
+        token,
+        periodoFin,
+      });
+      if (!recibo.enviado && recibo.error) {
+        logError("recibo.envio_fallido", {
+          tenantId: result.tenantId,
+          pagoId,
+          miembroId,
+          origen: "mp_webhook",
+          error: recibo.error,
+        });
+      }
+    }
   } else {
     // rejected / cancelled / pending (OXXO) / in_process … reflejar estado.
-    await admin
+    const { error: estadoErr } = await admin
       .from("pagos_externos")
       .update({ status: result.status, metodo: result.metodo })
       .eq("id", ext.id);
+    if (estadoErr) {
+      logError("mp_webhook.reflejar_estado_fallo", {
+        tenantId: result.tenantId,
+        pagosExternosId: ext.id,
+        status: result.status,
+        error: estadoErr.message,
+      });
+    }
   }
 
   return new NextResponse(null, { status: 200 });

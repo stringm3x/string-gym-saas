@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { runWhatsappCron } from "@/lib/whatsapp/cron";
+import { logWarn } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,5 +19,10 @@ export async function GET(request: NextRequest) {
   }
 
   const resultado = await runWhatsappCron();
+  // Resumen del corrido, visible aunque la respuesta sea 200 — antes el
+  // cuerpo solo confirmaba que corrió, no cuántos mensajes de verdad salieron.
+  if (resultado.fallidos > 0) {
+    logWarn("whatsapp_cron.resumen_con_fallos", resultado);
+  }
   return NextResponse.json({ ok: true, ...resultado });
 }

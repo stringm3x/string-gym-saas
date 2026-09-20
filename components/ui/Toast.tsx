@@ -10,10 +10,16 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { LuCircleCheck, LuCircleAlert, LuInfo, LuX } from "react-icons/lu";
+import {
+  LuCircleCheck,
+  LuCircleAlert,
+  LuTriangleAlert,
+  LuInfo,
+  LuX,
+} from "react-icons/lu";
 import { cn } from "@/lib/utils/cn";
 
-type ToastVariant = "success" | "error" | "info";
+type ToastVariant = "success" | "error" | "warning" | "info";
 
 export interface ToastCTA {
   label: string;
@@ -32,6 +38,8 @@ interface ToastContextValue {
   toast: (input: Omit<Toast, "id">) => void;
   success: (title: string, description?: string, cta?: ToastCTA) => void;
   error: (title: string, description?: string) => void;
+  /** La acción principal ya ocurrió (el pago, el cobro); algo secundario no — recibo, WhatsApp. */
+  warning: (title: string, description?: string, cta?: ToastCTA) => void;
   info: (title: string, description?: string) => void;
 }
 
@@ -62,6 +70,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         toast({ variant: "success", title, description, cta }),
       error: (title, description) =>
         toast({ variant: "error", title, description }),
+      warning: (title, description, cta) =>
+        toast({ variant: "warning", title, description, cta }),
       info: (title, description) =>
         toast({ variant: "info", title, description }),
     }),
@@ -93,6 +103,10 @@ const variantConfig: Record<ToastVariant, { icon: ReactNode; bar: string }> = {
   error: {
     icon: <LuCircleAlert className="h-5 w-5 text-danger" />,
     bar: "border-l-danger",
+  },
+  warning: {
+    icon: <LuTriangleAlert className="h-5 w-5 text-warning" />,
+    bar: "border-l-warning",
   },
   info: {
     icon: <LuInfo className="h-5 w-5 text-text-secondary" />,
