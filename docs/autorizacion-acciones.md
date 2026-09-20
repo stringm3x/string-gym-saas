@@ -231,6 +231,27 @@ Desglosado:
 | Un `"use server"` nuevo en carpeta desconocida rompe el build. | Gates de página (`page.tsx`) — PR 9. |
 | Una API key solo funciona si el plan del gym incluye `api`. | Que `miembro_id` del body pertenezca al tenant (check inline en `/reservas`). |
 
+### 4.7 Páginas: `requirePanel(politica)`
+
+Una `page.tsx` del panel gatea con **la misma política que la acción que
+dispara**, para que no diverjan cuando alguien cambie el mapa de permisos:
+
+```ts
+const g = await requirePanel("config.tag_crear", { sinPermiso: "/configuracion/gym" });
+if (!g.ok) return <UpgradePage planRequerido={g.planRequerido} … />;
+const { ctx } = g; // id, slug, plan, role, can(), has()
+```
+
+- Sin permiso → `redirect()` a la "casa" de la sección (`sinPermiso` es
+  obligatorio: cada sección tiene la suya). Va **antes** que el plan, al
+  revés que en las acciones: a quien no tiene el rol no se le enseña una
+  pantalla de upgrade que tampoco podría usar.
+- Sin plan → `{ ok: false, planRequerido }`; la página pinta su propio
+  `UpgradePage` (el texto de venta es de la página, no del helper).
+- Páginas **sin acción propia** (alertas, dashboard, hoy, opiniones) usan
+  entradas `pagina.*` de `politicas.ts`, comentadas como lo que son: la
+  política de una pantalla de solo lectura, sin acción que gatear.
+
 ## 5. Lo que el helper NO resuelve
 
 | Problema | ¿Cubierto? | Qué lo cubre |
@@ -259,7 +280,8 @@ solo cambia donde hoy hay un hueco.
 | 6 | Panel `configuracion/*` (12 archivos, 42 acciones). | Entregado. **Cierra** (todas Pro, todas con la página ya gateada por la misma feature): `opiniones` (Google Place ID), `plantillas_mensaje` (5), `promociones` (3), `tags` (3), `multiusuario` (8 de staff; invitar ya lo exigía). Sin excepciones al modelo de gerente: cajas y staff declaran `configurar_general`/`gestionar_staff`; `requireOwner()` desapareció. `toggleCajaCheckinPin` conserva el guard de la RLS de `gyms`. Cierres probados con plan mockeado en `configuracion/cierres.test.ts`. |
 | 7 | Panel resto (14 archivos, 30 acciones). Cierra el panel. | Entregado. **Cierra** (Pro; página/layout ya gateados): `inventario` (3), `timeline_notas` (4), `prospectos` (3), `reportes` (1). Ganan permiso las que no tenían ninguno: búsqueda, términos, notificaciones, check-in ×3, onboarding (`configurar_general`), campañas (`ver_dashboard_ingresos`, paridad con el sidebar), inbox ×3 (`usar_panel`). Notas: `usar_panel` + `ver_prospectos` en el cuerpo para prospectos. `suspendida` → `anonAction`. Probado en `app/(tenant)/[slug]/cierres.test.ts`. |
 | 8 | Auth → `anonAction`; `legacy.json` borrado; regla ESLint sin excepciones; `apiGuard` valida `hasFeature(plan, "api")`. | Entregado. Los 53 módulos `"use server"` están en el registro; la API pública devuelve 403 "El plan de este gym no incluye la API." a una key de un gym Starter (`lib/api/auth.test.ts`). Ver §4.6 para lo que el sistema garantiza desde aquí. |
-| **9** | `requirePanel(politica)` para `page.tsx`, leyendo el mismo `politicas.ts`. | El bug de `/caja` sin guard era exactamente esto: acción protegida, página no. |
+| **9a** | `requirePanel(politica)` (`lib/authz/pagina.ts`) + las 4 páginas de configuración rotas para el gerente (planes, promociones, tags, plantillas) + ConfigNav. | Entregado aparte porque era una pantalla rota hoy, no una divergencia teórica: D6 le quitó `configurar_planes_promociones` al gerente, pero nadie se lo quitó a las páginas. |
+| **9b** | Resto de páginas del panel a `requirePanel` con la política de su acción; `role === "owner"` literales fuera; `pagina.*` para las 4 páginas sin acciones. | El inventario (2026-09-20) encontró 7 divergencias página/acción, no solo `/caja`. Solo migrar todas hace que el recorrido lo haga el compilador. |
 
 **Protocolo para los PRs 4–7.** Al migrar el panel se cierran las 18
 acciones que hoy verifican rol pero no plan. Eso **sí puede quitarle
