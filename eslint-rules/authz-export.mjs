@@ -1,10 +1,8 @@
 // Regla local: en un archivo "use server" bajo app/, todo export debe ser
 // `export const x = <constructor de su clase>(...)`. Da el error en el
 // editor, en la línea, sin esperar a tsc (lib/authz/__registry__.ts) ni al
-// build. Los archivos listados en lib/authz/legacy.json (aún no migrados)
-// se omiten hasta que salgan de esa lista.
+// build. Sin excepciones desde el PR 8.
 
-import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const CONSTRUCTORES = {
@@ -23,20 +21,6 @@ const CLASES = [
   ["app/(auth)/", "anon"],
   ["app/auth/", "anon"],
 ];
-
-let legacyCache = null;
-function esLegacy(cwd, rel) {
-  if (!legacyCache) {
-    try {
-      legacyCache = new Set(
-        JSON.parse(readFileSync(path.join(cwd, "lib/authz/legacy.json"), "utf8"))
-      );
-    } catch {
-      legacyCache = new Set();
-    }
-  }
-  return legacyCache.has(rel);
-}
 
 /** @type {import("eslint").Rule.RuleModule} */
 const regla = {
@@ -72,7 +56,6 @@ const regla = {
           primero.type === "ExpressionStatement" &&
           primero.directive === "use server";
         if (!useServer) return;
-        if (esLegacy(cwd, rel)) return;
 
         const clase = CLASES.find(([p]) => rel.startsWith(p))?.[1];
         if (!clase) {

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { anonAction } from "@/lib/authz";
 import { createClient } from "@/lib/supabase/server";
 import { hasFeature, type Plan } from "@/lib/features";
 
@@ -13,73 +14,74 @@ function ownerDestino(slug: string, plan: Plan): string {
   return `/${slug}/${hasFeature(plan, "pantalla_hoy") ? "hoy" : "dashboard"}`;
 }
 
-export async function login(
-  _prev: LoginState,
-  formData: FormData
-): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
+/** Login del staff. Anónima por definición: aquí todavía no hay a quién autorizar. */
+export const login = anonAction(
+  "login_staff",
+  async (_prev: LoginState, formData: FormData): Promise<LoginState> => {
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
 
-  if (!email || !password) {
-    return { error: "Ingresa tu correo y contraseña." };
-  }
+    if (!email || !password) {
+      return { error: "Ingresa tu correo y contraseña." };
+    }
 
-  const supabase = await createClient();
+    const supabase = await createClient();
 
-  const { data: authData, error: authError } =
-    await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: authData, error: authError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-  if (authError || !authData.user) {
-    return { error: "Credenciales incorrectas." };
-  }
+    if (authError || !authData.user) {
+      return { error: "Credenciales incorrectas." };
+    }
 
-  const userId = authData.user.id;
+    const userId = authData.user.id;
 
-  // 1. ¿Es OWNER de un gym operable? El login solo valida credenciales +
-  // pertenencia; el proxy es el guardián real (prueba vencida / suspendido →
-  // /suspendida). Se excluye 'cancelado' (el proxy lo rebota a /login).
-  const { data: ownerGym } = await supabase
-    .from("gyms")
-    .select("slug, plan")
-    .eq("owner_id", userId)
-    .in("estado", ["activo", "prueba", "suspendido"])
-    .maybeSingle();
-
-  if (ownerGym) {
-    redirect(ownerDestino(ownerGym.slug, ownerGym.plan as Plan));
-  }
-
-  // 2. ¿Es STAFF activo de un gym? (policy 012 permite leer la propia fila)
-  const { data: staffRow } = await supabase
-    .from("staff")
-    .select("rol, gym_id")
-    .eq("user_id", userId)
-    .eq("estado", "activo")
-    .limit(1)
-    .maybeSingle();
-
-  if (staffRow) {
-    const { data: gym } = await supabase
+    // 1. ¿Es OWNER de un gym operable? El login solo valida credenciales +
+    // pertenencia; el proxy es el guardián real (prueba vencida / suspendido →
+    // /suspendida). Se excluye 'cancelado' (el proxy lo rebota a /login).
+    const { data: ownerGym } = await supabase
       .from("gyms")
-      .select("slug, plan, estado")
-      .eq("id", staffRow.gym_id)
+      .select("slug, plan")
+      .eq("owner_id", userId)
+      .in("estado", ["activo", "prueba", "suspendido"])
       .maybeSingle();
 
-    if (gym && ["activo", "prueba", "suspendido"].includes(gym.estado)) {
-      // Recepcionista → su pantalla principal es check-ins.
-      // (Un owner ya fue cubierto en el paso 1; defensivo por si acaso.)
-      if (staffRow.rol === "owner") {
-        redirect(ownerDestino(gym.slug, gym.plan as Plan));
-      }
-      redirect(`/${gym.slug}/checkins`);
+    if (ownerGym) {
+      redirect(ownerDestino(ownerGym.slug, ownerGym.plan as Plan));
     }
-  }
 
-  // 3. Ni owner ni staff activo.
-  return {
-    error: "Tu cuenta no tiene un gym activo asociado. Contacta a soporte.",
-  };
-}
+    // 2. ¿Es STAFF activo de un gym? (policy 012 permite leer la propia fila)
+    const { data: staffRow } = await supabase
+      .from("staff")
+      .select("rol, gym_id")
+      .eq("user_id", userId)
+      .eq("estado", "activo")
+      .limit(1)
+      .maybeSingle();
+
+    if (staffRow) {
+      const { data: gym } = await supabase
+        .from("gyms")
+        .select("slug, plan, estado")
+        .eq("id", staffRow.gym_id)
+        .maybeSingle();
+
+      if (gym && ["activo", "prueba", "suspendido"].includes(gym.estado)) {
+        // Recepcionista → su pantalla principal es check-ins.
+        // (Un owner ya fue cubierto en el paso 1; defensivo por si acaso.)
+        if (staffRow.rol === "owner") {
+          redirect(ownerDestino(gym.slug, gym.plan as Plan));
+        }
+        redirect(`/${gym.slug}/checkins`);
+      }
+    }
+
+    // 3. Ni owner ni staff activo.
+    return {
+      error: "Tu cuenta no tiene un gym activo asociado. Contacta a soporte.",
+    };
+  }
+);
