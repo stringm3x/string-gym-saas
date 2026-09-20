@@ -39,4 +39,6 @@ export type Permission =
   | "ver_clases"
   | "gestionar_clases"
   | "ver_nutricion"
-  | "gestionar_nutricion";
+  | "gestionar_nutricion"
+  /** No es un permiso: es "cualquier staff autenticado". Ver lib/permissions.ts. */
+  | "usar_panel";

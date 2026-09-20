@@ -8,11 +8,34 @@ function isLocalHost(hostname: string): boolean {
 }
 
 /**
+ * Headers de contexto que SOLO puede poner este proxy. Se borran de toda
+ * request entrante (también en rutas públicas y admin, donde nadie los
+ * setea) para que ningún cliente pueda inyectarlos, y se reponen como
+ * request headers — que es lo que Next documenta para que `headers()` los
+ * vea — y no como response headers, que además los exponían al navegador.
+ */
+const CONTEXT_HEADERS = [
+  "x-tenant-id",
+  "x-tenant-slug",
+  "x-tenant-plan",
+  "x-staff-role",
+  "x-pathname",
+] as const;
+
+function headersSinContexto(request: NextRequest): Headers {
+  const h = new Headers(request.headers);
+  for (const nombre of CONTEXT_HEADERS) h.delete(nombre);
+  return h;
+}
+
+/**
  * Refresca la sesión Supabase y deja pasar la request tal cual.
  * Usado por las rutas /admin/* (no necesitan la lógica multitenant).
  */
 function refreshSessionPassthrough(request: NextRequest): NextResponse {
-  const response = NextResponse.next({ request: { headers: request.headers } });
+  const response = NextResponse.next({
+    request: { headers: headersSinContexto(request) },
+  });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -94,8 +117,9 @@ export async function proxy(request: NextRequest) {
   }
 
   // ───────────────── App multitenant (lógica existente) ─────────────────
+  const requestHeaders = headersSinContexto(request);
   const response = NextResponse.next({
-    request: { headers: request.headers },
+    request: { headers: requestHeaders },
   });
 
   const supabase = createServerClient(
@@ -218,15 +242,22 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login?error=no-access", request.url));
   }
 
-  // Pasar info del tenant a Server Components vía headers.
-  response.headers.set("x-tenant-id", gym.id);
-  response.headers.set("x-tenant-slug", gym.slug);
-  response.headers.set("x-tenant-plan", gym.plan);
-  response.headers.set("x-staff-role", role);
+  // Pasar el contexto del tenant a Server Components / Actions como
+  // REQUEST headers. NextResponse.next() toma los headers al construirse,
+  // así que se crea una respuesta nueva ya con ellos y se le copian las
+  // cookies que el refresh de sesión haya puesto en la anterior.
+  requestHeaders.set("x-tenant-id", gym.id);
+  requestHeaders.set("x-tenant-slug", gym.slug);
+  requestHeaders.set("x-tenant-plan", gym.plan);
+  requestHeaders.set("x-staff-role", role);
   // El layout del tenant lee esto para renderizar /suspendida sin sidebar.
-  response.headers.set("x-pathname", pathname);
+  requestHeaders.set("x-pathname", pathname);
 
-  return response;
+  const final = NextResponse.next({ request: { headers: requestHeaders } });
+  for (const cookie of response.cookies.getAll()) {
+    final.cookies.set(cookie);
+  }
+  return final;
 }
 
 export const config = {
