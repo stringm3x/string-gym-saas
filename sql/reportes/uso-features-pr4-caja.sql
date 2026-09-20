@@ -23,8 +23,8 @@ g as (select id, slug, plan, estado from gyms where slug in ('evolution-gym', 'g
 
 -- inventario → ventas de producto desde caja (registrarTicketAction)
 select 'inventario' as feature, g.slug, g.plan,
-       count(*) filter (where p.fecha_pago >= periodo.desde)            as ultimos_90d,
-       count(*)                                                          as historico,
+       count(p.id) filter (where p.fecha_pago >= periodo.desde)         as ultimos_90d,
+       count(p.id)                                                       as historico,
        count(distinct p.ticket_id)                                       as detalle,  -- tickets
        min(p.fecha_pago)::date                                           as primero,
        max(p.fecha_pago)::date                                           as ultimo
@@ -40,9 +40,9 @@ union all
 -- Los planes creados desde la ficha del socio llevan otro concepto; van en
 -- la fila siguiente porque son la misma feature.
 select 'creditos (abonos desde caja)', g.slug, g.plan,
-       count(*) filter (where pp.created_at >= periodo.desde),
-       count(*),
-       count(*) filter (where pp.estado = 'activo'),                    -- activos
+       count(pp.id) filter (where pp.created_at >= periodo.desde),
+       count(pp.id),
+       count(pp.id) filter (where pp.estado = 'activo'),                -- activos
        min(pp.created_at)::date, max(pp.created_at)::date
 from g cross join periodo
 left join planes_pago pp on pp.tenant_id = g.id and pp.concepto like 'Abono —%'
@@ -51,9 +51,9 @@ group by g.slug, g.plan
 union all
 
 select 'creditos (todos los planes de pago)', g.slug, g.plan,
-       count(*) filter (where pp.created_at >= periodo.desde),
-       count(*),
-       count(*) filter (where pp.estado = 'activo'),
+       count(pp.id) filter (where pp.created_at >= periodo.desde),
+       count(pp.id),
+       count(pp.id) filter (where pp.estado = 'activo'),
        min(pp.created_at)::date, max(pp.created_at)::date
 from g cross join periodo
 left join planes_pago pp on pp.tenant_id = g.id
@@ -76,9 +76,9 @@ union all
 
 -- Contexto, no cierre: mercadopago desde caja ya se exigía hoy.
 select 'mercadopago (contexto)', g.slug, g.plan,
-       count(*) filter (where pe.created_at >= periodo.desde),
-       count(*),
-       count(*) filter (where pe.status = 'approved'),                  -- aprobados
+       count(pe.id) filter (where pe.created_at >= periodo.desde),
+       count(pe.id),
+       count(pe.id) filter (where pe.status = 'approved'),              -- aprobados
        min(pe.created_at)::date, max(pe.created_at)::date
 from g cross join periodo
 left join pagos_externos pe on pe.tenant_id = g.id and pe.proveedor = 'mercadopago'
