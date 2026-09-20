@@ -65,7 +65,7 @@ export const a = kioscoAction("kiosco.checkin", { onDenied: () => ({ ok: false }
   it("ignora archivos sin 'use server' y archivos legacy", () => {
     expect(lint(`export async function libre() {}`, PANEL)).toEqual([]);
     expect(
-      lint(`"use server";\nexport async function vieja() {}`, "app/(tenant)/[slug]/caja/actions.ts")
+      lint(`"use server";\nexport async function vieja() {}`, "app/(tenant)/[slug]/miembros/actions.ts")
     ).toEqual([]);
   });
 

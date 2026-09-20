@@ -1,9 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getTenant } from "@/lib/tenant";
+import { panelAction } from "@/lib/authz";
 import { createClient } from "@/lib/supabase/server";
-import { hasPermission } from "@/lib/permissions";
 import { getActiveStaff, verifyStaffPin } from "@/lib/queries/staff.queries";
 import { abrirCorte, cerrarCorte } from "@/lib/queries/cortes.queries";
 
@@ -38,70 +37,72 @@ async function quienSoyPorPin(
   return { ok: true, quien: { userId: staffId, nombre: r.nombre } };
 }
 
-export async function abrirCorteAction(
-  cajaId: string,
-  fondoInicial: number,
-  checkin?: { staffId: string; pin: string }
-): Promise<{ ok: boolean; error?: string }> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "registrar_pagos")) {
-    return { ok: false, error: "No tienes permiso para abrir turno." };
-  }
-  if (!Number.isFinite(fondoInicial) || fondoInicial < 0) {
-    return { ok: false, error: "El fondo inicial no es válido." };
-  }
+export const abrirCorteAction = panelAction(
+  "caja.abrir_corte",
+  {},
+  async (
+    tenant,
+    cajaId: string,
+    fondoInicial: number,
+    checkin?: { staffId: string; pin: string }
+  ): Promise<{ ok: boolean; error?: string }> => {
+    if (!Number.isFinite(fondoInicial) || fondoInicial < 0) {
+      return { ok: false, error: "El fondo inicial no es válido." };
+    }
 
-  let quien: Quien;
-  if (checkin) {
-    const r = await quienSoyPorPin(tenant.id, checkin.staffId, checkin.pin);
+    let quien: Quien;
+    if (checkin) {
+      const r = await quienSoyPorPin(tenant.id, checkin.staffId, checkin.pin);
+      if (!r.ok) return { ok: false, error: r.error };
+      quien = r.quien;
+    } else {
+      quien = await quienSoy(tenant.id);
+    }
+
+    const r = await abrirCorte(tenant.id, cajaId, {
+      fondoInicial,
+      userId: quien.userId,
+      nombre: quien.nombre,
+    });
     if (!r.ok) return { ok: false, error: r.error };
-    quien = r.quien;
-  } else {
-    quien = await quienSoy(tenant.id);
+
+    revalidatePath(`/${tenant.slug}/caja`);
+    return { ok: true };
   }
+);
 
-  const r = await abrirCorte(tenant.id, cajaId, {
-    fondoInicial,
-    userId: quien.userId,
-    nombre: quien.nombre,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
+export const cerrarCorteAction = panelAction(
+  "caja.cerrar_corte",
+  {},
+  async (
+    tenant,
+    corteId: string,
+    efectivoContado: number,
+    notas: string,
+    checkin?: { staffId: string; pin: string }
+  ): Promise<{ ok: boolean; error?: string; diferencia?: number }> => {
+    if (!Number.isFinite(efectivoContado) || efectivoContado < 0) {
+      return { ok: false, error: "El efectivo contado no es válido." };
+    }
 
-  revalidatePath(`/${tenant.slug}/caja`);
-  return { ok: true };
-}
+    let quien: Quien;
+    if (checkin) {
+      const r = await quienSoyPorPin(tenant.id, checkin.staffId, checkin.pin);
+      if (!r.ok) return { ok: false, error: r.error };
+      quien = r.quien;
+    } else {
+      quien = await quienSoy(tenant.id);
+    }
 
-export async function cerrarCorteAction(
-  corteId: string,
-  efectivoContado: number,
-  notas: string,
-  checkin?: { staffId: string; pin: string }
-): Promise<{ ok: boolean; error?: string; diferencia?: number }> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "registrar_pagos")) {
-    return { ok: false, error: "No tienes permiso para cerrar turno." };
-  }
-  if (!Number.isFinite(efectivoContado) || efectivoContado < 0) {
-    return { ok: false, error: "El efectivo contado no es válido." };
-  }
-
-  let quien: Quien;
-  if (checkin) {
-    const r = await quienSoyPorPin(tenant.id, checkin.staffId, checkin.pin);
+    const r = await cerrarCorte(tenant.id, corteId, {
+      efectivoContado,
+      notas: notas.trim() || null,
+      userId: quien.userId,
+      nombre: quien.nombre,
+    });
     if (!r.ok) return { ok: false, error: r.error };
-    quien = r.quien;
-  } else {
-    quien = await quienSoy(tenant.id);
+
+    revalidatePath(`/${tenant.slug}/caja`);
+    return { ok: true, diferencia: r.diferencia };
   }
-
-  const r = await cerrarCorte(tenant.id, corteId, {
-    efectivoContado,
-    notas: notas.trim() || null,
-    userId: quien.userId,
-    nombre: quien.nombre,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-
-  revalidatePath(`/${tenant.slug}/caja`);
-  return { ok: true, diferencia: r.diferencia };
-}
+);

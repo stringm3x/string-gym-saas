@@ -97,6 +97,11 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
 
   const canMp = hasFeature(tenant.plan, "mercadopago");
   const canAutoservicio = hasFeature(tenant.plan, "kiosco_autoservicio");
+  // Mismo par feature+permiso que exigen registerPagoAction y
+  // registrarTicketAction para líneas de producto (lib/authz/politicas.ts).
+  const canVenderProductos =
+    hasFeature(tenant.plan, "inventario") &&
+    hasPermission(tenant.role, "vender_desde_caja");
 
   // Housekeeping: marca como usados los códigos ya expirados.
   if (canAutoservicio) await limpiarExpirados(tenant.id);
@@ -318,7 +323,7 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
               planes={planes}
               promocionesMembresia={promocionesMembresia}
               promocionesProducto={promocionesProducto}
-              productos={productos}
+              productos={canVenderProductos ? productos : []}
               canWhatsapp={hasFeature(tenant.plan, "whatsapp_manual")}
             />
             {canMp && (

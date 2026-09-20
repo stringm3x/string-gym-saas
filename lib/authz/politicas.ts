@@ -52,8 +52,12 @@ export interface PoliticaAdmin {
 // pero no plan, y al migrar empezarán a exigir el plan declarado.
 // ─────────────────────────────────────────────────────────────────────────
 export const PANEL = {
-  // ── caja/actions.ts ──
-  /** registerPagoAction — cobro de membresía/visita/otro. */
+  // ── caja/actions.ts ── (migrado en el PR 4)
+  /**
+   * registerPagoAction — cobro rápido de membresía/visita/producto/otro. Si
+   * el concepto es producto, el cuerpo exige además `has("inventario")` y
+   * `can("vender_desde_caja")`. cierra: inventario (Pro) solo para productos.
+   */
   "caja.cobrar": { feature: "caja_basica", permission: "registrar_pagos" },
   /** registrarVisitaRapidaAction — visita suelta sin membresía. */
   "caja.visita_rapida": { feature: "caja_basica", permission: "registrar_pagos" },
@@ -64,12 +68,14 @@ export const PANEL = {
   /** reembolsarPagoAction — reembolso o nota de crédito. */
   "caja.reembolsar": { feature: "caja_basica", permission: "cancelar_pagos" },
   /**
-   * registrarTicketAction — venta de productos desde caja. cierra: inventario
-   * (Pro). Permiso: hoy la acción y la UI usan registrar_pagos, no
-   * vender_desde_caja (que ningún componente consulta); se conserva para no
-   * cambiar comportamiento en la migración.
+   * registrarTicketAction — ticket multi-línea (membresía y/o productos). Un
+   * ticket solo de membresía es caja básica; las líneas de producto exigen en
+   * el cuerpo `has("inventario")` y `can("vender_desde_caja")`. cierra:
+   * inventario (Pro) solo para productos. Decisión PR 4: vender_desde_caja se
+   * USA (aquí y en caja.cobrar) en vez de borrarse; la página de caja oculta
+   * los productos con el mismo par feature+permiso.
    */
-  "caja.vender_productos": { feature: "inventario", permission: "registrar_pagos" },
+  "caja.ticket": { feature: "caja_basica", permission: "registrar_pagos" },
   /** getCreditoDisponibleAction — saldo de notas de crédito del socio. */
   "caja.credito_disponible": { feature: "caja_basica", permission: "registrar_pagos" },
 
