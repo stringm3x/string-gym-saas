@@ -21,7 +21,7 @@ formulario de alta de la web. Solo cambia la etiqueta: `basico` → "Starter".
 | `personalizacion_logo` | Starter | Starter | Logo del gimnasio |
 | `portal_miembro` | Escala | Escala | Portal del socio — se queda en Escala |
 | `creditos` | Escala | **Pro** | Créditos y pagos a plazos, cuentas por cobrar |
-| `multiusuario` | — | **Pro** (nueva) | Invitar staff; Starter = 1 usuario |
+| `multiusuario` | — | **Pro** (nueva) | Invitar staff adicional (Starter no puede invitar) |
 | `dashboard_completo` | Pro (sin uso) | **Pro** (ahora gatea) | MRR, ARPU, LTV y rotación (`SaludNegocio`) |
 | `riesgo_panel` | — | **Pro** (nueva) | Fila "socios sin actividad" en Hoy, tarjeta "Sin venir 14 días", badge de riesgo en la ficha |
 | `whatsapp_manual` | — | **Pro** (nueva) | Botón "WhatsApp" de acciones rápidas y "Enviar por WhatsApp" tras un cobro |
@@ -31,10 +31,6 @@ formulario de alta de la web. Solo cambia la etiqueta: `basico` → "Starter".
 | `personalizacion_colores` | Pro | **Eliminada** | Ver "Colores del gimnasio" abajo |
 | Resto de Pro (inventario, promociones, clases, kiosco de autoservicio, MercadoPago, campañas, tags, notas, plantillas, acciones masivas, prospectos, API) | Pro | Pro | Sin cambio |
 | `whatsapp_automatico`, `alertas_dueno` | Escala | Escala | Sin cambio |
-
-Sin feature porque **no existen en el código**: sucursales (1 / hasta 3),
-landing con dominio propio, calendario de vencimientos, personalización
-avanzada, soporte por niveles. No aparecen en ninguna pantalla.
 
 Otros cambios de esta rama:
 

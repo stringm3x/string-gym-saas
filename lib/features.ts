@@ -23,7 +23,7 @@ export const planFeatures = {
   // Socios ilimitados · check-in manual, QR y kiosco · caja, corte y recibo ·
   // membresías y planes por visitas · congelar y cambio de plan · panel del
   // día y del mes · importación CSV · logo y color de marca hacia el socio ·
-  // exportación · 1 sucursal, 1 usuario · soporte 48 h.
+  // exportación · soporte 48 h.
   basico: [
     // Descriptivas (no se enforcean con hasFeature; el gating real es por rol).
     "miembros",
@@ -49,7 +49,7 @@ export const planFeatures = {
   // (MRR, ARPU, LTV, rotación) · socios en riesgo en el panel · WhatsApp
   // manual a un clic · campañas · etiquetas, notas y vencimientos · API
   // pública y componentes web · reportes CSV y PDF · opiniones del socio y
-  // reseñas en Google Maps · 1 sucursal · soporte 24 h.
+  // reseñas en Google Maps · soporte 24 h.
   pro: [
     "inventario",
     "promociones",
@@ -74,9 +74,7 @@ export const planFeatures = {
   ],
   // ESCALA — "El sistema trabaja y te avisa" ($2,999/mes, anual $29,990).
   // Todo Pro, más: WhatsApp automático al socio · alertas al dueño por
-  // WhatsApp · bot · inbox · nutrición · portal del socio · hasta 3
-  // sucursales · personalización avanzada · soporte 4 h.
-  // (Sucursales y personalización avanzada no existen en el código: sin feature.)
+  // WhatsApp · bot · inbox · nutrición · portal del socio · soporte 4 h.
   escala: [
     "whatsapp_automatico", // avisos al socio, bot e inbox
     "alertas_dueno", // pantalla de alertas + aviso al dueño por WhatsApp
