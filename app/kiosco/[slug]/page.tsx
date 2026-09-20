@@ -34,10 +34,10 @@ export default async function KioscoPage({
     );
   }
 
-  // Marca el kiosco con el color del gym (sobre el token brand-green). Los
-  // colores del gimnasio son Pro; en Starter manda el verde STRING.
+  // Marca el kiosco con el color del gym (sobre el token brand-green).
+  // color_gimnasio está en todos los planes, incluido Starter (plan/02-gating).
   const accent =
-    hasFeature(gym.plan as Plan, "personalizacion_colores") &&
+    hasFeature(gym.plan as Plan, "color_gimnasio") &&
     typeof gym.color_acento === "string" &&
     HEX.test(gym.color_acento)
       ? gym.color_acento

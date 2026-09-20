@@ -52,10 +52,10 @@ export default async function QrPublicPage({
       ? "Membresía vencida"
       : "Membresía activa";
 
-  // Colores del gimnasio: Pro. En Starter manda el verde STRING.
+  // color_gimnasio está en todos los planes, incluido Starter (plan/02-gating).
   const acento = miembro.gym?.color_acento;
   const aplicaColor =
-    !!miembro.gym && hasFeature(miembro.gym.plan as Plan, "personalizacion_colores");
+    !!miembro.gym && hasFeature(miembro.gym.plan as Plan, "color_gimnasio");
   const marcaCss =
     aplicaColor && acento && HEX.test(acento)
       ? `:root{--color-brand-green:${acento};}`

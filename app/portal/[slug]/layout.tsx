@@ -9,9 +9,9 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 
 // Layout del Portal del Miembro: pantalla completa, sin el shell del app
 // (no hay sidebar/header de staff). Los miembros no son usuarios del SaaS.
-// Tematiza el portal con el color de acento del gym (mismo patrón que el
-// layout del tenant: sobreescribe --color-brand-green en :root). Los colores
-// del gimnasio son Pro; en Starter manda el verde STRING.
+// Tematiza el portal con el color de acento del gym (sobreescribe
+// --color-brand-green en :root) — color_gimnasio está en todos los planes,
+// incluido Starter (plan/02-gating): el acento hacia el socio no es Pro.
 export default async function PortalLayout({
   children,
   params,
@@ -24,8 +24,7 @@ export default async function PortalLayout({
     getPortalGym(slug),
     getPortalColorAcento(slug),
   ]);
-  const aplicaColor =
-    !!gym && hasFeature(gym.plan, "personalizacion_colores");
+  const aplicaColor = !!gym && hasFeature(gym.plan, "color_gimnasio");
   const marcaCss =
     aplicaColor && acento && HEX.test(acento)
       ? `:root{--color-brand-green:${acento};}`

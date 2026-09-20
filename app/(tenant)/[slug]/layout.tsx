@@ -8,7 +8,6 @@ import { countStockBajo } from "@/lib/queries/productos.queries";
 import { countProspectosNuevos } from "@/lib/queries/prospectos.queries";
 import { getAlertas } from "@/lib/queries/alertas.queries";
 import { listGymAddons } from "@/lib/queries/addons.queries";
-import { getGymMarca } from "@/lib/queries/marca.queries";
 import { getActiveStaff } from "@/lib/queries/staff.queries";
 import { countCodigosPendientes } from "@/lib/queries/kiosco.queries";
 import { countNoLeidos } from "@/lib/queries/inbox.queries";
@@ -65,7 +64,6 @@ export default async function TenantLayout({
     prospectosNuevos,
     alertas,
     addons,
-    marca,
     currentStaff,
     notificaciones,
     notificacionesNoLeidas,
@@ -78,7 +76,6 @@ export default async function TenantLayout({
     countProspectosNuevos(tenant.id),
     tieneAlertas ? getAlertas(tenant.id, slug) : Promise.resolve([]),
     listGymAddons(tenant.id),
-    getGymMarca(tenant.id),
     getActiveStaff(tenant.id, user.id),
     getNotificaciones(tenant.id),
     countNotificacionesNoLeidas(tenant.id),
@@ -110,13 +107,6 @@ export default async function TenantLayout({
     redirect(`/${slug}/onboarding`);
   }
 
-  // Colores personalizados solo para Pro+ (Básico usa defaults STRING).
-  const aplicaColores =
-    marca && hasFeature(tenant.plan, "personalizacion_colores");
-  const marcaCss = aplicaColores
-    ? `:root{--color-brand-green:${marca.color_acento};--color-sidebar:${marca.color_sidebar};--color-bg-content:${marca.color_fondo};}`
-    : null;
-
   const alertasBadge = tieneAlertas
     ? alertas.reduce((sum, a) => sum + (a.count ?? 1), 0)
     : undefined;
@@ -142,9 +132,6 @@ export default async function TenantLayout({
 
   return (
     <ToastProvider>
-      {marcaCss && (
-        <style dangerouslySetInnerHTML={{ __html: marcaCss }} />
-      )}
       {debeAceptarTerminos && <TerminosGate />}
       <StaffProvider staff={currentStaff}>
         <AddonsProvider addons={addons}>

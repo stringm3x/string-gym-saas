@@ -19,7 +19,6 @@ import {
   listMiembrosPorVencer,
 } from "@/lib/queries/dashboard.queries";
 import { countVisitasRapidasHoy } from "@/lib/queries/pagos.queries";
-import { getGymMarca } from "@/lib/queries/marca.queries";
 import {
   getIngresosPorSemana,
   getCheckinsPorDiaSemana,
@@ -37,7 +36,7 @@ import { CheckinsSemanaChart } from "@/components/dashboard/CheckinsSemanaChart"
 import { RetencionCard } from "@/components/dashboard/RetencionCard";
 import { MembresiasDonut } from "@/components/dashboard/MembresiasDonut";
 
-// Sigue el token de marca (que el layout ya sobreescribe para gyms Pro+).
+// Verde STRING fijo: el panel del staff ya no se personaliza (plan/02-gating).
 const COLOR_ACENTO_DEFAULT = "var(--color-brand-green)";
 
 interface PageProps {
@@ -58,7 +57,6 @@ export default async function DashboardPage({ params }: PageProps) {
     checkins,
     porVencer,
     visitasHoy,
-    marca,
     ingresosSemana,
     checkinsDia,
     retencion,
@@ -71,7 +69,6 @@ export default async function DashboardPage({ params }: PageProps) {
     getCheckinsStats(tenant.id),
     listMiembrosPorVencer(tenant.id, 7),
     countVisitasRapidasHoy(tenant.id),
-    getGymMarca(tenant.id),
     getIngresosPorSemana(tenant.id),
     getCheckinsPorDiaSemana(tenant.id),
     getRetencion(tenant.id),
@@ -86,12 +83,9 @@ export default async function DashboardPage({ params }: PageProps) {
     hasPermission(tenant.role, "ver_dashboard_ingresos") &&
     hasFeature(tenant.plan, "dashboard_completo");
 
-  // El color del gym en las gráficas es parte de personalizacion_colores
-  // (Pro+), igual que en el layout. Sin la feature, verde STRING.
-  const colorAcento =
-    hasFeature(tenant.plan, "personalizacion_colores") && marca?.color_acento
-      ? marca.color_acento
-      : COLOR_ACENTO_DEFAULT;
+  // El panel del staff ya no se personaliza (plan/02-gating): el color del
+  // gym solo se respeta hacia el socio (portal, kiosco, QR, recibo).
+  const colorAcento = COLOR_ACENTO_DEFAULT;
 
   // Calcular delta del mes vs mes anterior
   const deltaMes = (() => {

@@ -18,16 +18,12 @@ export default async function MarcaPage() {
       <div>
         <h3 className="text-base font-semibold text-text-primary">Marca</h3>
         <p className="mt-1 text-sm text-text-secondary">
-          Personaliza la identidad visual de tu gimnasio. El logo está
-          disponible en todos los planes; los colores en Plan Pro o superior.
+          Personaliza la identidad visual de tu gimnasio. Logo y color de
+          acento están disponibles en todos los planes.
         </p>
       </div>
 
-      <MarcaForm
-        tenantId={tenant.id}
-        plan={tenant.plan}
-        gymNombre={gym?.nombre ?? ""}
-      />
+      <MarcaForm tenantId={tenant.id} gymNombre={gym?.nombre ?? ""} />
 
       {canOpiniones && (
         <div className="border-t border-border pt-6">

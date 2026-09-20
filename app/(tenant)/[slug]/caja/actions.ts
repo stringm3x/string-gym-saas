@@ -260,7 +260,7 @@ export async function registerPagoAction(
           getGymFull(tenant.id),
           getGymMarca(tenant.id),
         ]);
-        const esPro = hasFeature(tenant.plan, "personalizacion_colores");
+        const tieneColorGimnasio = hasFeature(tenant.plan, "color_gimnasio");
         await sendRecibo({
           miembroEmail: miembro.email,
           miembroNombre: miembro.nombre,
@@ -268,7 +268,7 @@ export async function registerPagoAction(
           gymTelefono: gym?.telefono ?? null,
           gymDireccion: gym?.direccion ?? null,
           logoUrl: gym?.logo_url ?? null,
-          colorAcento: esPro ? marca?.color_acento : undefined,
+          colorAcento: tieneColorGimnasio ? marca?.color_acento : undefined,
           monto: parsed.data.monto,
           fechaVencimiento: periodoMembresia.periodo_fin || null,
           reciboUrl,

@@ -46,19 +46,18 @@ export async function updateMarcaAction(
     return { ok: false, error: "No tienes permiso para esta acción.", fieldErrors: {} };
   }
 
-  // Gate de servidor: solo Pro+ puede cambiar colores.
-  if (!hasFeature(tenant.plan, "personalizacion_colores")) {
+  // Gate de servidor: color_gimnasio está en todos los planes (Starter+),
+  // pero se deja explícito por si algún día deja de estarlo.
+  if (!hasFeature(tenant.plan, "color_gimnasio")) {
     return {
       ok: false,
-      error: "Tu plan no permite personalizar colores.",
+      error: "Tu plan no permite personalizar el color.",
       fieldErrors: {},
     };
   }
 
   const parsed = marcaColoresSchema.safeParse({
     color_acento: String(formData.get("color_acento") ?? ""),
-    color_sidebar: String(formData.get("color_sidebar") ?? ""),
-    color_fondo: String(formData.get("color_fondo") ?? ""),
   });
 
   if (!parsed.success) {

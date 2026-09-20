@@ -1,9 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import {
-  DEFAULT_COLOR_ACENTO,
-  DEFAULT_COLOR_SIDEBAR,
-  DEFAULT_COLOR_FONDO,
-} from "@/lib/validations/marca.schema";
+import { DEFAULT_COLOR_ACENTO } from "@/lib/validations/marca.schema";
 
 // La única policy de UPDATE sobre `gyms` es `owner_id = auth.uid()`: para
 // un gerente estos updates afectan 0 filas sin `error` (ver el mismo
@@ -16,17 +12,20 @@ export interface GymMarca {
   id: string;
   logo_url: string | null;
   color_acento: string;
-  color_sidebar: string;
-  color_fondo: string;
   favicon_url: string | null;
 }
 
+/**
+ * color_sidebar/color_fondo NO se leen aquí: dejaron de personalizarse
+ * (plan/02-gating) — el panel del staff siempre usa verde STRING. Las
+ * columnas se quedan en la base por ahora, sin uso desde el código.
+ */
 export async function getGymMarca(tenantId: string): Promise<GymMarca | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("gyms")
-    .select("id, logo_url, color_acento, color_sidebar, color_fondo, favicon_url")
+    .select("id, logo_url, color_acento, favicon_url")
     .eq("id", tenantId)
     .single();
 
@@ -36,15 +35,13 @@ export async function getGymMarca(tenantId: string): Promise<GymMarca | null> {
     id: data.id,
     logo_url: data.logo_url ?? null,
     color_acento: data.color_acento ?? DEFAULT_COLOR_ACENTO,
-    color_sidebar: data.color_sidebar ?? DEFAULT_COLOR_SIDEBAR,
-    color_fondo: data.color_fondo ?? DEFAULT_COLOR_FONDO,
     favicon_url: data.favicon_url ?? null,
   };
 }
 
 export async function updateGymMarca(
   tenantId: string,
-  data: Partial<Pick<GymMarca, "color_acento" | "color_sidebar" | "color_fondo">>
+  data: Pick<GymMarca, "color_acento">
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
 

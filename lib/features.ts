@@ -22,8 +22,8 @@ export const planFeatures = {
   // STARTER — "Sal del cuaderno" ($799/mes, anual $7,990).
   // Socios ilimitados · check-in manual, QR y kiosco · caja, corte y recibo ·
   // membresías y planes por visitas · congelar y cambio de plan · panel del
-  // día y del mes · importación CSV · logo · exportación · 1 sucursal,
-  // 1 usuario · soporte 48 h.
+  // día y del mes · importación CSV · logo y color de marca hacia el socio ·
+  // exportación · 1 sucursal, 1 usuario · soporte 48 h.
   basico: [
     // Descriptivas (no se enforcean con hasFeature; el gating real es por rol).
     "miembros",
@@ -39,21 +39,21 @@ export const planFeatures = {
     "pantalla_hoy", // panel del día
     "dashboard_simple", // panel del mes (cifras y gráficas básicas)
     "personalizacion_logo",
+    "color_gimnasio", // acento del gym hacia el socio: portal, kiosco, QR, recibo
     "exportacion_datos", // CSV de miembros
   ],
   // PRO — "Vende más en el mismo local" ($1,799/mes, anual $17,990).
   // Todo Starter, más: inventario y punto de venta · promociones · clases con
-  // reservas y lista de espera · portal del socio · kiosco de autoservicio ·
-  // pagos en línea · créditos y pagos a plazos · multiusuario con roles ·
-  // panel completo (MRR, ARPU, LTV, rotación) · socios en riesgo en el panel ·
-  // WhatsApp manual a un clic · campañas · etiquetas, notas y vencimientos ·
-  // API pública y componentes web · reportes CSV y PDF · colores del gym ·
-  // 1 sucursal · soporte 24 h.
+  // reservas y lista de espera · kiosco de autoservicio · pagos en línea ·
+  // créditos y pagos a plazos · multiusuario con roles · panel completo
+  // (MRR, ARPU, LTV, rotación) · socios en riesgo en el panel · WhatsApp
+  // manual a un clic · campañas · etiquetas, notas y vencimientos · API
+  // pública y componentes web · reportes CSV y PDF · opiniones del socio y
+  // reseñas en Google Maps · 1 sucursal · soporte 24 h.
   pro: [
     "inventario",
     "promociones",
     "clases",
-    "portal_miembro",
     "kiosco_autoservicio",
     "mercadopago",
     "creditos",
@@ -70,18 +70,18 @@ export const planFeatures = {
     "prospectos",
     "api",
     "reportes", // reporte financiero, CSV e impresión
-    "personalizacion_colores",
+    "opiniones", // opiniones del socio y reseñas en Google Maps
   ],
   // ESCALA — "El sistema trabaja y te avisa" ($2,999/mes, anual $29,990).
   // Todo Pro, más: WhatsApp automático al socio · alertas al dueño por
-  // WhatsApp · bot · inbox · Google Maps · nutrición · hasta 3 sucursales ·
-  // personalización avanzada · soporte 4 h.
+  // WhatsApp · bot · inbox · nutrición · portal del socio · hasta 3
+  // sucursales · personalización avanzada · soporte 4 h.
   // (Sucursales y personalización avanzada no existen en el código: sin feature.)
   escala: [
     "whatsapp_automatico", // avisos al socio, bot e inbox
     "alertas_dueno", // pantalla de alertas + aviso al dueño por WhatsApp
-    "opiniones", // opiniones del socio y reseñas en Google Maps
     "nutricion",
+    "portal_miembro",
   ],
 } as const;
 
