@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { panelAction } from "@/lib/authz";
 import { createClient } from "@/lib/supabase/server";
 import {
   getDestinatariosByAudiencia,
@@ -29,63 +28,63 @@ function renderMensaje(msg: string, d: Destinatario): string {
  * (plantilla 'campana') a cada destinatario. Si no hay WhatsApp activo, el
  * cliente cae al modo wa.me manual. El total se recalcula server-side.
  */
-export async function enviarCampanaAction(
-  input: unknown
-): Promise<{
-  ok: boolean;
-  error?: string;
-  total?: number;
-  enviadoPorApi?: boolean;
-  enviados?: number;
-  fallidos?: number;
-}> {
-  const tenant = await getTenant();
-  if (!hasFeature(tenant.plan, "campanas")) {
-    return { ok: false, error: "Tu plan no incluye Campañas." };
-  }
+export const enviarCampanaAction = panelAction(
+  "campanas.enviar",
+  {},
+  async (
+    tenant,
+    input: unknown
+  ): Promise<{
+    ok: boolean;
+    error?: string;
+    total?: number;
+    enviadoPorApi?: boolean;
+    enviados?: number;
+    fallidos?: number;
+  }> => {
+    const parsed = campanaInputSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: parsed.error.issues[0]?.message ?? "Datos inválidos.",
+      };
+    }
 
-  const parsed = campanaInputSchema.safeParse(input);
-  if (!parsed.success) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Sesión no válida." };
+
+    const { destinatarios } = await getDestinatariosByAudiencia(
+      tenant.id,
+      parsed.data.audiencia
+    );
+
+    const r = await createCampana(
+      tenant.id,
+      parsed.data,
+      destinatarios.length,
+      user.id
+    );
+    if (!r.ok) return { ok: false, error: r.error };
+
+    // Envío real por WhatsApp si el gym lo tiene activo (plantilla 'campana').
+    const wa = await enviarCampanaWhatsapp(
+      tenant.id,
+      destinatarios.map((d) => ({
+        telefono: d.telefono,
+        mensaje: renderMensaje(parsed.data.mensaje, d),
+      }))
+    );
+
+    revalidatePath(`/${tenant.slug}/comunicaciones/campanas`);
     return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Datos inválidos.",
+      ok: true,
+      total: destinatarios.length,
+      enviadoPorApi: wa.activo,
+      enviados: wa.enviados,
+      fallidos: wa.fallidos,
     };
   }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Sesión no válida." };
-
-  const { destinatarios } = await getDestinatariosByAudiencia(
-    tenant.id,
-    parsed.data.audiencia
-  );
-
-  const r = await createCampana(
-    tenant.id,
-    parsed.data,
-    destinatarios.length,
-    user.id
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-
-  // Envío real por WhatsApp si el gym lo tiene activo (plantilla 'campana').
-  const wa = await enviarCampanaWhatsapp(
-    tenant.id,
-    destinatarios.map((d) => ({
-      telefono: d.telefono,
-      mensaje: renderMensaje(parsed.data.mensaje, d),
-    }))
-  );
-
-  revalidatePath(`/${tenant.slug}/comunicaciones/campanas`);
-  return {
-    ok: true,
-    total: destinatarios.length,
-    enviadoPorApi: wa.activo,
-    enviados: wa.enviados,
-    fallidos: wa.fallidos,
-  };
-}
+);

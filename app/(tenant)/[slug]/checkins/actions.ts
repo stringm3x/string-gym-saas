@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getTenant } from "@/lib/tenant";
+import { panelAction } from "@/lib/authz";
 import {
   createCheckin,
   bloqueaVencidos,
@@ -27,56 +27,74 @@ export interface CheckinResult {
   };
 }
 
-export async function registerCheckinAction(
-  miembroId: string
-): Promise<CheckinResult> {
-  const tenant = await getTenant();
+export const registerCheckinAction = panelAction(
+  "checkins.registrar",
+  {},
+  async (tenant, miembroId: string): Promise<CheckinResult> => {
+    // Validar que el miembro pertenece al tenant (RLS ya lo hace, pero confirmamos).
+    const miembro = await getMiembro(tenant.id, miembroId);
+    if (!miembro) {
+      return { ok: false, error: "Miembro no encontrado" };
+    }
 
-  // Validar que el miembro pertenece al tenant (RLS ya lo hace, pero confirmamos).
-  const miembro = await getMiembro(tenant.id, miembroId);
-  if (!miembro) {
-    return { ok: false, error: "Miembro no encontrado" };
-  }
+    const estado = getEstadoMembresia(miembro.fecha_vencimiento);
 
-  const estado = getEstadoMembresia(miembro.fecha_vencimiento);
+    // Check-in duplicado (D-bloque-01): mismo socio hace <2 min — evita que un
+    // doble tap o un QR sostenido frente al lector genere entradas repetidas.
+    if (await checkinReciente(tenant.id, miembroId)) {
+      return {
+        ok: false,
+        error: "Ya registró su entrada hace un momento",
+        bloqueado: true,
+        miembro: { id: miembro.id, nombre: miembro.nombre, estadoMembresia: estado },
+      };
+    }
 
-  // Check-in duplicado (D-bloque-01): mismo socio hace <2 min — evita que un
-  // doble tap o un QR sostenido frente al lector genere entradas repetidas.
-  if (await checkinReciente(tenant.id, miembroId)) {
+    // Sin visitas (D3): plan por visitas agotado.
+    if (await visitasAgotadas(tenant.id, miembroId)) {
+      return {
+        ok: false,
+        error: "Sin visitas disponibles",
+        bloqueado: true,
+        miembro: { id: miembro.id, nombre: miembro.nombre, estadoMembresia: estado },
+      };
+    }
+
+    // Congelación (D1): bloqueo duro durante la pausa, sin importar la política.
+    if (await congelacionActiva(tenant.id, miembroId)) {
+      return {
+        ok: false,
+        error: "Membresía congelada",
+        bloqueado: true,
+        miembro: { id: miembro.id, nombre: miembro.nombre, estadoMembresia: estado },
+      };
+    }
+
+    // Política de vencidos: si el gym bloquea, no se registra el check-in.
+    if (estado === "vencido" && (await bloqueaVencidos(tenant.id))) {
+      return {
+        ok: false,
+        error: "Membresía vencida",
+        bloqueado: true,
+        miembro: {
+          id: miembro.id,
+          nombre: miembro.nombre,
+          estadoMembresia: estado,
+        },
+      };
+    }
+
+    const result = await createCheckin(tenant.id, miembroId);
+    if (!result.ok) {
+      return { ok: false, error: result.error };
+    }
+
+    revalidatePath(`/${tenant.slug}/checkins`);
+    revalidatePath(`/${tenant.slug}/miembros/${miembroId}`);
+
     return {
-      ok: false,
-      error: "Ya registró su entrada hace un momento",
-      bloqueado: true,
-      miembro: { id: miembro.id, nombre: miembro.nombre, estadoMembresia: estado },
-    };
-  }
-
-  // Sin visitas (D3): plan por visitas agotado.
-  if (await visitasAgotadas(tenant.id, miembroId)) {
-    return {
-      ok: false,
-      error: "Sin visitas disponibles",
-      bloqueado: true,
-      miembro: { id: miembro.id, nombre: miembro.nombre, estadoMembresia: estado },
-    };
-  }
-
-  // Congelación (D1): bloqueo duro durante la pausa, sin importar la política.
-  if (await congelacionActiva(tenant.id, miembroId)) {
-    return {
-      ok: false,
-      error: "Membresía congelada",
-      bloqueado: true,
-      miembro: { id: miembro.id, nombre: miembro.nombre, estadoMembresia: estado },
-    };
-  }
-
-  // Política de vencidos: si el gym bloquea, no se registra el check-in.
-  if (estado === "vencido" && (await bloqueaVencidos(tenant.id))) {
-    return {
-      ok: false,
-      error: "Membresía vencida",
-      bloqueado: true,
+      ok: true,
+      error: null,
       miembro: {
         id: miembro.id,
         nombre: miembro.nombre,
@@ -84,27 +102,10 @@ export async function registerCheckinAction(
       },
     };
   }
+);
 
-  const result = await createCheckin(tenant.id, miembroId);
-  if (!result.ok) {
-    return { ok: false, error: result.error };
-  }
-
-  revalidatePath(`/${tenant.slug}/checkins`);
-  revalidatePath(`/${tenant.slug}/miembros/${miembroId}`);
-
-  return {
-    ok: true,
-    error: null,
-    miembro: {
-      id: miembro.id,
-      nombre: miembro.nombre,
-      estadoMembresia: estado,
-    },
-  };
-}
-
-export async function searchMiembrosAction(query: string) {
-  const tenant = await getTenant();
-  return searchMiembrosForCheckin(tenant.id, query);
-}
+export const searchMiembrosAction = panelAction(
+  "checkins.buscar",
+  { onDenied: () => [] },
+  async (tenant, query: string) => searchMiembrosForCheckin(tenant.id, query)
+);

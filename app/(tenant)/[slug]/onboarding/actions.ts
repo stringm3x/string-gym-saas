@@ -1,8 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { panelAction } from "@/lib/authz";
 import {
   getOnboardingEstado,
   marcarOnboardingCompletado,
@@ -14,22 +13,26 @@ import {
  * vuelve a la guía con un aviso (defensa server-side, además del botón
  * deshabilitado en la UI).
  */
-export async function completarOnboardingAction() {
-  const tenant = await getTenant();
+export const completarOnboardingAction = panelAction(
+  "onboarding.completar",
+  // Sin permiso (recepción/entrenador) no hay a dónde redirigir con sentido:
+  // la guía es del dueño y el botón ni se les muestra. No-op silencioso.
+  { onDenied: () => undefined },
+  async (tenant): Promise<void> => {
+    const estado = await getOnboardingEstado(tenant.id);
+    // El inventario solo aplica a planes con la feature (Pro/Escala); en Básico
+    // no existe, así que no se exige producto para completar.
+    const requiereProducto = tenant.has("inventario");
+    if (
+      !estado.tienePlanes ||
+      !estado.tieneMiembros ||
+      (requiereProducto && !estado.tieneProductos)
+    ) {
+      redirect(`/${tenant.slug}/onboarding?error=incompleto`);
+    }
 
-  const estado = await getOnboardingEstado(tenant.id);
-  // El inventario solo aplica a planes con la feature (Pro/Escala); en Básico
-  // no existe, así que no se exige producto para completar.
-  const requiereProducto = hasFeature(tenant.plan, "inventario");
-  if (
-    !estado.tienePlanes ||
-    !estado.tieneMiembros ||
-    (requiereProducto && !estado.tieneProductos)
-  ) {
-    redirect(`/${tenant.slug}/onboarding?error=incompleto`);
+    await marcarOnboardingCompletado(tenant.id);
+    const destino = tenant.has("pantalla_hoy") ? "hoy" : "dashboard";
+    redirect(`/${tenant.slug}/${destino}`);
   }
-
-  await marcarOnboardingCompletado(tenant.id);
-  const destino = hasFeature(tenant.plan, "pantalla_hoy") ? "hoy" : "dashboard";
-  redirect(`/${tenant.slug}/${destino}`);
-}
+);

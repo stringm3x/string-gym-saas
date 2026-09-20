@@ -1,6 +1,6 @@
 "use server";
 
-import { getTenant } from "@/lib/tenant";
+import { panelAction } from "@/lib/authz";
 import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
 import {
   createCheckin,
@@ -25,53 +25,54 @@ export type CheckInQrResult =
   | { success: false; error: CheckInQrError; nombre?: string };
 
 /**
- * Check-in por token de QR. Lo usan owner y recepcionista (operación diaria),
- * por eso no lleva feature gate aquí (el gate está en la página). El lookup es
- * acotado por tenant → un token de otro gym no se encuentra (tenant isolation).
+ * Check-in por token de QR del scanner del staff (operación diaria de los
+ * cuatro roles). El lookup es acotado por tenant → un token de otro gym no
+ * se encuentra (tenant isolation).
  */
-export async function checkInPorQrAction(
-  token: string
-): Promise<CheckInQrResult> {
-  const tenant = await getTenant();
-  const t = (token || "").trim();
-  if (!t) return { success: false, error: "QR_NO_ENCONTRADO" };
+export const checkInPorQrAction = panelAction(
+  "checkins.qr",
+  { onDenied: (): CheckInQrResult => ({ success: false, error: "ERROR" }) },
+  async (tenant, token: string): Promise<CheckInQrResult> => {
+    const t = (token || "").trim();
+    if (!t) return { success: false, error: "QR_NO_ENCONTRADO" };
 
-  const miembro = await getMiembroByQrToken(tenant.id, t);
-  if (!miembro) return { success: false, error: "QR_NO_ENCONTRADO" };
-  if (miembro.archivado) {
-    return { success: false, error: "MIEMBRO_ARCHIVADO", nombre: miembro.nombre };
-  }
-  if (await congelacionActiva(tenant.id, miembro.id)) {
+    const miembro = await getMiembroByQrToken(tenant.id, t);
+    if (!miembro) return { success: false, error: "QR_NO_ENCONTRADO" };
+    if (miembro.archivado) {
+      return { success: false, error: "MIEMBRO_ARCHIVADO", nombre: miembro.nombre };
+    }
+    if (await congelacionActiva(tenant.id, miembro.id)) {
+      return {
+        success: false,
+        error: "MEMBRESIA_CONGELADA",
+        nombre: miembro.nombre,
+      };
+    }
+    if (await visitasAgotadas(tenant.id, miembro.id)) {
+      return { success: false, error: "SIN_VISITAS", nombre: miembro.nombre };
+    }
+    // Mismo QR sostenido frente al lector o doble tap: el lock del cliente se
+    // libera a los 2.5s, esto cubre el hueco del lado del servidor.
+    if (await checkinReciente(tenant.id, miembro.id)) {
+      return { success: false, error: "CHECKIN_RECIENTE", nombre: miembro.nombre };
+    }
+    if (
+      miembro.fecha_vencimiento &&
+      miembro.fecha_vencimiento < hoyISO() &&
+      (await bloqueaVencidos(tenant.id))
+    ) {
+      return { success: false, error: "MEMBRESIA_VENCIDA", nombre: miembro.nombre };
+    }
+
+    const res = await createCheckin(tenant.id, miembro.id);
+    if (!res.ok) {
+      return { success: false, error: "ERROR", nombre: miembro.nombre };
+    }
+
     return {
-      success: false,
-      error: "MEMBRESIA_CONGELADA",
+      success: true,
       nombre: miembro.nombre,
+      fechaVencimiento: miembro.fecha_vencimiento,
     };
   }
-  if (await visitasAgotadas(tenant.id, miembro.id)) {
-    return { success: false, error: "SIN_VISITAS", nombre: miembro.nombre };
-  }
-  // Mismo QR sostenido frente al lector o doble tap: el lock del cliente se
-  // libera a los 2.5s, esto cubre el hueco del lado del servidor.
-  if (await checkinReciente(tenant.id, miembro.id)) {
-    return { success: false, error: "CHECKIN_RECIENTE", nombre: miembro.nombre };
-  }
-  if (
-    miembro.fecha_vencimiento &&
-    miembro.fecha_vencimiento < hoyISO() &&
-    (await bloqueaVencidos(tenant.id))
-  ) {
-    return { success: false, error: "MEMBRESIA_VENCIDA", nombre: miembro.nombre };
-  }
-
-  const res = await createCheckin(tenant.id, miembro.id);
-  if (!res.ok) {
-    return { success: false, error: "ERROR", nombre: miembro.nombre };
-  }
-
-  return {
-    success: true,
-    nombre: miembro.nombre,
-    fechaVencimiento: miembro.fecha_vencimiento,
-  };
-}
+);

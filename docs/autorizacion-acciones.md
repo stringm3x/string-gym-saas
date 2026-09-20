@@ -233,7 +233,7 @@ solo cambia donde hoy hay un hueco.
 | 4 | Panel `caja/` (4 archivos, 12 acciones). | Entregado. **Cierra** `creditos` (abono), `inventario` (solo líneas/concepto de producto, en el cuerpo con `has`+`can`; un ticket o cobro de membresía sigue siendo caja básica) y `kiosco_autoservicio` (autorizar/rechazar código). `vender_desde_caja` se **usa** (cuerpo de cobrar/ticket + la página oculta productos con el mismo par). Reporte (`sql/reportes/uso-features-pr4-caja.sql`, 2026-09-20): creditos 0 en todo el histórico; inventario 6 ventas (5 del 26-ago, 1 de prueba); kiosco 1 código de prueba. Cierres probados con plan mockeado en `caja/cierres.test.ts`. |
 | 5 | Panel `miembros/` + `miembros/[id]/` (7 archivos, 21 acciones). | Entregado. **Cierra** `tags` (crear/editar con `tag_ids` en el cuerpo; bulk) y `bulk_actions` (ambas Pro); `creditos` y `nutricion` ya se exigían. Cambio de rol: importar CSV y regenerar QR pasan de `role === "owner"` a mano a `configurar_general` (owner + gerente, mismo criterio que `requireOwner`). Uso real (`sql/reportes/uso-features-pr5-miembros.sql`, 2026-09-20): **todo en cero** — tags, congelaciones, cambios de plan, importaciones, créditos, nutrición, en ambos tenants y en todo el histórico. Cierres probados con plan mockeado en `miembros/cierres.test.ts`. |
 | 6 | Panel `configuracion/*` (12 archivos, 42 acciones). | Entregado. **Cierra** (todas Pro, todas con la página ya gateada por la misma feature): `opiniones` (Google Place ID), `plantillas_mensaje` (5), `promociones` (3), `tags` (3), `multiusuario` (8 de staff; invitar ya lo exigía). Sin excepciones al modelo de gerente: cajas y staff declaran `configurar_general`/`gestionar_staff`; `requireOwner()` desapareció. `toggleCajaCheckinPin` conserva el guard de la RLS de `gyms`. Cierres probados con plan mockeado en `configuracion/cierres.test.ts`. |
-| 7 | Panel resto (14 archivos, incluye `suspendida` → `anonAction`). | |
+| 7 | Panel resto (14 archivos, 30 acciones). Cierra el panel. | Entregado. **Cierra** (Pro; página/layout ya gateados): `inventario` (3), `timeline_notas` (4), `prospectos` (3), `reportes` (1). Ganan permiso las que no tenían ninguno: búsqueda, términos, notificaciones, check-in ×3, onboarding (`configurar_general`), campañas (`ver_dashboard_ingresos`, paridad con el sidebar), inbox ×3 (`usar_panel`). Notas: `usar_panel` + `ver_prospectos` en el cuerpo para prospectos. `suspendida` → `anonAction`. Probado en `app/(tenant)/[slug]/cierres.test.ts`. |
 | 8 | Auth → `anonAction`; `legacy.json` a 0 y borrado; `apiGuard` valida `hasFeature(plan, "api")`. | |
 | **9** | `requirePanel(politica)` para `page.tsx`, leyendo el mismo `politicas.ts`. | El bug de `/caja` sin guard era exactamente esto: acción protegida, página no. |
 
@@ -305,3 +305,19 @@ atómico, el reembolso no desmarca la cuota).
 
 Si el editor marca el export en rojo, o `tsc` falla en
 `lib/authz/__registry__.ts`, es el diseño funcionando.
+
+Tropiezos conocidos al escribir el handler:
+
+- **Un parámetro con valor por defecto se infiere como `unknown`** en el
+  handler variádico: `async (tenant, claseId: string, semanas = 4)` deja
+  `semanas: unknown`. Anótalo: `semanas: number = 4`.
+- **`onDenied` obligatorio**: si la acción devuelve `number`, `Nota[]`,
+  `void`, `{ success }` o un form state con `fieldErrors` requerido, tsc
+  exige `onDenied` porque `Denegado` no cabe en esa forma. No lo esquives
+  cambiando el tipo de retorno; decide qué ve el cliente al negarse.
+- **`usar_panel`** no es un permiso: es la ausencia declarada de uno
+  (cualquier staff). Cuando lo uses, di en el comentario de la política por
+  qué no hay rol que restringir, y si parte del recurso sí lo tiene (notas
+  de prospecto → `ver_prospectos`), verifícalo en el cuerpo con `ctx.can`.
+- **Acciones con `redirect()`**: devuelven `void`; `onDenied` decide a
+  dónde va quien no puede (o no-op, como en onboarding).

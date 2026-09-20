@@ -213,6 +213,66 @@ export const PANEL = {
   "config.caja_pin_checkin": { feature: "multiusuario", permission: "gestionar_staff" },
   /** updateWhatsappConfigAction (ya verificaba ambos ejes). */
   "config.whatsapp": { feature: "whatsapp_automatico", permission: "configurar_general" },
+
+  // ── resto del panel ── (migrado en el PR 7; cierra el panel)
+  /** buscarMiembrosAction (buscar-actions.ts) — búsqueda global; hoy sin auth. */
+  "panel.buscar_miembros": { feature: "miembros", permission: "usar_panel" },
+  /** aceptarTerminosAction — hoy sin auth; cualquier staff puede aceptar por el gym (así era). */
+  "panel.aceptar_terminos": { feature: "miembros", permission: "usar_panel" },
+  /**
+   * notificaciones-actions.ts. `usar_panel` NO es un permiso: es la ausencia
+   * declarada de uno. Lo tienen los cuatro roles = "cualquier staff
+   * autenticado". El inbox de notificaciones es compartido por todo el gym
+   * (gym_notifications no tiene destinatario), así que no hay rol que
+   * restringir; se declara para que quede explícito y greppable.
+   */
+  "notificaciones.marcar_leida": { feature: "miembros", permission: "usar_panel" },
+  "notificaciones.marcar_todas": { feature: "miembros", permission: "usar_panel" },
+  /** checkins/actions.ts — hoy sin auth. */
+  "checkins.registrar": { feature: "checkins", permission: "hacer_checkin_manual" },
+  "checkins.buscar": { feature: "checkins", permission: "hacer_checkin_manual" },
+  /** checkins/scanner — hoy sin auth en la acción (la página gatea qr_access + ver_checkins_dia). */
+  "checkins.qr": { feature: "qr_access", permission: "hacer_checkin_manual" },
+  /** clases/[sesionId] (ya verificaban ambos ejes: ver_clases opera, gestionar_clases cancela sesión). */
+  "clases.buscar_miembros": { feature: "clases", permission: "ver_clases" },
+  "clases.reservar": { feature: "clases", permission: "ver_clases" },
+  "clases.cancelar_reserva": { feature: "clases", permission: "ver_clases" },
+  "clases.checkin_reserva": { feature: "clases", permission: "ver_clases" },
+  "clases.no_show": { feature: "clases", permission: "ver_clases" },
+  "clases.cancelar_sesion": { feature: "clases", permission: "gestionar_clases" },
+  /** enviarCampanaAction — hoy solo feature; el sidebar la muestra con ver_dashboard_ingresos (owner + gerente). */
+  "campanas.enviar": { feature: "campanas", permission: "ver_dashboard_ingresos" },
+  /**
+   * Inbox de WhatsApp — hoy solo feature. El sidebar lo muestra a todo el
+   * staff ("contestar es operación diaria"), así que `usar_panel` (ausencia
+   * declarada de permiso, ver arriba).
+   */
+  "inbox.marcar_leida": { feature: "whatsapp_automatico", permission: "usar_panel" },
+  "inbox.toggle_bot": { feature: "whatsapp_automatico", permission: "usar_panel" },
+  "inbox.enviar": { feature: "whatsapp_automatico", permission: "usar_panel" },
+  /** inventario/actions.ts. cierra: inventario (Pro); el layout ya lo gatea. */
+  "inventario.producto_crear": { feature: "inventario", permission: "ver_inventario_movimientos" },
+  "inventario.producto_editar": { feature: "inventario", permission: "ver_inventario_movimientos" },
+  "inventario.movimiento": { feature: "inventario", permission: "ver_inventario_movimientos" },
+  /**
+   * notas/actions.ts. `usar_panel` = ausencia declarada de permiso (cualquier
+   * staff): las notas son operación diaria de los cuatro roles. Las notas de
+   * PROSPECTO además exigen can("ver_prospectos") en el cuerpo, porque el
+   * prospecto en sí solo lo ven owner y gerente. cierra: timeline_notas
+   * (Pro); la ficha del socio ya lo gatea.
+   */
+  "notas.crear": { feature: "timeline_notas", permission: "usar_panel" },
+  "notas.toggle_completada": { feature: "timeline_notas", permission: "usar_panel" },
+  "notas.registrar_accion": { feature: "timeline_notas", permission: "usar_panel" },
+  "notas.listar": { feature: "timeline_notas", permission: "usar_panel" },
+  /** completarOnboardingAction — hoy sin auth; es la guía del dueño. */
+  "onboarding.completar": { feature: "miembros", permission: "configurar_general" },
+  /** prospectos/actions.ts. cierra: prospectos (Pro); la página ya lo gatea. */
+  "prospectos.crear": { feature: "prospectos", permission: "ver_prospectos" },
+  "prospectos.editar": { feature: "prospectos", permission: "ver_prospectos" },
+  "prospectos.cambiar_estado": { feature: "prospectos", permission: "ver_prospectos" },
+  /** getReporteCsvAction. cierra: reportes (Pro); la página ya lo gatea. */
+  "reportes.csv": { feature: "reportes", permission: "ver_dashboard_ingresos" },
 } as const satisfies Record<string, PoliticaPanel>;
 
 // ─────────────────────────────────────────────────────────────────────────

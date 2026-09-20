@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getTenant } from "@/lib/tenant";
-import { hasPermission } from "@/lib/permissions";
+import { panelAction, type Denegado } from "@/lib/authz";
 import {
   createProducto,
   updateProducto,
@@ -24,6 +23,7 @@ export interface ProductoFormState {
 }
 
 const empty: ProductoFormState = { ok: false, error: null, fieldErrors: {} };
+const denegar = (d: Denegado): ProductoFormState => ({ ...empty, error: d.error });
 
 function parseProducto(formData: FormData) {
   const costoRaw = formData.get("costo");
@@ -47,61 +47,59 @@ function parseProducto(formData: FormData) {
   };
 }
 
-export async function createProductoAction(
-  _prev: ProductoFormState,
-  formData: FormData
-): Promise<ProductoFormState> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "ver_inventario_movimientos")) {
-    return { ...empty, error: "No tienes permiso para esta acción." };
-  }
-  const raw = parseProducto(formData);
-  const parsed = productoSchema.safeParse(raw);
+export const createProductoAction = panelAction(
+  "inventario.producto_crear",
+  { onDenied: denegar },
+  async (tenant, _prev: ProductoFormState, formData: FormData): Promise<ProductoFormState> => {
+    const raw = parseProducto(formData);
+    const parsed = productoSchema.safeParse(raw);
 
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const path = issue.path[0]?.toString();
-      if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const path = issue.path[0]?.toString();
+        if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+      }
+      return { ok: false, error: "Revisa los campos.", fieldErrors };
     }
-    return { ok: false, error: "Revisa los campos.", fieldErrors };
+
+    const result = await createProducto(tenant.id, parsed.data);
+    if (!result.ok) return { ...empty, error: result.error };
+
+    revalidatePath(`/${tenant.slug}/inventario/productos`);
+    revalidatePath(`/${tenant.slug}/inventario/movimientos`);
+    return { ok: true, error: null, fieldErrors: {} };
   }
+);
 
-  const result = await createProducto(tenant.id, parsed.data);
-  if (!result.ok) return { ...empty, error: result.error };
+export const updateProductoAction = panelAction(
+  "inventario.producto_editar",
+  { onDenied: denegar },
+  async (
+    tenant,
+    id: string,
+    _prev: ProductoFormState,
+    formData: FormData
+  ): Promise<ProductoFormState> => {
+    const raw = parseProducto(formData);
+    const parsed = productoSchema.safeParse(raw);
 
-  revalidatePath(`/${tenant.slug}/inventario/productos`);
-  revalidatePath(`/${tenant.slug}/inventario/movimientos`);
-  return { ok: true, error: null, fieldErrors: {} };
-}
-
-export async function updateProductoAction(
-  id: string,
-  _prev: ProductoFormState,
-  formData: FormData
-): Promise<ProductoFormState> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "ver_inventario_movimientos")) {
-    return { ...empty, error: "No tienes permiso para esta acción." };
-  }
-  const raw = parseProducto(formData);
-  const parsed = productoSchema.safeParse(raw);
-
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const path = issue.path[0]?.toString();
-      if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const path = issue.path[0]?.toString();
+        if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+      }
+      return { ok: false, error: "Revisa los campos.", fieldErrors };
     }
-    return { ok: false, error: "Revisa los campos.", fieldErrors };
+
+    const result = await updateProducto(tenant.id, id, parsed.data);
+    if (!result.ok) return { ...empty, error: result.error };
+
+    revalidatePath(`/${tenant.slug}/inventario/productos`);
+    return { ok: true, error: null, fieldErrors: {} };
   }
-
-  const result = await updateProducto(tenant.id, id, parsed.data);
-  if (!result.ok) return { ...empty, error: result.error };
-
-  revalidatePath(`/${tenant.slug}/inventario/productos`);
-  return { ok: true, error: null, fieldErrors: {} };
-}
+);
 
 // ============================================================
 // MOVIMIENTOS DE INVENTARIO
@@ -113,40 +111,37 @@ export interface MovimientoFormState {
   fieldErrors: Partial<Record<string, string>>;
 }
 
-export async function registerMovimientoAction(
-  _prev: MovimientoFormState,
-  formData: FormData
-): Promise<MovimientoFormState> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "ver_inventario_movimientos")) {
-    return { ok: false, error: "No tienes permiso para esta acción.", fieldErrors: {} };
-  }
-  const raw = {
-    producto_id: String(formData.get("producto_id") ?? ""),
-    tipo: String(formData.get("tipo") ?? "entrada") as
-      | "entrada"
-      | "salida"
-      | "ajuste",
-    cantidad: Number(formData.get("cantidad") ?? 0),
-    motivo: String(formData.get("motivo") ?? ""),
-  };
+export const registerMovimientoAction = panelAction(
+  "inventario.movimiento",
+  { onDenied: (d): MovimientoFormState => ({ ok: false, error: d.error, fieldErrors: {} }) },
+  async (tenant, _prev: MovimientoFormState, formData: FormData): Promise<MovimientoFormState> => {
+    const raw = {
+      producto_id: String(formData.get("producto_id") ?? ""),
+      tipo: String(formData.get("tipo") ?? "entrada") as
+        | "entrada"
+        | "salida"
+        | "ajuste",
+      cantidad: Number(formData.get("cantidad") ?? 0),
+      motivo: String(formData.get("motivo") ?? ""),
+    };
 
-  const parsed = movimientoSchema.safeParse(raw);
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const path = issue.path[0]?.toString();
-      if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+    const parsed = movimientoSchema.safeParse(raw);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const path = issue.path[0]?.toString();
+        if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+      }
+      return { ok: false, error: "Revisa los campos.", fieldErrors };
     }
-    return { ok: false, error: "Revisa los campos.", fieldErrors };
-  }
 
-  const result = await aplicarMovimiento(tenant.id, parsed.data);
-  if (!result.ok) {
-    return { ok: false, error: result.error, fieldErrors: {} };
-  }
+    const result = await aplicarMovimiento(tenant.id, parsed.data);
+    if (!result.ok) {
+      return { ok: false, error: result.error, fieldErrors: {} };
+    }
 
-  revalidatePath(`/${tenant.slug}/inventario/productos`);
-  revalidatePath(`/${tenant.slug}/inventario/movimientos`);
-  return { ok: true, error: null, fieldErrors: {} };
-}
+    revalidatePath(`/${tenant.slug}/inventario/productos`);
+    revalidatePath(`/${tenant.slug}/inventario/movimientos`);
+    return { ok: true, error: null, fieldErrors: {} };
+  }
+);
