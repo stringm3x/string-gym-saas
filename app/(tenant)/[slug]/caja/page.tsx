@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   listPagosDelDia,
   getResumenCaja,
@@ -8,7 +7,7 @@ import {
 import { listPlanes } from "@/lib/queries/planes.queries";
 import { listPromociones } from "@/lib/queries/promociones.queries";
 import { listProductosParaVenta } from "@/lib/queries/productos.queries";
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { hasFeature } from "@/lib/features";
 import { hasPermission } from "@/lib/permissions";
 import { getGymFull } from "@/lib/queries/gyms.queries";
@@ -79,19 +78,14 @@ function fechaHoy(): string {
  * el botón de cobrar y en el método seleccionado.
  */
 export default async function CajaPage({ params, searchParams }: PageProps) {
-  const [{ slug }, sp, tenant] = await Promise.all([
+  const [{ slug }, sp, g] = await Promise.all([
     params,
     searchParams,
-    getTenant(),
+    // Misma política que registerPagoAction (caja_basica + registrar_pagos).
+    requirePanel("caja.cobrar", { sinPermiso: "/checkins" }),
   ]);
-
-  // La Server Action de cobro ya rechaza sin este permiso (bloque-04), pero
-  // sin guard aquí un entrenador con la URL a mano igual veía y usaba el
-  // formulario de cobro completo — el sidebar solo oculta el link, no
-  // protege la ruta.
-  if (!hasPermission(tenant.role, "registrar_pagos")) {
-    redirect(`/${slug}/checkins`);
-  }
+  if (!g.ok) return null; // caja_basica es Starter: no ocurre
+  const tenant = g.ctx;
 
   const categoria = parseCategoria(sp.cat);
 

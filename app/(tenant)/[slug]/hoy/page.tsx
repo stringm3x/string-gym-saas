@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getAlertas } from "@/lib/queries/alertas.queries";
 import { countMiembrosSinTelefono } from "@/lib/queries/miembros.queries";
 import { getPromedioSemana } from "@/lib/queries/opiniones.queries";
@@ -34,16 +34,11 @@ function formatFechaHoy(): string {
  */
 export default async function HoyPage({ params }: PageProps) {
   const { slug } = await params;
-  const tenant = await getTenant();
-
   // Hoy es panel estratégico del dueño — el recepcionista va a check-ins.
-  if (!hasPermission(tenant.role, "ver_pantalla_hoy")) {
-    redirect(`/${slug}/checkins`);
-  }
-
-  if (!hasFeature(tenant.plan, "pantalla_hoy")) {
-    redirect(`/${slug}/dashboard`);
-  }
+  const g = await requirePanel("pagina.hoy", { sinPermiso: "/checkins" });
+  // pantalla_hoy es Starter: no ocurre, pero si ocurriera el panel del mes es la casa.
+  if (!g.ok) redirect(`/${slug}/dashboard`);
+  const tenant = g.ctx;
 
   const canClases = hasFeature(tenant.plan, "clases");
   const hoy = hoyYMD();

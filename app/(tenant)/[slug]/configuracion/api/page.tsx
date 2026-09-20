@@ -1,5 +1,4 @@
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import {
   getOrCreateApiKey,
@@ -10,9 +9,10 @@ import { UpgradePage } from "@/components/ui/UpgradePage";
 import { ApiKeyPanel } from "@/components/configuracion/ApiKeyPanel";
 
 export default async function ApiConfigPage() {
-  const tenant = await getTenant();
+  const g = await requirePanel("config.api_regenerar", { sinPermiso: "/configuracion/gym" });
+  const tenant = g.ctx;
 
-  if (!hasFeature(tenant.plan, "api")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -24,7 +24,7 @@ export default async function ApiConfigPage() {
           "Rate limiting y logs de uso",
           "Documentación con ejemplos",
         ]}
-        planRequerido="pro"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />

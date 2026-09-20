@@ -1,10 +1,12 @@
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { listGymAddons } from "@/lib/queries/addons.queries";
 import { AddonsManager } from "@/components/configuracion/AddonsManager";
 
 export default async function AddonsPage() {
-  const tenant = await getTenant();
+  const g = await requirePanel("config.gym", { sinPermiso: "/checkins" });
+  if (!g.ok) return null; // feature Starter: no ocurre
+  const tenant = g.ctx;
   const [gym, addons] = await Promise.all([
     getGymInfo(tenant.id),
     listGymAddons(tenant.id),

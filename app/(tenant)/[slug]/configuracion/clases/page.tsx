@@ -1,5 +1,4 @@
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { getClases } from "@/lib/queries/clases.queries";
 import { getClasesMaxNoshows } from "@/lib/queries/gyms.queries";
@@ -8,11 +7,10 @@ import { ClasesList } from "@/components/clases/ClasesList";
 import { NoShowPenaltyForm } from "@/components/clases/NoShowPenaltyForm";
 
 export default async function ClasesConfigPage() {
-  const tenant = await getTenant();
+  const g = await requirePanel("config.clase_crear", { sinPermiso: "/configuracion/gym" });
+  const tenant = g.ctx;
 
-  // Owner ya garantizado por el layout de configuración (configurar_general).
-  // Gate de feature: clases es Pro+.
-  if (!hasFeature(tenant.plan, "clases")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -24,7 +22,7 @@ export default async function ClasesConfigPage() {
           "Clase gratis de prueba que genera prospectos",
           "Check-in de asistentes por sesión",
         ]}
-        planRequerido="pro"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />

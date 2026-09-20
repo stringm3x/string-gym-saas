@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LuArrowLeft, LuClipboardList } from "react-icons/lu";
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { listCortes } from "@/lib/queries/cortes.queries";
 import { listCajasTodas } from "@/lib/queries/cajas.queries";
 import { formatMoneda } from "@/lib/utils/format";
@@ -33,11 +33,15 @@ const tabClass = (activa: boolean) =>
   );
 
 export default async function CortesPage({ params, searchParams }: PageProps) {
-  const [{ slug }, sp, tenant] = await Promise.all([
+  const [{ slug }, sp, g] = await Promise.all([
     params,
     searchParams,
-    getTenant(),
+    // Misma política que abrirCorteAction: antes esta página no gateaba y un
+    // entrenador con la URL veía el panel de cortes sin poder usarlo.
+    requirePanel("caja.abrir_corte", { sinPermiso: "/checkins" }),
   ]);
+  if (!g.ok) return null; // caja_basica es Starter: no ocurre
+  const tenant = g.ctx;
 
   const [cortes, cajas] = await Promise.all([
     listCortes(tenant.id, { cajaId: sp.caja, limit: 50 }),

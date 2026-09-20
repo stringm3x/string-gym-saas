@@ -1,5 +1,4 @@
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import {
   getSesionesByRango,
@@ -19,9 +18,10 @@ export default async function ClasesCalendarioPage({
 }: {
   searchParams: Promise<{ semana?: string }>;
 }) {
-  const tenant = await getTenant();
+  const g = await requirePanel("clases.reservar", { sinPermiso: "/checkins" });
+  const tenant = g.ctx;
 
-  if (!hasFeature(tenant.plan, "clases")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -33,7 +33,7 @@ export default async function ClasesCalendarioPage({
           "Clase gratis de prueba que genera prospectos",
           "Check-in de asistentes por sesión",
         ]}
-        planRequerido="pro"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />

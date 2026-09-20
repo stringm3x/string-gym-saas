@@ -336,7 +336,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
           telefono={miembro.telefono}
           nombre={miembro.nombre}
           miembroId={miembro.id}
-          canRegenerar={tenant.role === "owner"}
+          canRegenerar={hasPermission(tenant.role, "configurar_general")}
         />
       )}
 

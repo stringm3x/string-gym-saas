@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { LuQrCode, LuMonitor } from "react-icons/lu";
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { hasFeature } from "@/lib/features";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import {
@@ -31,7 +31,9 @@ function fechaHoy(): string {
  */
 export default async function CheckinsPage({ params }: PageProps) {
   const { slug } = await params;
-  const tenant = await getTenant();
+  const g = await requirePanel("checkins.registrar", { sinPermiso: "/miembros" });
+  if (!g.ok) return null; // checkins es Starter: no ocurre
+  const tenant = g.ctx;
 
   const [gym, checkins, total] = await Promise.all([
     getGymInfo(tenant.id),

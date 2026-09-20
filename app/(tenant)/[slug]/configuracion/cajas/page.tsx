@@ -1,9 +1,11 @@
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { listCajasTodas } from "@/lib/queries/cajas.queries";
 import { CajasManager } from "@/components/configuracion/CajasManager";
 
 export default async function CajasPage() {
-  const tenant = await getTenant();
+  const g = await requirePanel("config.caja_crear", { sinPermiso: "/checkins" });
+  if (!g.ok) return null; // feature Starter: no ocurre
+  const tenant = g.ctx;
   const cajas = await listCajasTodas(tenant.id);
 
   return (

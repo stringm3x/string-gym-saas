@@ -1,8 +1,6 @@
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { countStockBajo } from "@/lib/queries/productos.queries";
-import { hasFeature } from "@/lib/features";
-import { hasPermission } from "@/lib/permissions";
 import { InventarioTabs } from "@/components/inventario/InventarioTabs";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 
@@ -14,9 +12,10 @@ export default async function InventarioLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const tenant = await getTenant();
+  const g = await requirePanel("pagina.inventario", { sinPermiso: "/checkins" });
+  const tenant = g.ctx;
 
-  if (!hasFeature(tenant.plan, "inventario")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -27,7 +26,7 @@ export default async function InventarioLayout({
           "Alertas de stock bajo",
           "Venta de productos integrada a la caja",
         ]}
-        planRequerido="pro"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={slug}
       />
@@ -50,7 +49,7 @@ export default async function InventarioLayout({
       <InventarioTabs
         slug={slug}
         stockBajoCount={stockBajoCount}
-        canMovimientos={hasPermission(tenant.role, "ver_inventario_movimientos")}
+        canMovimientos={tenant.can("ver_inventario_movimientos")}
       />
 
       <div>{children}</div>

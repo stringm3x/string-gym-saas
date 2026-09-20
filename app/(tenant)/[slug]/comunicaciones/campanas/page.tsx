@@ -1,5 +1,4 @@
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import {
@@ -11,9 +10,11 @@ import { CampanasManager } from "@/components/campanas/CampanasManager";
 import type { AudienciaData } from "@/components/campanas/CampanaWizard";
 
 export default async function CampanasPage() {
-  const tenant = await getTenant();
+  // Misma política que enviarCampanaAction (campanas + ver_dashboard_ingresos).
+  const g = await requirePanel("campanas.enviar", { sinPermiso: "/checkins" });
+  const tenant = g.ctx;
 
-  if (!hasFeature(tenant.plan, "campanas")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -25,7 +26,7 @@ export default async function CampanasPage() {
           "Vista previa antes de enviar",
           "Historial de campañas enviadas",
         ]}
-        planRequerido="pro"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />

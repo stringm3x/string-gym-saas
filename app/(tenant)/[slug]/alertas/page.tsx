@@ -1,9 +1,6 @@
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { getAlertas } from "@/lib/queries/alertas.queries";
-import { hasFeature } from "@/lib/features";
-import { hasPermission } from "@/lib/permissions";
-import { redirect } from "next/navigation";
 import { AlertasList } from "@/components/alertas/AlertasList";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -15,13 +12,10 @@ interface PageProps {
 
 export default async function AlertasPage({ params }: PageProps) {
   const { slug } = await params;
-  const tenant = await getTenant();
+  const g = await requirePanel("pagina.alertas", { sinPermiso: "/checkins" });
+  const tenant = g.ctx;
 
-  if (!hasPermission(tenant.role, "ver_alertas")) {
-    redirect(`/${slug}/checkins`);
-  }
-
-  if (!hasFeature(tenant.plan, "alertas_dueno")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -32,7 +26,7 @@ export default async function AlertasPage({ params }: PageProps) {
           "Prospectos sin contactar y stock bajo",
           "Miembros sin actividad reciente",
         ]}
-        planRequerido="escala"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={slug}
       />

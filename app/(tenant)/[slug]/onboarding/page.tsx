@@ -5,7 +5,7 @@ import {
   LuExternalLink,
   LuQrCode,
 } from "react-icons/lu";
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { hasFeature } from "@/lib/features";
 import {
   getOnboardingEstado,
@@ -66,7 +66,11 @@ export default async function OnboardingPage({
 }: PageProps) {
   const { slug } = await params;
   const { error } = await searchParams;
-  const tenant = await getTenant();
+  // Misma política que completarOnboardingAction (configurar_general): la
+  // guía es del dueño y el gerente; antes recepción la veía con un botón inútil.
+  const g = await requirePanel("onboarding.completar", { sinPermiso: "/checkins" });
+  if (!g.ok) return null; // miembros es Starter: no ocurre
+  const tenant = g.ctx;
   const [estado, demo] = await Promise.all([
     getOnboardingEstado(tenant.id),
     getDemoMiembro(tenant.id),

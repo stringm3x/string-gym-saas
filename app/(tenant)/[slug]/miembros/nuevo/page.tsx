@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LuArrowLeft, LuArrowRightLeft } from "react-icons/lu";
 import { MiembroForm } from "@/components/miembros/MiembroForm";
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getProspecto } from "@/lib/queries/prospectos.queries";
 import { listTags } from "@/lib/queries/tags.queries";
 import { listPlanes } from "@/lib/queries/planes.queries";
@@ -19,7 +19,9 @@ export default async function NuevoMiembroPage({ params, searchParams }: PagePro
   const { slug } = await params;
   const { prospecto_id } = await searchParams;
 
-  const tenant = await getTenant();
+  const g = await requirePanel("miembros.crear", { sinPermiso: "/checkins" });
+  if (!g.ok) return null; // miembros es Starter: no ocurre
+  const tenant = g.ctx;
   const [prospecto, availableTags, planes, promocionesMembresia] =
     await Promise.all([
       prospecto_id
