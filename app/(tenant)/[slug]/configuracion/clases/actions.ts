@@ -2,9 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getTenant } from "@/lib/tenant";
-import { hasPermission } from "@/lib/permissions";
-import { hasFeature } from "@/lib/features";
+import { panelAction } from "@/lib/authz";
 import {
   createClase,
   updateClase,
@@ -25,34 +23,19 @@ export interface ClaseActionResult {
   activa?: boolean;
 }
 
-const DENIED: ClaseActionResult = { ok: false, error: "No autorizado." };
-
 /** Guarda el máximo de no-shows antes de bloquear reservas (C1). */
-export async function updateNoShowPenaltyAction(
-  max: number
-): Promise<{ ok: boolean; error?: string }> {
-  const tenant = await gate();
-  if (!tenant) return { ok: false, error: "No autorizado." };
+export const updateNoShowPenaltyAction = panelAction(
+  "config.clases_noshow",
+  {},
+  async (tenant, max: number): Promise<{ ok: boolean; error?: string }> => {
+    const n = Number.isFinite(max) && max > 0 ? Math.floor(max) : 0;
+    const r = await updateClasesMaxNoshows(tenant.id, n);
+    if (!r.ok) return { ok: false, error: r.error };
 
-  const n = Number.isFinite(max) && max > 0 ? Math.floor(max) : 0;
-  const r = await updateClasesMaxNoshows(tenant.id, n);
-  if (!r.ok) return { ok: false, error: r.error };
-
-  revalidatePath(`/${tenant.slug}/configuracion/clases`);
-  return { ok: true };
-}
-
-/** Owner + feature 'clases' (Pro+). */
-async function gate() {
-  const tenant = await getTenant();
-  if (
-    !hasPermission(tenant.role, "configurar_general") ||
-    !hasFeature(tenant.plan, "clases")
-  ) {
-    return null;
+    revalidatePath(`/${tenant.slug}/configuracion/clases`);
+    return { ok: true };
   }
-  return tenant;
-}
+);
 
 function buildFieldErrors(error: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
@@ -79,79 +62,73 @@ function toClaseInput(v: z.infer<typeof claseInputSchema>): ClaseInput {
   };
 }
 
-export async function createClaseAction(
-  data: unknown
-): Promise<ClaseActionResult> {
-  const tenant = await gate();
-  if (!tenant) return DENIED;
+export const createClaseAction = panelAction(
+  "config.clase_crear",
+  {},
+  async (tenant, data: unknown): Promise<ClaseActionResult> => {
+    const parsed = claseInputSchema.safeParse(data);
+    if (!parsed.success) {
+      return { ok: false, fieldErrors: buildFieldErrors(parsed.error) };
+    }
 
-  const parsed = claseInputSchema.safeParse(data);
-  if (!parsed.success) {
-    return { ok: false, fieldErrors: buildFieldErrors(parsed.error) };
+    const { clase, error } = await createClase(tenant.id, toClaseInput(parsed.data));
+    if (!clase) return { ok: false, error: error ?? "No se pudo crear la clase." };
+
+    // Genera sesiones para las próximas 4 semanas (recurrente) o la única.
+    const sesiones = generarSesionesPara(clase, 4);
+    const { insertadas } = await insertSesiones(tenant.id, sesiones);
+
+    revalidatePath(`/${tenant.slug}/configuracion/clases`);
+    return { ok: true, sesionesGeneradas: insertadas };
   }
+);
 
-  const { clase, error } = await createClase(tenant.id, toClaseInput(parsed.data));
-  if (!clase) return { ok: false, error: error ?? "No se pudo crear la clase." };
+export const updateClaseAction = panelAction(
+  "config.clase_editar",
+  {},
+  async (tenant, claseId: string, data: unknown): Promise<ClaseActionResult> => {
+    const parsed = claseInputSchema.safeParse(data);
+    if (!parsed.success) {
+      return { ok: false, fieldErrors: buildFieldErrors(parsed.error) };
+    }
 
-  // Genera sesiones para las próximas 4 semanas (recurrente) o la única.
-  const sesiones = generarSesionesPara(clase, 4);
-  const { insertadas } = await insertSesiones(tenant.id, sesiones);
+    // No regenera sesiones: solo actualiza los datos de la clase.
+    const { ok, error } = await updateClase(
+      tenant.id,
+      claseId,
+      toClaseInput(parsed.data)
+    );
+    if (!ok) return { ok: false, error };
 
-  revalidatePath(`/${tenant.slug}/configuracion/clases`);
-  return { ok: true, sesionesGeneradas: insertadas };
-}
-
-export async function updateClaseAction(
-  claseId: string,
-  data: unknown
-): Promise<ClaseActionResult> {
-  const tenant = await gate();
-  if (!tenant) return DENIED;
-
-  const parsed = claseInputSchema.safeParse(data);
-  if (!parsed.success) {
-    return { ok: false, fieldErrors: buildFieldErrors(parsed.error) };
+    revalidatePath(`/${tenant.slug}/configuracion/clases`);
+    return { ok: true };
   }
+);
 
-  // No regenera sesiones: solo actualiza los datos de la clase.
-  const { ok, error } = await updateClase(
-    tenant.id,
-    claseId,
-    toClaseInput(parsed.data)
-  );
-  if (!ok) return { ok: false, error };
+export const toggleClaseActivaAction = panelAction(
+  "config.clase_toggle",
+  {},
+  async (tenant, claseId: string): Promise<ClaseActionResult> => {
+    const { ok, activa, error } = await toggleClaseActiva(tenant.id, claseId);
+    if (!ok) return { ok: false, error };
 
-  revalidatePath(`/${tenant.slug}/configuracion/clases`);
-  return { ok: true };
-}
+    revalidatePath(`/${tenant.slug}/configuracion/clases`);
+    return { ok: true, activa };
+  }
+);
 
-export async function toggleClaseActivaAction(
-  claseId: string
-): Promise<ClaseActionResult> {
-  const tenant = await gate();
-  if (!tenant) return DENIED;
+export const generarSesionesAction = panelAction(
+  "config.clase_generar_sesiones",
+  {},
+  async (tenant, claseId: string, semanas: number = 4): Promise<ClaseActionResult> => {
+    const clase = await getClaseById(tenant.id, claseId);
+    if (!clase) return { ok: false, error: "Clase no encontrada." };
 
-  const { ok, activa, error } = await toggleClaseActiva(tenant.id, claseId);
-  if (!ok) return { ok: false, error };
+    const sesiones = generarSesionesPara(clase, semanas);
+    const { insertadas, error } = await insertSesiones(tenant.id, sesiones);
+    if (error) return { ok: false, error };
 
-  revalidatePath(`/${tenant.slug}/configuracion/clases`);
-  return { ok: true, activa };
-}
-
-export async function generarSesionesAction(
-  claseId: string,
-  semanas = 4
-): Promise<ClaseActionResult> {
-  const tenant = await gate();
-  if (!tenant) return DENIED;
-
-  const clase = await getClaseById(tenant.id, claseId);
-  if (!clase) return { ok: false, error: "Clase no encontrada." };
-
-  const sesiones = generarSesionesPara(clase, semanas);
-  const { insertadas, error } = await insertSesiones(tenant.id, sesiones);
-  if (error) return { ok: false, error };
-
-  revalidatePath(`/${tenant.slug}/configuracion/clases`);
-  return { ok: true, sesionesGeneradas: insertadas };
-}
+    revalidatePath(`/${tenant.slug}/configuracion/clases`);
+    return { ok: true, sesionesGeneradas: insertadas };
+  }
+);
