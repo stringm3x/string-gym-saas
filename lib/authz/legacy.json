@@ -1,19 +1,5 @@
 [
   "app/(auth)/login/actions.tsx",
   "app/(auth)/recuperar-password/actions.ts",
-  "app/(tenant)/[slug]/buscar-actions.ts",
-  "app/(tenant)/[slug]/checkins/actions.ts",
-  "app/(tenant)/[slug]/checkins/scanner/actions.ts",
-  "app/(tenant)/[slug]/clases/[sesionId]/actions.ts",
-  "app/(tenant)/[slug]/comunicaciones/campanas/actions.ts",
-  "app/(tenant)/[slug]/comunicaciones/whatsapp/actions.ts",
-  "app/(tenant)/[slug]/inventario/actions.ts",
-  "app/(tenant)/[slug]/notas/actions.ts",
-  "app/(tenant)/[slug]/notificaciones-actions.ts",
-  "app/(tenant)/[slug]/onboarding/actions.ts",
-  "app/(tenant)/[slug]/prospectos/actions.ts",
-  "app/(tenant)/[slug]/reportes/financiero/actions.ts",
-  "app/(tenant)/[slug]/suspendida/actions.ts",
-  "app/(tenant)/[slug]/terminos-actions.ts",
   "app/auth/accept-invite/actions.ts"
 ]

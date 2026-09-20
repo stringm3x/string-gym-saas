@@ -1,6 +1,6 @@
 "use server";
 
-import { getTenant } from "@/lib/tenant";
+import { panelAction } from "@/lib/authz";
 import { searchMiembrosForCheckin } from "@/lib/queries/miembros.queries";
 
 export interface ResultadoBusqueda {
@@ -10,14 +10,15 @@ export interface ResultadoBusqueda {
 }
 
 /** Búsqueda global de miembros por nombre/teléfono (scoped al tenant). */
-export async function buscarMiembrosAction(
-  query: string
-): Promise<ResultadoBusqueda[]> {
-  const tenant = await getTenant();
-  const miembros = await searchMiembrosForCheckin(tenant.id, query);
-  return miembros.map((m) => ({
-    id: m.id,
-    nombre: m.nombre,
-    telefono: m.telefono,
-  }));
-}
+export const buscarMiembrosAction = panelAction(
+  "panel.buscar_miembros",
+  { onDenied: () => [] },
+  async (tenant, query: string): Promise<ResultadoBusqueda[]> => {
+    const miembros = await searchMiembrosForCheckin(tenant.id, query);
+    return miembros.map((m) => ({
+      id: m.id,
+      nombre: m.nombre,
+      telefono: m.telefono,
+    }));
+  }
+);
