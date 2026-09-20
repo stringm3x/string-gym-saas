@@ -68,8 +68,20 @@ export function ConfigNav({ slug, plan, role }: ConfigNavProps) {
     {
       titulo: "Datos",
       items: [
-        { label: "Tags", href: `${base}/tags`, feature: "tags" },
-        { label: "Plantillas", href: `${base}/plantillas`, feature: "plantillas_mensaje" },
+        // Mismo permiso que sus acciones (configurar_planes_promociones, D6):
+        // sin esto un gerente veía el link y todo le fallaba al guardar.
+        {
+          label: "Tags",
+          href: `${base}/tags`,
+          feature: "tags",
+          permiso: "configurar_planes_promociones",
+        },
+        {
+          label: "Plantillas",
+          href: `${base}/plantillas`,
+          feature: "plantillas_mensaje",
+          permiso: "configurar_planes_promociones",
+        },
         { label: "Complementos", href: `${base}/addons` },
       ],
     },

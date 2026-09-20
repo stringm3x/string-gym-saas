@@ -1,7 +1,6 @@
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { listTagsConConteo } from "@/lib/queries/tags.queries";
-import { hasFeature } from "@/lib/features";
 import { TagsManager } from "@/components/configuracion/TagsManager";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 
@@ -11,10 +10,11 @@ interface PageProps {
 
 export default async function TagsPage({ params }: PageProps) {
   const { slug } = await params;
-  const tenant = await getTenant();
+  // Misma política que createTagAction: tags (Pro) + configurar_planes_promociones.
+  const g = await requirePanel("config.tag_crear", { sinPermiso: "/configuracion/gym" });
 
-  if (!hasFeature(tenant.plan, "tags")) {
-    const gym = await getGymInfo(tenant.id);
+  if (!g.ok) {
+    const gym = await getGymInfo(g.ctx.id);
     return (
       <UpgradePage
         titulo="Tags"
@@ -24,14 +24,14 @@ export default async function TagsPage({ params }: PageProps) {
           "Filtra listados por tag",
           "Asignación masiva de tags en bloque",
         ]}
-        planRequerido="pro"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={slug}
       />
     );
   }
 
-  const tags = await listTagsConConteo(tenant.id);
+  const tags = await listTagsConConteo(g.ctx.id);
 
   return <TagsManager tags={tags} />;
 }

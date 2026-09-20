@@ -1,7 +1,6 @@
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { listPromociones } from "@/lib/queries/promociones.queries";
-import { hasFeature } from "@/lib/features";
 import { PromocionesManager } from "@/components/configuracion/PromocionesManager";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 
@@ -11,10 +10,11 @@ interface PageProps {
 
 export default async function PromocionesPage({ params }: PageProps) {
   const { slug } = await params;
-  const tenant = await getTenant();
+  // Misma política que createPromocionAction: promociones (Pro) + configurar_planes_promociones.
+  const g = await requirePanel("config.promocion_crear", { sinPermiso: "/configuracion/gym" });
 
-  if (!hasFeature(tenant.plan, "promociones")) {
-    const gym = await getGymInfo(tenant.id);
+  if (!g.ok) {
+    const gym = await getGymInfo(g.ctx.id);
     return (
       <UpgradePage
         titulo="Promociones"
@@ -24,14 +24,14 @@ export default async function PromocionesPage({ params }: PageProps) {
           "Promos de producto para tu punto de venta",
           "Disponibles al cobrar en caja",
         ]}
-        planRequerido="pro"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={slug}
       />
     );
   }
 
-  const promociones = await listPromociones(tenant.id);
+  const promociones = await listPromociones(g.ctx.id);
 
   return <PromocionesManager promociones={promociones} />;
 }
