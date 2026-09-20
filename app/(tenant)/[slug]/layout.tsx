@@ -127,6 +127,10 @@ export default async function TenantLayout({
   // antes que el dueño aceptaba, el update afectaba 0 filas sin error,
   // el modal se cerraba, refrescaba y volvía a aparecer — atrapado sin
   // poder salir salvo cerrando sesión a mano.
+  // Solo el owner: aceptar Términos tiene efecto legal sobre la cuenta y lo
+  // hace su dueño, no quien la administra (decisión 2026-09-20; ver
+  // panel.aceptar_terminos en lib/authz/politicas.ts). No es un gate de
+  // permiso y no debe migrarse a hasPermission.
   const debeAceptarTerminos =
     !gym.acepto_terminos_at && tenant.role === "owner";
 

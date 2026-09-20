@@ -217,7 +217,16 @@ export const PANEL = {
   // ── resto del panel ── (migrado en el PR 7; cierra el panel)
   /** buscarMiembrosAction (buscar-actions.ts) — búsqueda global; hoy sin auth. */
   "panel.buscar_miembros": { feature: "miembros", permission: "usar_panel" },
-  /** aceptarTerminosAction — hoy sin auth; cualquier staff puede aceptar por el gym (así era). */
+  /**
+   * aceptarTerminosAction. DECISIÓN (2026-09-20): aceptar los Términos tiene
+   * efecto legal sobre la cuenta y lo hace quien es DUEÑO de la cuenta, no
+   * quien la administra. Eso lo garantiza el layout raíz, que solo muestra
+   * el modal al owner (`debeAceptarTerminos`). Que la acción sea
+   * `usar_panel` es un detalle sin consecuencia mientras el modal siga
+   * siendo solo del owner — NO lo "arregles" moviéndolo a otro permiso, y
+   * si alguna vez el modal se abre a más roles, esta política tiene que
+   * cambiar con él.
+   */
   "panel.aceptar_terminos": { feature: "miembros", permission: "usar_panel" },
   /**
    * notificaciones-actions.ts. `usar_panel` NO es un permiso: es la ausencia

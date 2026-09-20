@@ -277,12 +277,12 @@ export default async function CajaPage({ params, searchParams }: PageProps) {
           icon={<LuStore />}
           title="Sin caja configurada"
           description={
-            tenant.role === "owner"
+            tenant.can("configurar_general")
               ? "Para cobrar necesitas al menos una caja. Créala en Configuración → Cajas y regresa aquí."
-              : "Para cobrar hace falta una caja configurada. Pídele al dueño que la cree en Configuración → Cajas."
+              : "Para cobrar hace falta una caja configurada. Pídele al dueño o al gerente que la cree en Configuración → Cajas."
           }
           action={
-            tenant.role === "owner" ? (
+            tenant.can("configurar_general") ? (
               <Link
                 href={`/${slug}/configuracion/cajas`}
                 className="inline-flex h-11 items-center gap-2 bg-brand-green px-4 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-green/90"
