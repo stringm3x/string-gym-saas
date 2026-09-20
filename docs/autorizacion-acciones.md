@@ -231,7 +231,7 @@ solo cambia donde hoy hay un hueco.
 | 2 | Portal: 8 acciones, 6 archivos. | Entregado. 5 → `portalAction`, 3 → `anonAction` (OTP ×2, cerrar sesión). Firmas públicas sin cambio. Sin sesión ya no hay `redirect` desde la acción: devuelve `SIN_SESION` ("Tu sesión expiró"). No cierra nada: `portal_miembro` es Escala y hereda `clases`/`mercadopago`/`opiniones`. |
 | 3 | Admin: 19 acciones, 6 archivos. | Entregado. 17 → `adminAction`, 2 → `anonAction` (login, logout). Decisión nueva (2026-09-20): `super_admin` = facturación, existencia o acceso a la cuenta de un tenant (9: cancelar, suspender, cambiar plan, activar plan pagado, fundador, addon, reset password del owner, activar solicitud, pago manual); `admin` = soporte diario (8). `cerrarTodasSesionesAction` ya valida admin. Firmas sin cambio. |
 | 4 | Panel `caja/` (4 archivos, 12 acciones). | Entregado. **Cierra** `creditos` (abono), `inventario` (solo líneas/concepto de producto, en el cuerpo con `has`+`can`; un ticket o cobro de membresía sigue siendo caja básica) y `kiosco_autoservicio` (autorizar/rechazar código). `vender_desde_caja` se **usa** (cuerpo de cobrar/ticket + la página oculta productos con el mismo par). Reporte (`sql/reportes/uso-features-pr4-caja.sql`, 2026-09-20): creditos 0 en todo el histórico; inventario 6 ventas (5 del 26-ago, 1 de prueba); kiosco 1 código de prueba. Cierres probados con plan mockeado en `caja/cierres.test.ts`. |
-| 5 | Panel `miembros/` + `miembros/[id]/` (6 archivos). | |
+| 5 | Panel `miembros/` + `miembros/[id]/` (7 archivos, 21 acciones). | Entregado. **Cierra** `tags` (crear/editar con `tag_ids` en el cuerpo; bulk) y `bulk_actions` (ambas Pro); `creditos` y `nutricion` ya se exigían. Cambio de rol: importar CSV y regenerar QR pasan de `role === "owner"` a mano a `configurar_general` (owner + gerente, mismo criterio que `requireOwner`). Uso real (`sql/reportes/uso-features-pr5-miembros.sql`, 2026-09-20): **todo en cero** — tags, congelaciones, cambios de plan, importaciones, créditos, nutrición, en ambos tenants y en todo el histórico. Cierres probados con plan mockeado en `miembros/cierres.test.ts`. |
 | 6 | Panel `configuracion/*` (13 archivos). | |
 | 7 | Panel resto (14 archivos, incluye `suspendida` → `anonAction`). | |
 | 8 | Auth → `anonAction`; `legacy.json` a 0 y borrado; `apiGuard` valida `hasFeature(plan, "api")`. | |
@@ -268,7 +268,34 @@ no quitarle nada a nadie por accidente.
   `toggleCajaCheckinPinAction` es owner-only, y lo es por la RLS de `gyms`
   (guard `ERROR_SOLO_OWNER`), no por el código.
 
-## 8. Receta: agregar la acción 152
+## 8. Estado real de uso del producto (2026-09-20)
+
+Los reportes de uso de los PRs 4 y 5 (`sql/reportes/`) dieron, para los
+dos tenants vivos y en todo el histórico:
+
+- **Ejercido de verdad**: alta de socios, cobro, check-in, y seis ventas de
+  producto desde caja (cinco de `evolution-gym` el 26-ago-2026, una de
+  prueba). `evolution-gym` opera desde julio con 45 socios y 53 pagos.
+- **Cero absoluto**: créditos (planes de pago y cuotas), etiquetas,
+  acciones masivas, congelaciones, cambios de plan, importación CSV,
+  nutrición, códigos del kiosco de autoservicio (uno de prueba),
+  MercadoPago.
+
+La lista de "cinco rutas sin estrenar" (MercadoPago, WhatsApp, prueba de
+14 días, alta desde el sitio, créditos) se queda corta: lo que hay es un
+**producto cuyo núcleo está probado y cuya periferia entera no**. Todo lo
+demás existe en código y nadie lo ha usado nunca, ni en demos.
+
+Consecuencia para esta serie: **cada cierre de feature de los PRs 6 y 7
+se prueba con plan mockeado contra la acción real** (como
+`caja/cierres.test.ts` y `miembros/cierres.test.ts`), sin preguntar tenant
+por tenant — ningún tenant lo va a haber ejercido. Consecuencia fuera de
+esta serie: cualquier feature de la periferia que se venda en un plan se
+vende sin que nadie la haya usado; créditos además con tres bugs
+conocidos (crear plan a plazos no cobra la cuota 1, `pagarCuota` no es
+atómico, el reembolso no desmarca la cuota).
+
+## 9. Receta: agregar la acción 152
 
 1. Elige la clase por la carpeta donde vive.
 2. Agrega su política en `politicas.ts` (panel: feature **y** permission).

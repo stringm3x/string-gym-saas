@@ -10,8 +10,8 @@
 --     archivar / restaurar               archivar_miembros (Starter) + eliminar_archivar_miembros
 --     bulkAsignarTag                     bulk_actions (Pro) + editar_miembros; cuerpo has("tags")
 --                                                                          ← CIERRA bulk_actions + tags
---   miembros/importar/actions.ts (2)     importacion_csv (Starter) + crear_miembros
---     parsearCSV / importarMiembros      hoy NO verifican nada (de las 16 sin auth)
+--   miembros/importar/actions.ts (2)     importacion_csv (Starter) + configurar_general
+--     parsearCSV / importarMiembros      hoy `role === "owner"` a mano → owner + gerente
 --   miembros/[id]/membresia-actions.ts (6)
 --     congelar / descongelar / aprobar / rechazar   miembros (Starter) + editar_miembros
 --     previsualizarCambioPlan / cambiarPlan          catalogo_planes (Starter) + registrar_pagos
@@ -101,7 +101,7 @@ group by g.slug, g.plan
 
 union all
 
-select 'importacion CSV (Starter; hoy sin auth)', g.slug, g.plan,
+select 'importacion CSV (Starter; hoy solo owner)', g.slug, g.plan,
        null::bigint,
        count(m.id),
        count(distinct m.origen_importacion),                              -- lotes distintos

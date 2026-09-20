@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { panelAction } from "@/lib/authz";
 import { regenerarQrToken } from "@/lib/queries/qr.queries";
 
 export interface QrActionResult {
@@ -10,18 +9,15 @@ export interface QrActionResult {
   error?: string;
 }
 
-/** Regenera el QR de un miembro. Owner only + feature qr_access. */
-export async function regenerarQrAction(
-  miembroId: string
-): Promise<QrActionResult> {
-  const tenant = await getTenant();
-  if (tenant.role !== "owner" || !hasFeature(tenant.plan, "qr_access")) {
-    return { ok: false, error: "No autorizado." };
+/** Regenera el QR de un miembro (invalida el anterior). */
+export const regenerarQrAction = panelAction(
+  "miembros.regenerar_qr",
+  {},
+  async (tenant, miembroId: string): Promise<QrActionResult> => {
+    const r = await regenerarQrToken(tenant.id, miembroId);
+    if (!r.ok) return { ok: false, error: r.error };
+
+    revalidatePath(`/${tenant.slug}/miembros/${miembroId}`);
+    return { ok: true };
   }
-
-  const r = await regenerarQrToken(tenant.id, miembroId);
-  if (!r.ok) return { ok: false, error: r.error };
-
-  revalidatePath(`/${tenant.slug}/miembros/${miembroId}`);
-  return { ok: true };
-}
+);

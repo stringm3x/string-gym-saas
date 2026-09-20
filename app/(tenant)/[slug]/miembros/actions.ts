@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getTenant } from "@/lib/tenant";
-import { hasPermission } from "@/lib/permissions";
+import { panelAction, type Denegado } from "@/lib/authz";
 import {
   createMiembro as dbCreateMiembro,
   updateMiembro as dbUpdateMiembro,
@@ -44,6 +43,12 @@ const emptyState: MiembroFormState = {
   fieldErrors: {},
 };
 
+const denegarForm = (d: Denegado): MiembroFormState => ({ ...emptyState, error: d.error });
+
+// Las etiquetas son feature `tags` (Pro); crear/editar un socio es Starter.
+// Se verifica en el cuerpo solo cuando el form trae tag_ids.
+const TAGS_SIN_PLAN = "Las etiquetas requieren el plan Pro.";
+
 function parseFormData(formData: FormData) {
   return {
     nombre: String(formData.get("nombre") ?? ""),
@@ -58,216 +63,210 @@ function parseFormData(formData: FormData) {
   };
 }
 
-export async function createMiembroAction(
-  _prev: MiembroFormState,
-  formData: FormData
-): Promise<MiembroFormState> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "crear_miembros")) {
-    return { ...emptyState, error: "No tienes permiso para crear miembros." };
-  }
-  const raw = parseFormData(formData);
-  const { prospecto_id, tag_ids, ...miembroRaw } = raw;
-
-  const montoRaw = formData.get("monto_pago");
-  const cobroRaw = {
-    ...miembroRaw,
-    cobrar_inscripcion: formData.get("cobrar_inscripcion") === "true",
-    plan_id: String(formData.get("plan_id") ?? ""),
-    promocion_id: String(formData.get("promocion_id") ?? ""),
-    monto_pago:
-      montoRaw && String(montoRaw).trim() ? Number(montoRaw) : undefined,
-    metodo_pago: (formData.get("metodo_pago") || undefined) as
-      | "efectivo"
-      | "tarjeta"
-      | "transferencia"
-      | undefined,
-    periodo_inicio: String(formData.get("periodo_inicio") ?? ""),
-    periodo_fin: String(formData.get("periodo_fin") ?? ""),
-  };
-
-  const parsed = miembroConPagoSchema.safeParse(cobroRaw);
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const path = issue.path[0]?.toString();
-      if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+export const createMiembroAction = panelAction(
+  "miembros.crear",
+  { onDenied: denegarForm },
+  async (tenant, _prev: MiembroFormState, formData: FormData): Promise<MiembroFormState> => {
+    const raw = parseFormData(formData);
+    const { prospecto_id, tag_ids, ...miembroRaw } = raw;
+    if (tag_ids.length > 0 && !tenant.has("tags")) {
+      return { ...emptyState, error: TAGS_SIN_PLAN };
     }
-    return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
-  }
 
-  const data = parsed.data;
+    const montoRaw = formData.get("monto_pago");
+    const cobroRaw = {
+      ...miembroRaw,
+      cobrar_inscripcion: formData.get("cobrar_inscripcion") === "true",
+      plan_id: String(formData.get("plan_id") ?? ""),
+      promocion_id: String(formData.get("promocion_id") ?? ""),
+      monto_pago:
+        montoRaw && String(montoRaw).trim() ? Number(montoRaw) : undefined,
+      metodo_pago: (formData.get("metodo_pago") || undefined) as
+        | "efectivo"
+        | "tarjeta"
+        | "transferencia"
+        | undefined,
+      periodo_inicio: String(formData.get("periodo_inicio") ?? ""),
+      periodo_fin: String(formData.get("periodo_fin") ?? ""),
+    };
 
-  // Crear miembro es crear_miembros (lo tiene hasta el entrenador), pero
-  // cobrar la inscripción mueve dinero — mismo criterio que cambiarPlanAction:
-  // exige registrar_pagos aparte, si no un entrenador podía cobrar vía esta
-  // acción aunque no tenga acceso a caja.
-  if (data.cobrar_inscripcion && !hasPermission(tenant.role, "registrar_pagos")) {
-    return { ...emptyState, error: "No tienes permiso para cobrar." };
-  }
-
-  // Alerta de posible duplicado — se puede omitir reenviando el form con
-  // confirmar_duplicado=true (botón "Registrar de todos modos").
-  if (formData.get("confirmar_duplicado") !== "true") {
-    const duplicado = await findMiembroDuplicado(tenant.id, {
-      nombre: data.nombre,
-      telefono: data.telefono,
-      email: data.email,
-    });
-    if (duplicado) {
-      return { ...emptyState, duplicate: duplicado };
+    const parsed = miembroConPagoSchema.safeParse(cobroRaw);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const path = issue.path[0]?.toString();
+        if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+      }
+      return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
     }
-  }
 
-  // 1. Crear miembro. Persistimos el plan elegido aunque no se cobre ahora,
-  //    para que las renovaciones futuras sepan "el mismo plan".
-  const result = await dbCreateMiembro(
-    tenant.id,
-    {
-      nombre: data.nombre,
-      telefono: data.telefono,
-      email: data.email,
-      fecha_inscripcion: data.fecha_inscripcion,
-      fecha_vencimiento: data.fecha_vencimiento,
-      fecha_nacimiento: data.fecha_nacimiento,
-      referido_por: data.referido_por,
-    },
-    data.plan_id || null
-  );
-  if (!result.ok) {
-    return { ...emptyState, error: result.error };
-  }
+    const data = parsed.data;
 
-  await syncTagsForMiembro(tenant.id, result.id, tag_ids);
-
-  // 2. Cobro de la primera membresía (opcional). createPago también
-  //    actualiza la fecha_vencimiento del miembro a periodo_fin.
-  let pagoId: string | undefined;
-  if (data.cobrar_inscripcion && data.monto_pago && data.metodo_pago) {
-    const pagoResult = await createPago(tenant.id, {
-      miembro_id: result.id,
-      concepto: "membresia",
-      monto: data.monto_pago,
-      metodo_pago: data.metodo_pago,
-      periodo_inicio: data.periodo_inicio || "",
-      periodo_fin: data.periodo_fin || "",
-      plan_id: data.plan_id || "",
-      promocion_id: data.promocion_id || "",
-      producto_id: "",
-      cantidad_producto: null,
-    });
-    if (pagoResult.ok) {
-      pagoId = pagoResult.id;
-      revalidatePath(`/${tenant.slug}/caja`);
+    // Crear miembro es crear_miembros (lo tiene hasta el entrenador), pero
+    // cobrar la inscripción mueve dinero — mismo criterio que cambiarPlanAction:
+    // exige registrar_pagos aparte, si no un entrenador podía cobrar vía esta
+    // acción aunque no tenga acceso a caja.
+    if (data.cobrar_inscripcion && !tenant.can("registrar_pagos")) {
+      return { ...emptyState, error: "No tienes permiso para cobrar." };
     }
-  }
 
-  // 3. Si venía de prospecto, marcar como convertido.
-  if (prospecto_id) {
-    await updateEstadoProspecto(tenant.id, prospecto_id, "convertido");
-    revalidatePath(`/${tenant.slug}/prospectos`);
-  }
-
-  revalidatePath(`/${tenant.slug}/miembros`);
-  return {
-    ok: true,
-    error: null,
-    fieldErrors: {},
-    miembroId: result.id,
-    pagoId,
-  };
-}
-
-export async function updateMiembroAction(
-  id: string,
-  _prev: MiembroFormState,
-  formData: FormData
-): Promise<MiembroFormState> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "editar_miembros")) {
-    return { ...emptyState, error: "No tienes permiso para editar miembros." };
-  }
-  const raw = parseFormData(formData);
-  const { tag_ids, prospecto_id: _pid, ...miembroRaw } = raw;
-
-  const parsed = miembroSchema.safeParse(miembroRaw);
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
-      const path = issue.path[0]?.toString();
-      if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+    // Alerta de posible duplicado — se puede omitir reenviando el form con
+    // confirmar_duplicado=true (botón "Registrar de todos modos").
+    if (formData.get("confirmar_duplicado") !== "true") {
+      const duplicado = await findMiembroDuplicado(tenant.id, {
+        nombre: data.nombre,
+        telefono: data.telefono,
+        email: data.email,
+      });
+      if (duplicado) {
+        return { ...emptyState, duplicate: duplicado };
+      }
     }
-    return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
+
+    // 1. Crear miembro. Persistimos el plan elegido aunque no se cobre ahora,
+    //    para que las renovaciones futuras sepan "el mismo plan".
+    const result = await dbCreateMiembro(
+      tenant.id,
+      {
+        nombre: data.nombre,
+        telefono: data.telefono,
+        email: data.email,
+        fecha_inscripcion: data.fecha_inscripcion,
+        fecha_vencimiento: data.fecha_vencimiento,
+        fecha_nacimiento: data.fecha_nacimiento,
+        referido_por: data.referido_por,
+      },
+      data.plan_id || null
+    );
+    if (!result.ok) {
+      return { ...emptyState, error: result.error };
+    }
+
+    await syncTagsForMiembro(tenant.id, result.id, tag_ids);
+
+    // 2. Cobro de la primera membresía (opcional). createPago también
+    //    actualiza la fecha_vencimiento del miembro a periodo_fin.
+    let pagoId: string | undefined;
+    if (data.cobrar_inscripcion && data.monto_pago && data.metodo_pago) {
+      const pagoResult = await createPago(tenant.id, {
+        miembro_id: result.id,
+        concepto: "membresia",
+        monto: data.monto_pago,
+        metodo_pago: data.metodo_pago,
+        periodo_inicio: data.periodo_inicio || "",
+        periodo_fin: data.periodo_fin || "",
+        plan_id: data.plan_id || "",
+        promocion_id: data.promocion_id || "",
+        producto_id: "",
+        cantidad_producto: null,
+      });
+      if (pagoResult.ok) {
+        pagoId = pagoResult.id;
+        revalidatePath(`/${tenant.slug}/caja`);
+      }
+    }
+
+    // 3. Si venía de prospecto, marcar como convertido.
+    if (prospecto_id) {
+      await updateEstadoProspecto(tenant.id, prospecto_id, "convertido");
+      revalidatePath(`/${tenant.slug}/prospectos`);
+    }
+
+    revalidatePath(`/${tenant.slug}/miembros`);
+    return {
+      ok: true,
+      error: null,
+      fieldErrors: {},
+      miembroId: result.id,
+      pagoId,
+    };
   }
+);
 
-  const result = await dbUpdateMiembro(tenant.id, id, parsed.data);
-  if (!result.ok) {
-    return { ...emptyState, error: result.error };
+export const updateMiembroAction = panelAction(
+  "miembros.editar",
+  { onDenied: denegarForm },
+  async (
+    tenant,
+    id: string,
+    _prev: MiembroFormState,
+    formData: FormData
+  ): Promise<MiembroFormState> => {
+    const raw = parseFormData(formData);
+    const { tag_ids, prospecto_id: _pid, ...miembroRaw } = raw;
+    if (tag_ids.length > 0 && !tenant.has("tags")) {
+      return { ...emptyState, error: TAGS_SIN_PLAN };
+    }
+
+    const parsed = miembroSchema.safeParse(miembroRaw);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const path = issue.path[0]?.toString();
+        if (path && !fieldErrors[path]) fieldErrors[path] = issue.message;
+      }
+      return { ok: false, error: "Revisa los campos marcados.", fieldErrors };
+    }
+
+    const result = await dbUpdateMiembro(tenant.id, id, parsed.data);
+    if (!result.ok) {
+      return { ...emptyState, error: result.error };
+    }
+
+    await syncTagsForMiembro(tenant.id, id, tag_ids);
+
+    revalidatePath(`/${tenant.slug}/miembros`);
+    revalidatePath(`/${tenant.slug}/miembros/${id}`);
+    return { ok: true, error: null, fieldErrors: {} };
   }
+);
 
-  await syncTagsForMiembro(tenant.id, id, tag_ids);
-
-  revalidatePath(`/${tenant.slug}/miembros`);
-  revalidatePath(`/${tenant.slug}/miembros/${id}`);
-  return { ok: true, error: null, fieldErrors: {} };
-}
-
-export async function updateNotasLegacyAction(
-  id: string,
-  notas: string
-): Promise<{ ok: boolean; error?: string }> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "editar_miembros")) {
-    return { ok: false, error: "No tienes permiso para editar miembros." };
+export const updateNotasLegacyAction = panelAction(
+  "miembros.notas_legacy",
+  {},
+  async (tenant, id: string, notas: string): Promise<{ ok: boolean; error?: string }> => {
+    const result = await dbUpdateMiembroNotas(tenant.id, id, notas);
+    if (!result.ok) return { ok: false, error: result.error };
+    revalidatePath(`/${tenant.slug}/miembros/${id}`);
+    return { ok: true };
   }
-  const result = await dbUpdateMiembroNotas(tenant.id, id, notas);
-  if (!result.ok) return { ok: false, error: result.error };
-  revalidatePath(`/${tenant.slug}/miembros/${id}`);
-  return { ok: true };
-}
+);
 
-export async function archivarMiembroAction(
-  id: string
-): Promise<{ ok: boolean; error?: string }> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "eliminar_archivar_miembros")) {
-    return { ok: false, error: "No tienes permiso para archivar miembros." };
+export const archivarMiembroAction = panelAction(
+  "miembros.archivar",
+  {},
+  async (tenant, id: string): Promise<{ ok: boolean; error?: string }> => {
+    const result = await dbArchivarMiembro(tenant.id, id);
+    if (!result.ok) return { ok: false, error: result.error };
+
+    revalidatePath(`/${tenant.slug}/miembros`);
+    revalidatePath(`/${tenant.slug}/miembros/${id}`);
+    return { ok: true };
   }
-  const result = await dbArchivarMiembro(tenant.id, id);
-  if (!result.ok) return { ok: false, error: result.error };
+);
 
-  revalidatePath(`/${tenant.slug}/miembros`);
-  revalidatePath(`/${tenant.slug}/miembros/${id}`);
-  return { ok: true };
-}
+export const restaurarMiembroAction = panelAction(
+  "miembros.restaurar",
+  {},
+  async (tenant, id: string): Promise<{ ok: boolean; error?: string }> => {
+    const result = await dbRestaurarMiembro(tenant.id, id);
+    if (!result.ok) return { ok: false, error: result.error };
 
-export async function restaurarMiembroAction(
-  id: string
-): Promise<{ ok: boolean; error?: string }> {
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "eliminar_archivar_miembros")) {
-    return { ok: false, error: "No tienes permiso para restaurar miembros." };
+    revalidatePath(`/${tenant.slug}/miembros`);
+    revalidatePath(`/${tenant.slug}/miembros/${id}`);
+    return { ok: true };
   }
-  const result = await dbRestaurarMiembro(tenant.id, id);
-  if (!result.ok) return { ok: false, error: result.error };
+);
 
-  revalidatePath(`/${tenant.slug}/miembros`);
-  revalidatePath(`/${tenant.slug}/miembros/${id}`);
-  return { ok: true };
-}
-
-export async function bulkAsignarTagAction(
-  miembroIds: string[],
-  tagId: string
-): Promise<{ ok: boolean; error?: string }> {
-  if (!miembroIds.length || !tagId)
-    return { ok: false, error: "Faltan datos." };
-  const tenant = await getTenant();
-  if (!hasPermission(tenant.role, "editar_miembros")) {
-    return { ok: false, error: "No tienes permiso para editar miembros." };
+export const bulkAsignarTagAction = panelAction(
+  "miembros.bulk_tag",
+  {},
+  async (tenant, miembroIds: string[], tagId: string): Promise<{ ok: boolean; error?: string }> => {
+    if (!miembroIds.length || !tagId) return { ok: false, error: "Faltan datos." };
+    if (!tenant.has("tags")) return { ok: false, error: TAGS_SIN_PLAN };
+    const result = await bulkAddTagToMiembros(tenant.id, miembroIds, tagId);
+    if (!result.ok) return { ok: false, error: result.error };
+    revalidatePath(`/${tenant.slug}/miembros`);
+    return { ok: true };
   }
-  const result = await bulkAddTagToMiembros(tenant.id, miembroIds, tagId);
-  if (!result.ok) return { ok: false, error: result.error };
-  revalidatePath(`/${tenant.slug}/miembros`);
-  return { ok: true };
-}
+);

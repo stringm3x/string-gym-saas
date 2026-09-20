@@ -94,6 +94,59 @@ export const PANEL = {
   // ── caja/mp-actions.ts ──
   /** crearCobroMpAction — link de pago MercadoPago desde caja (ya verificaba ambos ejes). */
   "caja.cobrar_mp": { feature: "mercadopago", permission: "registrar_pagos" },
+
+  // ── miembros/actions.ts ── (migrado en el PR 5)
+  /**
+   * createMiembroAction. En el cuerpo: cobrar la inscripción exige
+   * can("registrar_pagos"); tag_ids exige has("tags"). cierra: tags (Pro)
+   * solo si el form trae etiquetas.
+   */
+  "miembros.crear": { feature: "miembros", permission: "crear_miembros" },
+  /** updateMiembroAction. tag_ids exige has("tags") en el cuerpo. */
+  "miembros.editar": { feature: "miembros", permission: "editar_miembros" },
+  /** updateNotasLegacyAction — campo de notas libre de la ficha. */
+  "miembros.notas_legacy": { feature: "miembros", permission: "editar_miembros" },
+  /** archivarMiembroAction / restaurarMiembroAction. */
+  "miembros.archivar": { feature: "archivar_miembros", permission: "eliminar_archivar_miembros" },
+  "miembros.restaurar": { feature: "archivar_miembros", permission: "eliminar_archivar_miembros" },
+  /** bulkAsignarTagAction. Cuerpo: has("tags"). cierra: bulk_actions + tags (Pro). */
+  "miembros.bulk_tag": { feature: "bulk_actions", permission: "editar_miembros" },
+
+  // ── miembros/importar/actions.ts ──
+  /**
+   * parsearCSVAction / importarMiembrosAction. Hoy `role === "owner"` a mano;
+   * no existe un permiso "solo owner", y gerente = owner menos planes y
+   * promociones, así que se declara configurar_general (owner + gerente).
+   */
+  "miembros.importar_previsualizar": { feature: "importacion_csv", permission: "configurar_general" },
+  "miembros.importar": { feature: "importacion_csv", permission: "configurar_general" },
+
+  // ── miembros/qr-actions.ts ──
+  /** regenerarQrAction — invalida el QR del socio. Mismo criterio que importar: owner + gerente. */
+  "miembros.regenerar_qr": { feature: "qr_access", permission: "configurar_general" },
+
+  // ── miembros/[id]/membresia-actions.ts ──
+  /** congelar / descongelar / aprobar / rechazar congelación. */
+  "miembros.congelar": { feature: "miembros", permission: "editar_miembros" },
+  "miembros.descongelar": { feature: "miembros", permission: "editar_miembros" },
+  "miembros.aprobar_congelacion": { feature: "miembros", permission: "editar_miembros" },
+  "miembros.rechazar_congelacion": { feature: "miembros", permission: "editar_miembros" },
+  /** previsualizarCambioPlanAction / cambiarPlanAction — prorratea y puede mover dinero. */
+  "miembros.previsualizar_cambio_plan": { feature: "catalogo_planes", permission: "registrar_pagos" },
+  "miembros.cambiar_plan": { feature: "catalogo_planes", permission: "registrar_pagos" },
+
+  // ── miembros/[id]/renovar-actions.ts ──
+  /** renovarMiembroAction — renovación en un clic (cobra). */
+  "miembros.renovar": { feature: "caja_basica", permission: "registrar_pagos" },
+
+  // ── miembros/[id]/creditos-actions.ts ── (ya verificaban ambos ejes)
+  "miembros.plan_pago_crear": { feature: "creditos", permission: "registrar_pagos" },
+  "miembros.cuota_pagar": { feature: "creditos", permission: "registrar_pagos" },
+
+  // ── miembros/[id]/nutricion-actions.ts ── (ya verificaban ambos ejes)
+  "miembros.nutricion_crear": { feature: "nutricion", permission: "gestionar_nutricion" },
+  "miembros.nutricion_editar": { feature: "nutricion", permission: "gestionar_nutricion" },
+  "miembros.nutricion_archivar": { feature: "nutricion", permission: "gestionar_nutricion" },
 } as const satisfies Record<string, PoliticaPanel>;
 
 // ─────────────────────────────────────────────────────────────────────────

@@ -1,63 +1,51 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
-import { hasPermission } from "@/lib/permissions";
+import { panelAction } from "@/lib/authz";
 import { createPlanPago, pagarCuota } from "@/lib/queries/creditos.queries";
 import { planPagoInputSchema } from "@/lib/validations/creditos.schema";
 
 const METODOS = ["efectivo", "tarjeta", "transferencia"] as const;
 type Metodo = (typeof METODOS)[number];
 
-export async function crearPlanPagoAction(
-  input: unknown
-): Promise<{ ok: boolean; error?: string }> {
-  const tenant = await getTenant();
-  if (!hasFeature(tenant.plan, "creditos")) {
-    return { ok: false, error: "Tu plan no incluye Créditos." };
-  }
-  // Crea un compromiso de cobro real — mismo permiso que cualquier otro
-  // movimiento de dinero (registrar_pagos); antes solo se checaba el plan,
-  // así que un entrenador sin acceso a caja podía crearlo igual.
-  if (!hasPermission(tenant.role, "registrar_pagos")) {
-    return { ok: false, error: "No tienes permiso para cobrar." };
-  }
+/** Crea un compromiso de cobro real: mismo permiso que cualquier movimiento de dinero. */
+export const crearPlanPagoAction = panelAction(
+  "miembros.plan_pago_crear",
+  {},
+  async (tenant, input: unknown): Promise<{ ok: boolean; error?: string }> => {
+    const parsed = planPagoInputSchema.safeParse(input);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: parsed.error.issues[0]?.message ?? "Datos inválidos.",
+      };
+    }
 
-  const parsed = planPagoInputSchema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Datos inválidos.",
-    };
+    const r = await createPlanPago(tenant.id, parsed.data);
+    if (!r.ok) return { ok: false, error: r.error };
+
+    revalidatePath(`/${tenant.slug}/miembros/${parsed.data.miembro_id}`);
+    return { ok: true };
   }
+);
 
-  const r = await createPlanPago(tenant.id, parsed.data);
-  if (!r.ok) return { ok: false, error: r.error };
+export const pagarCuotaAction = panelAction(
+  "miembros.cuota_pagar",
+  {},
+  async (
+    tenant,
+    cuotaId: string,
+    metodo: Metodo
+  ): Promise<{ ok: boolean; error?: string; planCompletado?: boolean }> => {
+    if (!METODOS.includes(metodo)) {
+      return { ok: false, error: "Método de pago inválido." };
+    }
 
-  revalidatePath(`/${tenant.slug}/miembros/${parsed.data.miembro_id}`);
-  return { ok: true };
-}
+    const r = await pagarCuota(tenant.id, cuotaId, metodo);
+    if (!r.ok) return { ok: false, error: r.error };
 
-export async function pagarCuotaAction(
-  cuotaId: string,
-  metodo: Metodo
-): Promise<{ ok: boolean; error?: string; planCompletado?: boolean }> {
-  const tenant = await getTenant();
-  if (!hasFeature(tenant.plan, "creditos")) {
-    return { ok: false, error: "Tu plan no incluye Créditos." };
+    // Revalida ficha del miembro y vista de CxC (ambas dependen de las cuotas).
+    revalidatePath(`/${tenant.slug}`, "layout");
+    return { ok: true, planCompletado: r.planCompletado };
   }
-  if (!hasPermission(tenant.role, "registrar_pagos")) {
-    return { ok: false, error: "No tienes permiso para cobrar." };
-  }
-  if (!METODOS.includes(metodo)) {
-    return { ok: false, error: "Método de pago inválido." };
-  }
-
-  const r = await pagarCuota(tenant.id, cuotaId, metodo);
-  if (!r.ok) return { ok: false, error: r.error };
-
-  // Revalida ficha del miembro y vista de CxC (ambas dependen de las cuotas).
-  revalidatePath(`/${tenant.slug}`, "layout");
-  return { ok: true, planCompletado: r.planCompletado };
-}
+);
