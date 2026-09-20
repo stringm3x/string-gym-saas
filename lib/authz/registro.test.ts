@@ -16,7 +16,7 @@ const root = path.resolve(__dirname, "../..");
  * Techo de la lista legacy. Baja este número en cada PR de migración; nunca
  * subirlo. Cuando llegue a 0 se borra legacy.json y este test.
  */
-const LEGACY_MAX = 52;
+const LEGACY_MAX = 46;
 
 describe("registro de autorización", () => {
   it("__registry__.ts está fresco (npm run authz:registry)", () => {

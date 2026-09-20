@@ -1,5 +1,6 @@
 "use server";
 
+import { anonAction } from "@/lib/authz";
 import { hasFeature } from "@/lib/features";
 import {
   getPortalGym,
@@ -11,6 +12,9 @@ import {
 import { sendCodigoPortal } from "@/lib/email/portal";
 import { emitOtpWhatsapp } from "@/lib/whatsapp/emit";
 import { setPortalCookie } from "@/lib/portal/session";
+
+// Anónimas por definición: aquí todavía no hay sesión que autorizar. El
+// gate de plan (portal_miembro) se verifica a mano en `resolver`.
 
 function maskEmail(email: string): string {
   const [user, dom] = email.split("@");
@@ -43,74 +47,80 @@ async function resolver(slug: string, identificador: string) {
   return { gym, miembro };
 }
 
-export async function solicitarCodigoAction(
-  slug: string,
-  identificador: string,
-  canal: "email" | "whatsapp" = "email"
-): Promise<{ ok: boolean; error?: string; destinoMask?: string }> {
-  const r = await resolver(slug, identificador);
-  if ("error" in r) return { ok: false, error: r.error };
-  const { gym, miembro } = r;
+export const solicitarCodigoAction = anonAction(
+  "otp_portal_solicitar",
+  async (
+    slug: string,
+    identificador: string,
+    canal: "email" | "whatsapp" = "email"
+  ): Promise<{ ok: boolean; error?: string; destinoMask?: string }> => {
+    const r = await resolver(slug, identificador);
+    if ("error" in r) return { ok: false, error: r.error };
+    const { gym, miembro } = r;
 
-  if (canal === "whatsapp") {
-    if (!miembro.telefono) {
+    if (canal === "whatsapp") {
+      if (!miembro.telefono) {
+        return {
+          ok: false,
+          error: "No tienes un teléfono registrado. Pídele a tu gym que lo agregue.",
+        };
+      }
+      const gen = await crearVerificacion(gym.id, miembro.id, "whatsapp");
+      if (!gen.ok) return { ok: false, error: gen.error };
+
+      const enviado = await emitOtpWhatsapp(gym.id, miembro.telefono, gen.codigo);
+      if (!enviado) {
+        return {
+          ok: false,
+          error: "WhatsApp no está disponible ahora. Usa tu correo.",
+        };
+      }
+      return { ok: true, destinoMask: maskTel(miembro.telefono) };
+    }
+
+    if (!miembro.email) {
       return {
         ok: false,
-        error: "No tienes un teléfono registrado. Pídele a tu gym que lo agregue.",
+        error:
+          "No tienes un correo registrado. Pídele a tu gym que lo agregue para poder entrar.",
       };
     }
-    const gen = await crearVerificacion(gym.id, miembro.id, "whatsapp");
+
+    const gen = await crearVerificacion(gym.id, miembro.id, "email");
     if (!gen.ok) return { ok: false, error: gen.error };
 
-    const enviado = await emitOtpWhatsapp(gym.id, miembro.telefono, gen.codigo);
+    const enviado = await sendCodigoPortal({
+      email: miembro.email,
+      nombre: miembro.nombre,
+      codigo: gen.codigo,
+      gymNombre: gym.nombre,
+    });
     if (!enviado) {
-      return {
-        ok: false,
-        error: "WhatsApp no está disponible ahora. Usa tu correo.",
-      };
+      return { ok: false, error: "No se pudo enviar el código. Intenta de nuevo." };
     }
-    return { ok: true, destinoMask: maskTel(miembro.telefono) };
+
+    return { ok: true, destinoMask: maskEmail(miembro.email) };
   }
+);
 
-  if (!miembro.email) {
-    return {
-      ok: false,
-      error:
-        "No tienes un correo registrado. Pídele a tu gym que lo agregue para poder entrar.",
-    };
+export const verificarCodigoAction = anonAction(
+  "otp_portal_verificar",
+  async (
+    slug: string,
+    identificador: string,
+    codigo: string
+  ): Promise<{ ok: boolean; error?: string }> => {
+    const r = await resolver(slug, identificador);
+    if ("error" in r) return { ok: false, error: r.error };
+    const { gym, miembro } = r;
+
+    const v = await verificarCodigo(gym.id, miembro.id, codigo);
+    if (!v.ok) return { ok: false, error: v.error };
+
+    const s = await crearSession(gym.id, miembro.id);
+    if (!s.ok) return { ok: false, error: s.error };
+
+    await setPortalCookie(s.token);
+    return { ok: true };
   }
-
-  const gen = await crearVerificacion(gym.id, miembro.id, "email");
-  if (!gen.ok) return { ok: false, error: gen.error };
-
-  const enviado = await sendCodigoPortal({
-    email: miembro.email,
-    nombre: miembro.nombre,
-    codigo: gen.codigo,
-    gymNombre: gym.nombre,
-  });
-  if (!enviado) {
-    return { ok: false, error: "No se pudo enviar el código. Intenta de nuevo." };
-  }
-
-  return { ok: true, destinoMask: maskEmail(miembro.email) };
-}
-
-export async function verificarCodigoAction(
-  slug: string,
-  identificador: string,
-  codigo: string
-): Promise<{ ok: boolean; error?: string }> {
-  const r = await resolver(slug, identificador);
-  if ("error" in r) return { ok: false, error: r.error };
-  const { gym, miembro } = r;
-
-  const v = await verificarCodigo(gym.id, miembro.id, codigo);
-  if (!v.ok) return { ok: false, error: v.error };
-
-  const s = await crearSession(gym.id, miembro.id);
-  if (!s.ok) return { ok: false, error: s.error };
-
-  await setPortalCookie(s.token);
-  return { ok: true };
-}
+);

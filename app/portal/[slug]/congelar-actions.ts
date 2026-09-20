@@ -1,29 +1,30 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePortal } from "@/lib/portal/session";
+import { portalAction } from "@/lib/authz";
 import { solicitarCongelacionPortal } from "@/lib/queries/miembro-eventos.queries";
 
-export async function solicitarCongelacionAction(
-  slug: string,
-  fechaInicio: string,
-  fechaFin: string
-): Promise<{ ok: boolean; error?: string; aplicada?: boolean }> {
-  const { gym, session } = await requirePortal(slug);
-  if (!fechaInicio || !fechaFin) {
-    return { ok: false, error: "Indica las fechas de la pausa." };
+export const solicitarCongelacionAction = portalAction(
+  "portal.congelar",
+  {},
+  async (
+    { gym, session, admin },
+    fechaInicio: string,
+    fechaFin: string
+  ): Promise<{ ok: boolean; error?: string; aplicada?: boolean }> => {
+    if (!fechaInicio || !fechaFin) {
+      return { ok: false, error: "Indica las fechas de la pausa." };
+    }
+
+    const r = await solicitarCongelacionPortal(
+      gym.id,
+      session.miembroId,
+      { fechaInicio, fechaFin },
+      admin
+    );
+    if (!r.ok) return { ok: false, error: r.error };
+
+    revalidatePath(`/portal/${gym.slug}`);
+    return { ok: true, aplicada: r.aplicada };
   }
-
-  const admin = createAdminClient();
-  const r = await solicitarCongelacionPortal(
-    gym.id,
-    session.miembroId,
-    { fechaInicio, fechaFin },
-    admin
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-
-  revalidatePath(`/portal/${slug}`);
-  return { ok: true, aplicada: r.aplicada };
-}
+);

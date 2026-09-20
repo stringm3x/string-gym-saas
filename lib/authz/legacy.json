@@ -44,11 +44,5 @@
   "app/admin/(panel)/solicitudes/actions.ts",
   "app/admin/(panel)/tenants/[tenantId]/actions.ts",
   "app/admin/login/actions.ts",
-  "app/auth/accept-invite/actions.ts",
-  "app/portal/[slug]/actions.ts",
-  "app/portal/[slug]/clases/actions.ts",
-  "app/portal/[slug]/congelar-actions.ts",
-  "app/portal/[slug]/login/actions.ts",
-  "app/portal/[slug]/opinion-actions.ts",
-  "app/portal/[slug]/renovar/actions.ts"
+  "app/auth/accept-invite/actions.ts"
 ]

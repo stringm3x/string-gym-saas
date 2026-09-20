@@ -92,9 +92,23 @@ export const PANEL = {
 
 // ─────────────────────────────────────────────────────────────────────────
 // PORTAL DEL SOCIO — app/portal/** (sesión OTP; el recurso es del socio)
-// Se puebla en el PR 2.
+// `portal_miembro` (Escala) se exige siempre además de la feature declarada;
+// como Escala hereda todo Pro, ninguna de estas cierra nada en la práctica.
+// Firma pública (slug, ...args); las queries reciben `session.miembroId` de
+// ctx, nunca del input. Migrado en el PR 2.
 // ─────────────────────────────────────────────────────────────────────────
-export const PORTAL = {} as const satisfies Record<string, PoliticaPortal>;
+export const PORTAL = {
+  /** solicitarCongelacionAction — pausa de membresía pedida por el socio. */
+  "portal.congelar": { feature: "portal_miembro" },
+  /** enviarOpinionPortalAction — opinión mensual (ya verificaba opiniones). */
+  "portal.opinar": { feature: "opiniones" },
+  /** renovarMpAction — renovación en línea; hoy no verificaba mercadopago. */
+  "portal.renovar_mp": { feature: "mercadopago" },
+  /** reservarClasePortalAction — hoy no verificaba clases. */
+  "portal.reservar_clase": { feature: "clases" },
+  /** cancelarReservaPortalAction — la query exige que la reserva sea del socio. */
+  "portal.cancelar_reserva": { feature: "clases" },
+} as const satisfies Record<string, PoliticaPortal>;
 
 // ─────────────────────────────────────────────────────────────────────────
 // KIOSCO — app/kiosco/** (público; la identidad la prueba el qr_token)
