@@ -44,7 +44,8 @@ describe("páginas del panel y requirePanel", () => {
 
   it("toda página que resuelve tenant usa requirePanel, salvo las listadas con razón", () => {
     const sinPolitica = paginas
-      .filter((p) => p.src.includes("getTenant(") && !p.src.includes("requirePanel("))
+      // Llamada real, no una mención en un comentario.
+      .filter((p) => /\bgetTenant\(\)/.test(p.src) && !/await requirePanel\(/.test(p.src))
       .map((p) => p.rel)
       .sort();
     expect(sinPolitica).toEqual(Object.keys(SIN_POLITICA).sort());
