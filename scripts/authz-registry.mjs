@@ -1,9 +1,8 @@
 // Genera lib/authz/__registry__.ts: importa todos los módulos "use server"
 // de app/ y los somete a `satisfies Modulo<clase>` según su carpeta. Así
 // tsc (y por tanto `next build`) falla si un export no está envuelto con
-// el constructor de su clase. Los módulos aún no migrados viven en
-// lib/authz/legacy.json y se omiten; esa lista solo puede encoger
-// (lib/authz/registro.test.ts).
+// el constructor de su clase. Sin excepciones: no hay lista de módulos
+// pendientes (legacy.json murió en el PR 8).
 //
 //   node scripts/authz-registry.mjs          escribe el registro
 //   node scripts/authz-registry.mjs --check  falla si está desactualizado
@@ -13,7 +12,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const REGISTRY_PATH = "lib/authz/__registry__.ts";
-export const LEGACY_PATH = "lib/authz/legacy.json";
 
 /** Carpeta → clase. Un módulo "use server" fuera de estas carpetas es un error. */
 const CLASES = [
@@ -54,13 +52,8 @@ export function listarUseServer(root) {
     .sort();
 }
 
-export function leerLegacy(root) {
-  return JSON.parse(readFileSync(path.join(root, LEGACY_PATH), "utf8"));
-}
-
 export function generar(root) {
-  const legacy = new Set(leerLegacy(root));
-  const modulos = listarUseServer(root).filter((rel) => !legacy.has(rel));
+  const modulos = listarUseServer(root);
 
   const porClase = { panel: [], portal: [], kiosco: [], admin: [], anon: [] };
   const imports = [];

@@ -62,11 +62,11 @@ export const a = kioscoAction("kiosco.checkin", { onDenied: () => ({ ok: false }
     ).toEqual(["sinEnvolver", "sinEnvolver"]);
   });
 
-  it("ignora archivos sin 'use server' y archivos legacy", () => {
+  it("ignora archivos sin 'use server'; con la directiva no hay excepciones", () => {
     expect(lint(`export async function libre() {}`, PANEL)).toEqual([]);
     expect(
       lint(`"use server";\nexport async function vieja() {}`, "app/(auth)/recuperar-password/actions.ts")
-    ).toEqual([]);
+    ).toEqual(["sinEnvolver"]);
   });
 
   it("señala una carpeta sin clase", () => {

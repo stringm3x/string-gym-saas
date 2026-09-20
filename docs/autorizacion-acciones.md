@@ -199,13 +199,37 @@ importa. De ahí las tres capas:
 Lo que **no** garantiza: que la política elegida sea la correcta. Eso es
 revisión de código, y `politicas.ts` la hace revisable en un solo diff.
 
-### 4.5 `legacy.json`
+### 4.5 `legacy.json` (ya no existe)
 
-Lista de los módulos `"use server"` que aún no se migran. El generador y
-la regla ESLint los omiten. Reglas: **solo puede encoger** (`LEGACY_MAX`
-en `registro.test.ts` se baja en cada PR de migración, nunca se sube); un
-módulo nuevo no puede entrar ahí sin que el diff lo grite; cuando llegue a
-0 se borra la lista y su test.
+Durante la migración (PRs 0–7) hubo una lista de módulos aún no migrados
+que el generador y la regla ESLint omitían, y que solo podía encoger. Se
+borró en el PR 8 junto con su test. Si alguien la reintroduce, está
+reabriendo la puerta que esta serie cerró.
+
+### 4.6 Qué garantiza el sistema desde el PR 8 (y qué no)
+
+La frase corta para quien se sume al proyecto:
+
+> **Toda Server Action bajo `app/` declara en `lib/authz/politicas.ts` qué
+> feature del plan y qué permiso del rol exige, y no puede existir una sin
+> declararlo: lo impiden el tipo del constructor, el registro generado
+> (`tsc`/`next build`) y la regla ESLint, sin excepciones. Lo que el sistema
+> NO garantiza es que la política elegida sea la correcta, ni que el
+> recurso que la acción toca sea del tenant o del socio que la llama: eso
+> sigue siendo RLS, las queries que reciben el id desde `ctx`, y revisión
+> de código.**
+
+Desglosado:
+
+| Garantizado (estático, falla el build) | No garantizado (revisión, RLS, queries) |
+|---|---|
+| Cada acción del panel exige una feature del plan y un permiso del rol. | Que la feature y el permiso sean los correctos para esa acción. |
+| Cada acción del portal exige `portal_miembro` + su feature y una sesión OTP del gym. | Que la query use `session.miembroId` y no un id del input (convención). |
+| Cada acción del kiosco resuelve al socio desde el `qr_token`; no existe `miembroId` del cliente. | Reglas de negocio sobre ese socio (vencido, archivado): viven en el cuerpo. |
+| Cada acción del admin exige `string_admins` activo y el rol declarado. | La misma distinción en SQL (`is_super_admin()` ignora el rol; §7). |
+| Una acción anónima solo puede serlo con un propósito de la unión cerrada. | Rate limit / Turnstile en esas acciones (no están). |
+| Un `"use server"` nuevo en carpeta desconocida rompe el build. | Gates de página (`page.tsx`) — PR 9. |
+| Una API key solo funciona si el plan del gym incluye `api`. | Que `miembro_id` del body pertenezca al tenant (check inline en `/reservas`). |
 
 ## 5. Lo que el helper NO resuelve
 
@@ -234,7 +258,7 @@ solo cambia donde hoy hay un hueco.
 | 5 | Panel `miembros/` + `miembros/[id]/` (7 archivos, 21 acciones). | Entregado. **Cierra** `tags` (crear/editar con `tag_ids` en el cuerpo; bulk) y `bulk_actions` (ambas Pro); `creditos` y `nutricion` ya se exigían. Cambio de rol: importar CSV y regenerar QR pasan de `role === "owner"` a mano a `configurar_general` (owner + gerente, mismo criterio que `requireOwner`). Uso real (`sql/reportes/uso-features-pr5-miembros.sql`, 2026-09-20): **todo en cero** — tags, congelaciones, cambios de plan, importaciones, créditos, nutrición, en ambos tenants y en todo el histórico. Cierres probados con plan mockeado en `miembros/cierres.test.ts`. |
 | 6 | Panel `configuracion/*` (12 archivos, 42 acciones). | Entregado. **Cierra** (todas Pro, todas con la página ya gateada por la misma feature): `opiniones` (Google Place ID), `plantillas_mensaje` (5), `promociones` (3), `tags` (3), `multiusuario` (8 de staff; invitar ya lo exigía). Sin excepciones al modelo de gerente: cajas y staff declaran `configurar_general`/`gestionar_staff`; `requireOwner()` desapareció. `toggleCajaCheckinPin` conserva el guard de la RLS de `gyms`. Cierres probados con plan mockeado en `configuracion/cierres.test.ts`. |
 | 7 | Panel resto (14 archivos, 30 acciones). Cierra el panel. | Entregado. **Cierra** (Pro; página/layout ya gateados): `inventario` (3), `timeline_notas` (4), `prospectos` (3), `reportes` (1). Ganan permiso las que no tenían ninguno: búsqueda, términos, notificaciones, check-in ×3, onboarding (`configurar_general`), campañas (`ver_dashboard_ingresos`, paridad con el sidebar), inbox ×3 (`usar_panel`). Notas: `usar_panel` + `ver_prospectos` en el cuerpo para prospectos. `suspendida` → `anonAction`. Probado en `app/(tenant)/[slug]/cierres.test.ts`. |
-| 8 | Auth → `anonAction`; `legacy.json` a 0 y borrado; `apiGuard` valida `hasFeature(plan, "api")`. | |
+| 8 | Auth → `anonAction`; `legacy.json` borrado; regla ESLint sin excepciones; `apiGuard` valida `hasFeature(plan, "api")`. | Entregado. Los 53 módulos `"use server"` están en el registro; la API pública devuelve 403 "El plan de este gym no incluye la API." a una key de un gym Starter (`lib/api/auth.test.ts`). Ver §4.6 para lo que el sistema garantiza desde aquí. |
 | **9** | `requirePanel(politica)` para `page.tsx`, leyendo el mismo `politicas.ts`. | El bug de `/caja` sin guard era exactamente esto: acción protegida, página no. |
 
 **Protocolo para los PRs 4–7.** Al migrar el panel se cierran las 18
@@ -248,12 +272,21 @@ no quitarle nada a nadie por accidente.
 
 ## 7. Hallazgos colaterales (pendientes fuera de este diseño)
 
-- `apiGuard` no valida `hasFeature(plan, "api")`: un gym que baje de plan
-  sigue usando su API key. PR 8.
+- ~~`apiGuard` no valida `hasFeature(plan, "api")`~~ — cerrado en el PR 8:
+  `authenticateApiKey` devuelve 403 si el plan del gym no incluye `api`.
 - `vender_desde_caja` existe como permiso pero ningún componente lo
   consulta; la venta de productos usa `registrar_pagos`. Se conserva así
   en `caja.vender_productos` para no cambiar comportamiento.
 - Son 25 permisos (24 + `usar_panel`), no 23.
+- **Decisión de producto pendiente, no bug (2026-09-20)**: el análisis de
+  procesos señaló que el recepcionista no puede registrar prospectos y lo
+  llamó "la tarea más de recepción del sistema" — anotar a quien pregunta
+  por precios en el mostrador es trabajo de recepción. Hoy `ver_prospectos`
+  es de owner y gerente, y las notas de prospecto heredan ese permiso en el
+  cuerpo (`notas/actions.ts`, `puedeVerEntidad`). Cuando se decida, se
+  mueven `ver_prospectos` (y un eventual `crear_prospectos`) en
+  `lib/permissions.ts`, y las notas de prospecto se mueven con ellos sin
+  tocar `politicas.ts`. Está aquí para no redescubrirlo.
 - **La distinción `admin`/`super_admin` vive solo en `adminAction`.**
   `string_admins.role` tiene default `'super_admin'` y `is_super_admin()`
   (la función de las RLS y los RPC) mira únicamente `activo`. Un admin de

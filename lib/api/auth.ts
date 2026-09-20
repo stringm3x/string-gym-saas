@@ -1,9 +1,11 @@
 import type { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasFeature, type Plan } from "@/lib/features";
 
 export interface ApiContext {
   tenantId: string;
   gymSlug: string;
+  plan: Plan;
   apiKey: string;
 }
 
@@ -31,6 +33,8 @@ function extractKey(request: NextRequest): string | null {
  * - Usa service-role (bypassa RLS) para validar la key.
  * - Verifica que la key esté activa y que su gym coincida con el slug del URL
  *   (evita usar la key de un gym para pedir datos de otro).
+ * - Verifica que el plan del gym incluya la feature `api`: una key creada en
+ *   Pro no sigue funcionando si el gym baja a Starter.
  * - Actualiza ultimo_uso + requests_totales (fire-and-forget).
  */
 export async function authenticateApiKey(
@@ -50,7 +54,7 @@ export async function authenticateApiKey(
   const admin = createAdminClient();
   const { data } = await admin
     .from("gym_api_keys")
-    .select("tenant_id, gyms(slug)")
+    .select("tenant_id, gyms(slug, plan)")
     .eq("api_key", key)
     .eq("activa", true)
     .maybeSingle();
@@ -64,10 +68,11 @@ export async function authenticateApiKey(
     };
   }
 
-  const gym = data.gyms as { slug: string } | { slug: string }[] | null;
-  const gymSlug = Array.isArray(gym) ? gym[0]?.slug : gym?.slug;
+  type GymRow = { slug: string; plan: string };
+  const raw = data.gyms as GymRow | GymRow[] | null;
+  const gym = Array.isArray(raw) ? raw[0] : raw;
 
-  if (!gymSlug || gymSlug !== slug) {
+  if (!gym?.slug || gym.slug !== slug) {
     return {
       ok: false,
       status: 403,
@@ -76,11 +81,21 @@ export async function authenticateApiKey(
     };
   }
 
+  const plan = gym.plan as Plan;
+  if (!hasFeature(plan, "api")) {
+    return {
+      ok: false,
+      status: 403,
+      code: "FORBIDDEN",
+      message: "El plan de este gym no incluye la API.",
+    };
+  }
+
   // Actualiza uso sin bloquear la respuesta.
   void admin.rpc("bump_api_key_usage", { p_key: key });
 
   return {
     ok: true,
-    ctx: { tenantId: data.tenant_id, gymSlug, apiKey: key },
+    ctx: { tenantId: data.tenant_id, gymSlug: gym.slug, plan, apiKey: key },
   };
 }

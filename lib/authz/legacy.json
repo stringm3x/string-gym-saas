@@ -1,5 +1,0 @@
-[
-  "app/(auth)/login/actions.tsx",
-  "app/(auth)/recuperar-password/actions.ts",
-  "app/auth/accept-invite/actions.ts"
-]
