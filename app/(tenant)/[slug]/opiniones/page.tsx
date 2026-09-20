@@ -1,6 +1,5 @@
 import { LuStar, LuTrendingUp, LuTrendingDown, LuMinus } from "react-icons/lu";
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import { getOpinionesResumen } from "@/lib/queries/opiniones.queries";
@@ -36,9 +35,10 @@ function fecha(iso: string): string {
 
 export default async function OpinionesPage({ params }: PageProps) {
   await params;
-  const tenant = await getTenant();
+  const g = await requirePanel("pagina.opiniones", { sinPermiso: "/checkins" });
+  const tenant = g.ctx;
 
-  if (!hasFeature(tenant.plan, "opiniones")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -50,7 +50,7 @@ export default async function OpinionesPage({ params }: PageProps) {
           "Últimos comentarios de tus miembros",
           "Impulso de reseñas en Google para 5★",
         ]}
-        planRequerido="escala"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />

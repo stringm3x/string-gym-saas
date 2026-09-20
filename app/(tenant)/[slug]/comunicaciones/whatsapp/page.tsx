@@ -1,5 +1,4 @@
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import {
@@ -14,9 +13,10 @@ export default async function WhatsappInboxPage({
 }: {
   searchParams: Promise<{ c?: string }>;
 }) {
-  const tenant = await getTenant();
+  const g = await requirePanel("inbox.marcar_leida", { sinPermiso: "/checkins" });
+  const tenant = g.ctx;
 
-  if (!hasFeature(tenant.plan, "whatsapp_automatico")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -28,7 +28,7 @@ export default async function WhatsappInboxPage({
           "Pausa el bot y responde manual en cualquier conversación",
           "Historial completo: recordatorios, pagos y bienvenidas",
         ]}
-        planRequerido="escala"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />

@@ -8,8 +8,7 @@ import {
   LuTrendingUp,
   LuUserPlus,
 } from "react-icons/lu";
-import { redirect } from "next/navigation";
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { hasFeature } from "@/lib/features";
 import { hasPermission } from "@/lib/permissions";
 import {
@@ -45,11 +44,9 @@ interface PageProps {
 
 export default async function DashboardPage({ params }: PageProps) {
   const { slug } = await params;
-  const tenant = await getTenant();
-
-  if (!hasPermission(tenant.role, "ver_dashboard_completo")) {
-    redirect(`/${slug}/checkins`);
-  }
+  const g = await requirePanel("pagina.dashboard", { sinPermiso: "/checkins" });
+  if (!g.ok) return null; // dashboard_simple es Starter: no ocurre
+  const tenant = g.ctx;
 
   const [
     miembros,

@@ -1,19 +1,11 @@
-import { redirect } from "next/navigation";
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
-import { hasPermission } from "@/lib/permissions";
+import { requirePanel } from "@/lib/authz/pagina";
 import { QrScannerDisplay } from "@/components/checkins/QrScannerDisplay";
 
 export default async function ScannerPage() {
-  const tenant = await getTenant();
-
-  // Owner y recepcionista (ver_checkins_dia); requiere feature qr_access (Pro+).
-  if (
-    !hasPermission(tenant.role, "ver_checkins_dia") ||
-    !hasFeature(tenant.plan, "qr_access")
-  ) {
-    redirect(`/${tenant.slug}/checkins`);
-  }
+  // Misma política que checkInPorQrAction (qr_access + hacer_checkin_manual).
+  const g = await requirePanel("checkins.qr", { sinPermiso: "/checkins" });
+  if (!g.ok) return null; // qr_access es Starter: no ocurre
+  const tenant = g.ctx;
 
   return <QrScannerDisplay slug={tenant.slug} />;
 }

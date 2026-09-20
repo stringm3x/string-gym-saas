@@ -273,6 +273,25 @@ export const PANEL = {
   "prospectos.cambiar_estado": { feature: "prospectos", permission: "ver_prospectos" },
   /** getReporteCsvAction. cierra: reportes (Pro); la página ya lo gatea. */
   "reportes.csv": { feature: "reportes", permission: "ver_dashboard_ingresos" },
+
+  // ── pagina.* — PÁGINAS SIN ACCIÓN PROPIA ── (PR 9b)
+  // Estas entradas NO gatean ninguna Server Action: no la busques. Existen
+  // porque `requirePanel()` (lib/authz/pagina.ts) exige que TODA página del
+  // panel lea su gate de este archivo, y estas pantallas son de solo lectura
+  // (o sus acciones viven en otra carpeta). El criterio es el mismo que usa
+  // el sidebar para mostrar el link, para que link y pantalla no diverjan.
+  /** /alertas — lectura de alertas del dueño. */
+  "pagina.alertas": { feature: "alertas_dueno", permission: "ver_alertas" },
+  /** /dashboard — panel del mes; la sección MRR/ARPU/LTV además pide dashboard_completo en la página. */
+  "pagina.dashboard": { feature: "dashboard_simple", permission: "ver_dashboard_completo" },
+  /** /hoy — panel del día. */
+  "pagina.hoy": { feature: "pantalla_hoy", permission: "ver_pantalla_hoy" },
+  /** /opiniones — resumen de opiniones; el sidebar lo muestra con ver_dashboard_ingresos (owner + gerente). */
+  "pagina.opiniones": { feature: "opiniones", permission: "ver_dashboard_ingresos" },
+  /** /inventario/* (layout) — ver el catálogo; las mutaciones exigen ver_inventario_movimientos en sus acciones. */
+  "pagina.inventario": { feature: "inventario", permission: "ver_inventario_stock" },
+  /** /configuracion/* (layout) — entrar a Configuración; cada página exige además lo de su acción. */
+  "pagina.configuracion": { feature: "miembros", permission: "configurar_general" },
 } as const satisfies Record<string, PoliticaPanel>;
 
 // ─────────────────────────────────────────────────────────────────────────

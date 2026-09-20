@@ -9,6 +9,7 @@ import {
   LuArchive,
 } from "react-icons/lu";
 import { getTenant } from "@/lib/tenant";
+import { hasPermission } from "@/lib/permissions";
 import { listMiembros } from "@/lib/queries/miembros.queries";
 import { listTags } from "@/lib/queries/tags.queries";
 import { listPlantillas } from "@/lib/queries/plantillas.queries";
@@ -80,7 +81,8 @@ export default async function MiembrosPage({
       listSeguimientosPendientes(tenant.id, hoyISO()),
     ]);
 
-  const isOwner = tenant.role === "owner";
+  // Mismo criterio que importarMiembrosAction / requirePanel("miembros.importar").
+  const isOwner = hasPermission(tenant.role, "configurar_general");
 
   const isFiltered = filter !== "all" || Boolean(sp.q) || tagIds.length > 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));

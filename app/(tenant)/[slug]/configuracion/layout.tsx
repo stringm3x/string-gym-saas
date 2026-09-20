@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
-import { getTenant } from "@/lib/tenant";
-import { hasPermission } from "@/lib/permissions";
+import { requirePanel } from "@/lib/authz/pagina";
 import { ConfigNav } from "@/components/configuracion/ConfigNav";
 
 export default async function ConfiguracionLayout({
@@ -11,12 +9,10 @@ export default async function ConfiguracionLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const tenant = await getTenant();
-
-  // Toda la configuración es del dueño; el recepcionista va a check-ins.
-  if (!hasPermission(tenant.role, "configurar_general")) {
-    redirect(`/${slug}/checkins`);
-  }
+  // Configuración es de owner y gerente; el recepcionista va a check-ins.
+  const g = await requirePanel("pagina.configuracion", { sinPermiso: "/checkins" });
+  if (!g.ok) return null; // miembros es Starter: no ocurre
+  const tenant = g.ctx;
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,4 @@
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo, getWhatsappConfig } from "@/lib/queries/gyms.queries";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import { WhatsappConfigManager } from "@/components/configuracion/WhatsappConfigManager";
@@ -10,9 +9,10 @@ interface PageProps {
 
 export default async function WhatsappConfigPage({ params }: PageProps) {
   await params;
-  const tenant = await getTenant();
+  const g = await requirePanel("config.whatsapp", { sinPermiso: "/configuracion/gym" });
+  const tenant = g.ctx;
 
-  if (!hasFeature(tenant.plan, "whatsapp_automatico")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -23,7 +23,7 @@ export default async function WhatsappConfigPage({ params }: PageProps) {
           "Bot de WhatsApp que reserva clases y consulta membresías",
           "Inbox para responder a tus miembros desde STRING GYM",
         ]}
-        planRequerido="escala"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />

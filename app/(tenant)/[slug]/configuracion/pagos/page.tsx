@@ -1,14 +1,14 @@
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { getMpStatus } from "@/lib/queries/mercadopago.queries";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import { PagosMpPanel } from "@/components/configuracion/PagosMpPanel";
 
 export default async function PagosConfigPage() {
-  const tenant = await getTenant();
+  const g = await requirePanel("config.mp_conectar", { sinPermiso: "/configuracion/gym" });
+  const tenant = g.ctx;
 
-  if (!hasFeature(tenant.plan, "mercadopago")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -20,7 +20,7 @@ export default async function PagosConfigPage() {
           "Confirmación automática por webhook",
           "El dinero llega directo a tu cuenta MercadoPago",
         ]}
-        planRequerido="pro"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />

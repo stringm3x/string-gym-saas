@@ -1,12 +1,9 @@
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { listProspectos } from "@/lib/queries/prospectos.queries";
 import { listTags } from "@/lib/queries/tags.queries";
 import { listPlantillas } from "@/lib/queries/plantillas.queries";
 import { listPlanes } from "@/lib/queries/planes.queries";
-import { hasFeature } from "@/lib/features";
-import { hasPermission } from "@/lib/permissions";
-import { redirect } from "next/navigation";
 import { ProspectosKanban } from "@/components/prospectos/ProspectosKanban";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 
@@ -16,13 +13,10 @@ interface PageProps {
 
 export default async function ProspectosPage({ params }: PageProps) {
   const { slug } = await params;
-  const tenant = await getTenant();
+  const g = await requirePanel("prospectos.crear", { sinPermiso: "/checkins" });
+  const tenant = g.ctx;
 
-  if (!hasPermission(tenant.role, "ver_prospectos")) {
-    redirect(`/${slug}/checkins`);
-  }
-
-  if (!hasFeature(tenant.plan, "prospectos")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -33,7 +27,7 @@ export default async function ProspectosPage({ params }: PageProps) {
           "Seguimiento con notas y acciones rápidas",
           "Conversión directa a miembro con cobro",
         ]}
-        planRequerido="pro"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={slug}
       />

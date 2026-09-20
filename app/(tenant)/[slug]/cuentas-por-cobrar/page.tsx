@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { UpgradePage } from "@/components/ui/UpgradePage";
 import {
@@ -33,9 +32,12 @@ export default async function CuentasPorCobrarPage({
   searchParams,
 }: PageProps) {
   const { slug } = await params;
-  const tenant = await getTenant();
+  // Misma política que pagarCuotaAction (creditos + registrar_pagos): antes
+  // un entrenador con la URL veía las cuotas sin poder cobrarlas.
+  const g = await requirePanel("miembros.cuota_pagar", { sinPermiso: "/checkins" });
+  const tenant = g.ctx;
 
-  if (!hasFeature(tenant.plan, "creditos")) {
+  if (!g.ok) {
     const gym = await getGymInfo(tenant.id);
     return (
       <UpgradePage
@@ -47,7 +49,7 @@ export default async function CuentasPorCobrarPage({
           "Alertas de cuotas vencidas y por vencer",
           "Cobro de cuotas con un clic",
         ]}
-        planRequerido="pro"
+        planRequerido={g.planRequerido}
         gymNombre={gym?.nombre ?? ""}
         slug={tenant.slug}
       />

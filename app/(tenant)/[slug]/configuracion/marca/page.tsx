@@ -1,13 +1,14 @@
-import { getTenant } from "@/lib/tenant";
-import { hasFeature } from "@/lib/features";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { getGooglePlaceId } from "@/lib/queries/opiniones.queries";
 import { MarcaForm } from "@/components/configuracion/MarcaForm";
 import { GooglePlaceIdForm } from "@/components/configuracion/GooglePlaceIdForm";
 
 export default async function MarcaPage() {
-  const tenant = await getTenant();
-  const canOpiniones = hasFeature(tenant.plan, "opiniones");
+  const g = await requirePanel("config.marca_color", { sinPermiso: "/checkins" });
+  if (!g.ok) return null; // color_gimnasio es Starter: no ocurre
+  const tenant = g.ctx;
+  const canOpiniones = tenant.has("opiniones");
   const [gym, googlePlaceId] = await Promise.all([
     getGymInfo(tenant.id),
     canOpiniones ? getGooglePlaceId(tenant.id) : Promise.resolve(null),

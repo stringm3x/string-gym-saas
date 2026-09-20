@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { LuArrowLeft } from "react-icons/lu";
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { listPlanes } from "@/lib/queries/planes.queries";
 import { ImportarMiembrosWizard } from "@/components/miembros/import/ImportarMiembrosWizard";
 
@@ -11,12 +10,11 @@ interface PageProps {
 
 export default async function ImportarMiembrosPage({ params }: PageProps) {
   const { slug } = await params;
-  const tenant = await getTenant();
-
-  // Solo el dueño puede importar (operación crítica).
-  if (tenant.role !== "owner") {
-    redirect(`/${slug}/miembros`);
-  }
+  // Misma política que importarMiembrosAction (importacion_csv + configurar_general):
+  // owner y gerente, no solo el dueño.
+  const g = await requirePanel("miembros.importar", { sinPermiso: "/miembros" });
+  if (!g.ok) return null; // importacion_csv es Starter: no ocurre
+  const tenant = g.ctx;
 
   const planes = await listPlanes(tenant.id, { soloActivos: true });
 

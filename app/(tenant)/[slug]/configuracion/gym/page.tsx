@@ -1,4 +1,4 @@
-import { getTenant } from "@/lib/tenant";
+import { requirePanel } from "@/lib/authz/pagina";
 import { getGymFull } from "@/lib/queries/gyms.queries";
 import { notFound } from "next/navigation";
 import { GymConfigManager } from "@/components/configuracion/GymConfigManager";
@@ -9,7 +9,9 @@ interface PageProps {
 
 export default async function GymConfigPage({ params }: PageProps) {
   await params;
-  const tenant = await getTenant();
+  const g = await requirePanel("config.gym", { sinPermiso: "/checkins" });
+  if (!g.ok) return null; // feature Starter: no ocurre
+  const tenant = g.ctx;
 
   const gym = await getGymFull(tenant.id);
   if (!gym) notFound();
