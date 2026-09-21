@@ -16,6 +16,7 @@ import {
   type CheckInQrResult,
   type CheckInQrError,
 } from "@/app/(tenant)/[slug]/checkins/scanner/actions";
+import { money } from "@/lib/utils/creditos-calc";
 
 const QrCameraScanner = dynamic(() => import("./QrCameraScanner"), {
   ssr: false,
@@ -68,9 +69,10 @@ export function QrScannerDisplay({ slug }: { slug: string }) {
       setResult(r);
       setToken("");
       if (timerRef.current) clearTimeout(timerRef.current);
-      // El aviso de vencido queda más tiempo en pantalla: el staff tiene que
-      // verlo, no solo el socio que ya pasó.
-      const espera = r.success && r.avisoVencido ? 5000 : 2500;
+      // El aviso de vencido (membresía o cuota) queda más tiempo en
+      // pantalla: el staff tiene que verlo, no solo el socio que ya pasó.
+      const espera =
+        r.success && (r.avisoVencido || r.deudaVencida) ? 5000 : 2500;
       timerRef.current = setTimeout(() => {
         setResult(null);
         lockRef.current = false;
@@ -80,7 +82,7 @@ export function QrScannerDisplay({ slug }: { slug: string }) {
   }
 
   const ok = result?.success === true;
-  const aviso = ok && result.avisoVencido;
+  const aviso = ok && (result.avisoVencido || !!result.deudaVencida);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-bg">
@@ -140,20 +142,27 @@ export function QrScannerDisplay({ slug }: { slug: string }) {
                 <p
                   className={`font-mono text-etiqueta uppercase ${aviso ? "text-warning" : "text-text-secondary"}`}
                 >
-                  {aviso ? "Check-in registrado — membresía vencida" : "Check-in registrado"}
+                  {result.avisoVencido
+                    ? "Check-in registrado — membresía vencida"
+                    : "Check-in registrado"}
                 </p>
                 <p className="text-[40px] font-semibold leading-none text-text-primary">
                   {result.nombre}
                 </p>
                 {result.fechaVencimiento ? (
-                  <p className={`text-base ${aviso ? "font-semibold text-warning" : "text-text-secondary"}`}>
+                  <p className={`text-base ${result.avisoVencido ? "font-semibold text-warning" : "text-text-secondary"}`}>
                     Vence el {fechaCorta(result.fechaVencimiento)}
                   </p>
-                ) : aviso ? (
+                ) : result.avisoVencido ? (
                   <p className="text-base font-semibold text-warning">
                     Sin membresía registrada
                   </p>
                 ) : null}
+                {result.deudaVencida && (
+                  <p className="text-base font-semibold text-warning">
+                    Debe {money(result.deudaVencida.monto)} de su plan a plazos
+                  </p>
+                )}
               </>
             ) : (
               <>

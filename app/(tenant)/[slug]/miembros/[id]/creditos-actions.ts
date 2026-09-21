@@ -12,7 +12,10 @@ type Metodo = (typeof METODOS)[number];
 export const crearPlanPagoAction = panelAction(
   "miembros.plan_pago_crear",
   {},
-  async (tenant, input: unknown): Promise<{ ok: boolean; error?: string }> => {
+  async (
+    tenant,
+    input: unknown
+  ): Promise<{ ok: boolean; error?: string; reciboError?: string }> => {
     const parsed = planPagoInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -25,7 +28,7 @@ export const crearPlanPagoAction = panelAction(
     if (!r.ok) return { ok: false, error: r.error };
 
     revalidatePath(`/${tenant.slug}/miembros/${parsed.data.miembro_id}`);
-    return { ok: true };
+    return { ok: true, reciboError: r.reciboError };
   }
 );
 

@@ -3,13 +3,22 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/lib/utils/cn";
 import { crearPlanPagoAction } from "@/app/(tenant)/[slug]/miembros/[id]/creditos-actions";
 import { repartirMonto, fechasCuotas, money } from "@/lib/utils/creditos-calc";
 import type {
   FrecuenciaCuota,
+  MetodoPago,
   TipoPlanPago,
 } from "@/lib/validations/creditos.schema";
+
+const METODOS = [
+  { value: "efectivo", label: "Efectivo" },
+  { value: "tarjeta", label: "Tarjeta" },
+  { value: "transferencia", label: "Transferencia" },
+] as const satisfies readonly { value: MetodoPago; label: string }[];
 
 interface PlanMembresiaOpt {
   id: string;
@@ -43,19 +52,29 @@ export function PlanPagoForm({
   onDone: () => void;
 }) {
   const router = useRouter();
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, warning } = useToast();
   const [pending, start] = useTransition();
 
   const [tipo, setTipo] = useState<TipoPlanPago>("membresia");
   const [planId, setPlanId] = useState(planesMembresia[0]?.id ?? "");
   const [productoId, setProductoId] = useState(productos[0]?.id ?? "");
   const [cantidad, setCantidad] = useState(1);
-  const [total, setTotal] = useState<number>(planesMembresia[0]?.precio ?? 0);
   const [cuotas, setCuotas] = useState(3);
   const [frecuencia, setFrecuencia] = useState<FrecuenciaCuota>("quincenal");
   const [concepto, setConcepto] = useState("Membresía a plazos");
+  const [metodo, setMetodo] = useState<MetodoPago>("efectivo");
+  const [conceptoTocado, setConceptoTocado] = useState(false);
 
   const productoSel = productos.find((p) => p.id === productoId) ?? null;
+  const planSel = planesMembresia.find((p) => p.id === planId) ?? null;
+
+  // El total sale siempre del precio real del plan/producto — no es un
+  // campo que el staff pueda escribir (antes lo era, sin ninguna relación
+  // con lo que de verdad cuesta lo que se está financiando).
+  const total =
+    tipo === "membresia"
+      ? (planSel?.precio ?? 0)
+      : (productoSel?.precio ?? 0) * cantidad;
 
   const preview = useMemo(() => {
     if (!total || cuotas < 2) return null;
@@ -66,39 +85,26 @@ export function PlanPagoForm({
 
   function cambiarTipo(t: TipoPlanPago) {
     setTipo(t);
+    if (conceptoTocado) return;
     if (t === "membresia") {
       const p = planesMembresia.find((x) => x.id === planId) ?? planesMembresia[0];
-      setPlanId(p?.id ?? "");
-      setTotal(p?.precio ?? 0);
-      setConcepto("Membresía a plazos");
+      setConcepto(p ? "Membresía a plazos" : "");
     } else {
       const p = productos.find((x) => x.id === productoId) ?? productos[0];
-      setProductoId(p?.id ?? "");
-      setCantidad(1);
-      setTotal(p?.precio ?? 0);
       setConcepto(p ? p.nombre : "Producto a plazos");
     }
   }
 
-  function seleccionarPlan(id: string) {
-    setPlanId(id);
-    const p = planesMembresia.find((x) => x.id === id);
-    if (p) setTotal(p.precio);
-  }
-
   function seleccionarProducto(id: string) {
     setProductoId(id);
+    if (conceptoTocado) return;
     const p = productos.find((x) => x.id === id);
-    if (p) {
-      setTotal(p.precio * cantidad);
-      setConcepto(p.nombre);
-    }
+    if (p) setConcepto(p.nombre);
   }
 
-  function cambiarCantidad(n: number) {
-    const c = Math.max(1, n);
-    setCantidad(c);
-    if (productoSel) setTotal(productoSel.precio * c);
+  function cambiarConcepto(v: string) {
+    setConceptoTocado(true);
+    setConcepto(v);
   }
 
   function crear() {
@@ -123,27 +129,30 @@ export function PlanPagoForm({
               miembro_id: miembroId,
               tipo,
               plan_membresia_id: planId,
-              total,
               cuotas,
               concepto: concepto || undefined,
               frecuencia,
+              metodo,
             }
           : {
               miembro_id: miembroId,
               tipo,
               producto_id: productoId,
               cantidad,
-              total,
               cuotas,
               concepto: concepto || undefined,
               frecuencia,
+              metodo,
             }
       );
       if (!r.ok) {
         toastError("No se pudo crear el plan", r.error);
         return;
       }
-      success("Plan de pagos creado");
+      success("Plan creado y cuota 1 cobrada");
+      if (r.reciboError) {
+        warning("El recibo no se pudo enviar por correo", r.reciboError);
+      }
       router.refresh();
       onDone();
     });
@@ -187,7 +196,7 @@ export function PlanPagoForm({
             <select
               id="plan_membresia"
               value={planId}
-              onChange={(e) => seleccionarPlan(e.target.value)}
+              onChange={(e) => setPlanId(e.target.value)}
               className={inputClass}
             >
               {planesMembresia.length === 0 && (
@@ -231,7 +240,7 @@ export function PlanPagoForm({
                 type="number"
                 min={1}
                 value={cantidad}
-                onChange={(e) => cambiarCantidad(Number(e.target.value))}
+                onChange={(e) => setCantidad(Math.max(1, Number(e.target.value)))}
                 className={inputClass}
               />
             </div>
@@ -239,19 +248,15 @@ export function PlanPagoForm({
         )}
 
         <div>
-          <label className={labelClass} htmlFor="total">
-            Monto total
-          </label>
-          <input
-            id="total"
-            type="number"
-            inputMode="decimal"
-            min={0}
-            step="0.01"
-            value={total}
-            onChange={(e) => setTotal(Number(e.target.value))}
-            className={`${inputClass} font-mono tabular-nums`}
-          />
+          <span className={labelClass}>Monto total</span>
+          <p
+            className={`${inputClass} flex items-center font-mono tabular-nums text-text-secondary`}
+          >
+            {money(total)}
+          </p>
+          <p className="mt-1 text-xs text-text-muted">
+            Calculado del precio {tipo === "membresia" ? "del plan" : "del producto × cantidad"} — no se puede editar.
+          </p>
         </div>
 
         <div>
@@ -296,10 +301,35 @@ export function PlanPagoForm({
             id="concepto"
             type="text"
             value={concepto}
-            onChange={(e) => setConcepto(e.target.value)}
+            onChange={(e) => cambiarConcepto(e.target.value)}
             placeholder={tipo === "membresia" ? "Membresía a plazos" : "Producto"}
             className={inputClass}
           />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Método de pago de la cuota 1</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {METODOS.map((m) => {
+            const active = metodo === m.value;
+            return (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setMetodo(m.value)}
+                aria-pressed={active}
+                className={cn(
+                  "inline-flex h-11 items-center justify-center border px-2 text-sm font-medium transition-colors",
+                  active
+                    ? "border-brand-green bg-surface-hover text-brand-green"
+                    : "border-border bg-bg text-text-secondary hover:border-text-secondary hover:text-text-primary"
+                )}
+              >
+                {m.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -313,9 +343,13 @@ export function PlanPagoForm({
       {preview && (
         <div className="border border-border bg-surface px-4 py-3">
           <p className="text-[15px] leading-5 text-text-primary">
-            {cuotas} cuotas de{" "}
-            <span className="font-mono text-dato">{money(preview[0].monto)}</span>
-            {preview[0].monto !== preview[cuotas - 1].monto && (
+            Cuota 1 de{" "}
+            <span className="font-mono text-dato">{money(preview[0].monto)}</span>{" "}
+            se cobra ahora, al crear el plan.
+          </p>
+          <p className="mt-1 text-[15px] leading-5 text-text-primary">
+            Las siguientes {cuotas - 1} quedan pendientes
+            {preview[0].monto !== preview[cuotas - 1].monto ? (
               <>
                 {" "}
                 (última{" "}
@@ -324,7 +358,14 @@ export function PlanPagoForm({
                 </span>
                 )
               </>
+            ) : (
+              <>
+                {" "}
+                de{" "}
+                <span className="font-mono text-dato">{money(preview[1]?.monto ?? preview[0].monto)}</span>
+              </>
             )}
+            .
           </p>
           <p className="mt-1 text-sm text-text-muted">
             Vencen:{" "}
@@ -340,7 +381,7 @@ export function PlanPagoForm({
           Cancelar
         </Button>
         <Button type="button" loading={pending} onClick={crear}>
-          Crear plan de pagos
+          Crear plan y cobrar cuota 1
         </Button>
       </div>
     </div>
