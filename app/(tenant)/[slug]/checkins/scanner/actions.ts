@@ -21,7 +21,13 @@ export type CheckInQrError =
   | "ERROR";
 
 export type CheckInQrResult =
-  | { success: true; nombre: string; fechaVencimiento: string | null }
+  | {
+      success: true;
+      nombre: string;
+      fechaVencimiento: string | null;
+      /** true si se dejó pasar con membresía vencida/sin registrar (política "solo avisar"). */
+      avisoVencido: boolean;
+    }
   | { success: false; error: CheckInQrError; nombre?: string };
 
 /**
@@ -56,11 +62,12 @@ export const checkInPorQrAction = panelAction(
     if (await checkinReciente(tenant.id, miembro.id)) {
       return { success: false, error: "CHECKIN_RECIENTE", nombre: miembro.nombre };
     }
-    if (
-      miembro.fecha_vencimiento &&
-      miembro.fecha_vencimiento < hoyISO() &&
-      (await bloqueaVencidos(tenant.id))
-    ) {
+    // sin_membresia sigue la misma política que vencido: no hay fecha =
+    // nunca hubo vigencia que vencer, tampoco hay nada que "avisar y dejar
+    // pasar".
+    const vencidoOSinMembresia =
+      !miembro.fecha_vencimiento || miembro.fecha_vencimiento < hoyISO();
+    if (vencidoOSinMembresia && (await bloqueaVencidos(tenant.id))) {
       return { success: false, error: "MEMBRESIA_VENCIDA", nombre: miembro.nombre };
     }
 
@@ -73,6 +80,7 @@ export const checkInPorQrAction = panelAction(
       success: true,
       nombre: miembro.nombre,
       fechaVencimiento: miembro.fecha_vencimiento,
+      avisoVencido: vencidoOSinMembresia,
     };
   }
 );

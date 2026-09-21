@@ -9,6 +9,8 @@ interface MiembroStatusBadgeProps {
   fechaVencimiento: string | null | undefined;
   /** Plan por visitas (D3): si se pasa, la vigencia la manda el saldo. */
   visitasRestantes?: number | null;
+  /** true si hay una congelación activa hoy — pisa el estado por fecha. */
+  congelada?: boolean;
 }
 
 const labels: Record<EstadoMembresia, string> = {
@@ -31,7 +33,15 @@ const variants: Record<
 export function MiembroStatusBadge({
   fechaVencimiento,
   visitasRestantes,
+  congelada,
 }: MiembroStatusBadgeProps) {
+  // Antes solo cambiaba la etiqueta del botón "Congelar"/"Descongelar" — el
+  // badge de la lista y de la ficha mostraban "Activo" igual que un socio
+  // sin congelar, porque congelar recorre fecha_vencimiento hacia adelante.
+  if (congelada) {
+    return <Badge variant="info">Congelada</Badge>;
+  }
+
   const porVisitas =
     visitasRestantes !== null && visitasRestantes !== undefined;
   const estado = getEstadoMembresia(fechaVencimiento, undefined, visitasRestantes);

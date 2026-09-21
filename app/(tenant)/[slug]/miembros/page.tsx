@@ -11,6 +11,7 @@ import {
 import { getTenant } from "@/lib/tenant";
 import { hasPermission } from "@/lib/permissions";
 import { listMiembros } from "@/lib/queries/miembros.queries";
+import { listCongeladosIds } from "@/lib/queries/miembro-eventos.queries";
 import { listTags } from "@/lib/queries/tags.queries";
 import { listPlantillas } from "@/lib/queries/plantillas.queries";
 import { listSeguimientosPendientes } from "@/lib/queries/notas.queries";
@@ -80,6 +81,10 @@ export default async function MiembrosPage({
       listPlantillas(tenant.id, { soloActivas: true }),
       listSeguimientosPendientes(tenant.id, hoyISO()),
     ]);
+  const congeladosIds = await listCongeladosIds(
+    tenant.id,
+    miembros.map((m) => m.id)
+  );
 
   // Mismo criterio que importarMiembrosAction / requirePanel("miembros.importar").
   const isOwner = hasPermission(tenant.role, "configurar_general");
@@ -193,6 +198,7 @@ export default async function MiembrosPage({
             plantillas={plantillas}
             plan={tenant.plan}
             soloArchivados={soloArchivados}
+            congeladosIds={congeladosIds}
           />
 
           {totalPages > 1 && (

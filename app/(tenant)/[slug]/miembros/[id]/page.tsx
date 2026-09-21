@@ -48,6 +48,7 @@ import {
   type PlanNutricion,
 } from "@/lib/queries/nutricion.queries";
 import { MiembroNutricion } from "@/components/nutricion/MiembroNutricion";
+import { gymPuedeWhatsapp } from "@/lib/whatsapp/emit";
 
 interface PageProps {
   params: Promise<{ slug: string; id: string }>;
@@ -62,6 +63,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const canNutricion =
     hasFeature(tenant.plan, "nutricion") &&
     hasPermission(tenant.role, "ver_nutricion");
+  const canPortal = hasFeature(tenant.plan, "portal_miembro");
 
   const [
     miembro,
@@ -81,6 +83,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     eventosMembresia,
     congelacionesPendientes,
     tieneCongelacionActiva,
+    puedeWhatsappPortal,
   ] = await Promise.all([
     getMiembro(tenant.id, id),
     listCheckinsByMiembro(tenant.id, id, 20),
@@ -109,6 +112,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     getEventosMiembro(tenant.id, id),
     getCongelacionesSolicitadas(tenant.id, id),
     congelacionActiva(tenant.id, id),
+    canPortal ? gymPuedeWhatsapp(tenant.id) : Promise.resolve(false),
   ]);
 
   if (!miembro) {
@@ -128,10 +132,16 @@ export default async function MiembroDetailPage({ params }: PageProps) {
   const canPlantillas = hasFeature(tenant.plan, "plantillas_mensaje");
   const canArchivar = hasPermission(tenant.role, "eliminar_archivar_miembros");
   const canCobrar = hasPermission(tenant.role, "registrar_pagos");
-  const canPortal = hasFeature(tenant.plan, "portal_miembro");
-  const portalUrl = canPortal
-    ? `https://${process.env.APP_DOMAIN ?? "app.gym.stringwebs.com"}/portal/${slug}/login`
-    : null;
+  // El botón antes se ofrecía con solo tener teléfono O correo, aunque el
+  // login del portal exige correo salvo que el gym tenga WhatsApp OTP
+  // configurado (N8N_WEBHOOK_URL/DIALOG360_API_KEY) — sin eso, un socio con
+  // solo teléfono recibía el link y nunca podía entrar.
+  const puedeAccederPortal =
+    !!miembro.email || (!!miembro.telefono && puedeWhatsappPortal);
+  const portalUrl =
+    canPortal && puedeAccederPortal
+      ? `https://${process.env.APP_DOMAIN ?? "app.gym.stringwebs.com"}/portal/${slug}/login`
+      : null;
 
   const miembroConTags = { ...miembro, tags: miembroTags };
 
@@ -169,6 +179,7 @@ export default async function MiembroDetailPage({ params }: PageProps) {
             <MiembroStatusBadge
               fechaVencimiento={miembro.fecha_vencimiento}
               visitasRestantes={miembro.visitas_restantes}
+              congelada={tieneCongelacionActiva}
             />
             {enRiesgo &&
               diasSinCheckin !== null &&

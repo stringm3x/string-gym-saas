@@ -71,10 +71,18 @@ export const registerCheckinAction = panelAction(
     }
 
     // Política de vencidos: si el gym bloquea, no se registra el check-in.
-    if (estado === "vencido" && (await bloqueaVencidos(tenant.id))) {
+    // sin_membresia sigue la misma política que vencido — nunca hubo fecha
+    // de vencimiento, así que tampoco hay nada que "avisar y dejar pasar".
+    if (
+      (estado === "vencido" || estado === "sin_membresia") &&
+      (await bloqueaVencidos(tenant.id))
+    ) {
       return {
         ok: false,
-        error: "Membresía vencida",
+        error:
+          estado === "sin_membresia"
+            ? "Sin membresía registrada"
+            : "Membresía vencida",
         bloqueado: true,
         miembro: {
           id: miembro.id,

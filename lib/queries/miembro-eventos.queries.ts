@@ -7,7 +7,7 @@
  */
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { hoyISO, isoMasDias } from "@/lib/utils/dates";
+import { hoyISO, isoMasDias, fechaCorta } from "@/lib/utils/dates";
 import { crearNotaCredito } from "@/lib/queries/notas-credito.queries";
 import { logError } from "@/lib/log";
 
@@ -54,6 +54,31 @@ async function extenderVencimiento(
   return { ok: true, dias };
 }
 
+/**
+ * Fila de la congelación activa (aplicada, sin cerrar) de un socio, si
+ * existe — sin importar si su rango de fechas ya venció: descongelarMembresia
+ * es lo único que la cierra (estado: "cancelada"), así que "activa" queda
+ * activa hasta que alguien la cierre, no hasta que pase fecha_fin.
+ */
+async function getCongelacionActivaRow(
+  tenantId: string,
+  miembroId: string,
+  client: SupabaseClient
+): Promise<{ id: string; fecha_fin: string } | null> {
+  const { data } = await client
+    .from("miembro_eventos")
+    .select("id, fecha_fin")
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .eq("tipo", "congelacion")
+    .eq("estado", "activa")
+    .order("fecha_fin", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  return { id: data.id as string, fecha_fin: data.fecha_fin as string };
+}
+
 /** Congela la membresía: extiende el vencimiento y registra el evento (D1). */
 export async function congelarMembresia(
   tenantId: string,
@@ -70,6 +95,17 @@ export async function congelarMembresia(
   }
 
   const supabase = await createClient();
+
+  // Congelar dos veces sin descongelar antes sumaba una segunda extensión
+  // de vigencia sin aviso.
+  const activa = await getCongelacionActivaRow(tenantId, miembroId, supabase);
+  if (activa) {
+    return {
+      ok: false,
+      error: `Este socio ya tiene una congelación activa hasta el ${fechaCorta(activa.fecha_fin)}. Descongelalo primero si querés cambiarla.`,
+    };
+  }
+
   const extendido = await extenderVencimiento(
     supabase,
     tenantId,
@@ -136,6 +172,34 @@ export async function solicitarCongelacionPortal(
       aplicada: false,
     };
   }
+  // Fechas pasadas sumaban días a una membresía ya vencida sin bloquear
+  // nunca un check-in (congelacionActiva exige fecha_fin >= hoy).
+  const hoy = hoyISO();
+  if (input.fechaInicio < hoy) {
+    return {
+      ok: false,
+      error: "La fecha de inicio no puede ser anterior a hoy.",
+      aplicada: false,
+    };
+  }
+
+  // Sin vigencia que proteger, congelar solo suma días a una membresía que
+  // ya venció.
+  const { data: miembro } = await client
+    .from("miembros")
+    .select("fecha_vencimiento")
+    .eq("tenant_id", tenantId)
+    .eq("id", miembroId)
+    .maybeSingle();
+  const fechaVencimiento = miembro?.fecha_vencimiento as string | null | undefined;
+  if (!fechaVencimiento || fechaVencimiento < hoy) {
+    return {
+      ok: false,
+      error: "Tu membresía ya venció. Contacta al gym para renovarla antes de pausarla.",
+      aplicada: false,
+    };
+  }
+
   // Una sola solicitud/congelación pendiente a la vez.
   const { data: existente } = await client
     .from("miembro_eventos")
@@ -147,6 +211,17 @@ export async function solicitarCongelacionPortal(
     .limit(1);
   if ((existente ?? []).length > 0) {
     return { ok: false, error: "Ya tienes una solicitud pendiente.", aplicada: false };
+  }
+
+  // Misma regla que del lado del staff: no apilar una segunda congelación
+  // sobre una que ya está activa.
+  const activa = await getCongelacionActivaRow(tenantId, miembroId, client);
+  if (activa) {
+    return {
+      ok: false,
+      error: `Ya tienes una congelación activa hasta el ${fechaCorta(activa.fecha_fin)}.`,
+      aplicada: false,
+    };
   }
 
   const auto = await congelacionAutoAprobar(tenantId, client);
@@ -265,6 +340,24 @@ export async function tieneSolicitudCongelacion(
   return (data ?? []).length > 0;
 }
 
+/**
+ * Total de solicitudes de congelación pendientes del gym (badge del
+ * sidebar) — antes la única forma de enterarse era abrir la ficha de cada
+ * socio, uno por uno, sin saber cuáles tenían algo pendiente.
+ */
+export async function countCongelacionesPendientes(
+  tenantId: string
+): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("miembro_eventos")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("tipo", "congelacion")
+    .eq("estado", "solicitada");
+  return count ?? 0;
+}
+
 /** Solicitudes de congelación pendientes de un socio (para la ficha). */
 export async function getCongelacionesSolicitadas(
   tenantId: string,
@@ -306,6 +399,30 @@ export async function congelacionActiva(
     .gte("fecha_fin", hoy)
     .limit(1);
   return (data ?? []).length > 0;
+}
+
+/**
+ * IDs con congelación activa hoy, entre un lote de miembros (para el badge
+ * de la lista — antes solo se veía "congelada" abriendo la ficha de cada
+ * socio, uno por uno).
+ */
+export async function listCongeladosIds(
+  tenantId: string,
+  miembroIds: string[]
+): Promise<string[]> {
+  if (miembroIds.length === 0) return [];
+  const supabase = await createClient();
+  const hoy = hoyISO();
+  const { data } = await supabase
+    .from("miembro_eventos")
+    .select("miembro_id")
+    .eq("tenant_id", tenantId)
+    .in("miembro_id", miembroIds)
+    .eq("tipo", "congelacion")
+    .eq("estado", "activa")
+    .lte("fecha_inicio", hoy)
+    .gte("fecha_fin", hoy);
+  return [...new Set((data ?? []).map((e) => e.miembro_id as string))];
 }
 
 /**

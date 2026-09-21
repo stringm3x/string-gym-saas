@@ -27,6 +27,17 @@ export function CodigoAutorizacion({
   }, [expiraAt]);
 
   const expirado = restante <= 0;
+
+  // Sin esto la pantalla se queda en "expiró" hasta que alguien toque el
+  // botón — el siguiente de la fila ve la pantalla del anterior igual que
+  // con el código ya vencido. 10s (no 5s): si el socio está mirando cuando
+  // expira, necesita tiempo real para leer qué pasó, no solo un parpadeo.
+  useEffect(() => {
+    if (!expirado) return;
+    const id = setTimeout(onReset, 10000);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expirado]);
   const mm = Math.floor(restante / 60);
   const ss = String(restante % 60).padStart(2, "0");
 
@@ -37,7 +48,7 @@ export function CodigoAutorizacion({
           <LuCircleAlert className="h-20 w-20 text-danger" />
           <p className="text-3xl font-bold text-danger">El código expiró</p>
           <p className="text-lg text-text-secondary">
-            Genera uno nuevo para continuar.
+            Escanea tu QR de nuevo para generar uno nuevo, o pídele ayuda al staff.
           </p>
         </>
       ) : (

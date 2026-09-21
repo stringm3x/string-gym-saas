@@ -3,7 +3,14 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { LuX, LuCamera, LuKeyboard, LuCircleCheck, LuCircleX } from "react-icons/lu";
+import {
+  LuX,
+  LuCamera,
+  LuKeyboard,
+  LuCircleCheck,
+  LuCircleX,
+  LuTriangleAlert,
+} from "react-icons/lu";
 import {
   checkInPorQrAction,
   type CheckInQrResult,
@@ -61,15 +68,19 @@ export function QrScannerDisplay({ slug }: { slug: string }) {
       setResult(r);
       setToken("");
       if (timerRef.current) clearTimeout(timerRef.current);
+      // El aviso de vencido queda más tiempo en pantalla: el staff tiene que
+      // verlo, no solo el socio que ya pasó.
+      const espera = r.success && r.avisoVencido ? 5000 : 2500;
       timerRef.current = setTimeout(() => {
         setResult(null);
         lockRef.current = false;
         focusInput();
-      }, 2500);
+      }, espera);
     });
   }
 
   const ok = result?.success === true;
+  const aviso = ok && result.avisoVencido;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-bg">
@@ -111,30 +122,38 @@ export function QrScannerDisplay({ slug }: { slug: string }) {
             role="status"
             aria-live="polite"
             className={`flex w-full max-w-lg flex-col items-center gap-4 border-2 bg-surface p-10 text-center ${
-              ok ? "border-brand-green" : "border-danger"
+              !ok ? "border-danger" : aviso ? "border-warning" : "border-brand-green"
             }`}
           >
-            {ok ? (
+            {!ok ? (
+              <LuCircleX className="h-16 w-16 text-danger" aria-hidden="true" />
+            ) : aviso ? (
+              <LuTriangleAlert className="h-16 w-16 text-warning" aria-hidden="true" />
+            ) : (
               <LuCircleCheck
                 className="h-16 w-16 text-brand-green"
                 aria-hidden="true"
               />
-            ) : (
-              <LuCircleX className="h-16 w-16 text-danger" aria-hidden="true" />
             )}
             {ok ? (
               <>
-                <p className="font-mono text-etiqueta uppercase text-text-secondary">
-                  Check-in registrado
+                <p
+                  className={`font-mono text-etiqueta uppercase ${aviso ? "text-warning" : "text-text-secondary"}`}
+                >
+                  {aviso ? "Check-in registrado — membresía vencida" : "Check-in registrado"}
                 </p>
                 <p className="text-[40px] font-semibold leading-none text-text-primary">
                   {result.nombre}
                 </p>
-                {result.fechaVencimiento && (
-                  <p className="text-base text-text-secondary">
+                {result.fechaVencimiento ? (
+                  <p className={`text-base ${aviso ? "font-semibold text-warning" : "text-text-secondary"}`}>
                     Vence el {fechaCorta(result.fechaVencimiento)}
                   </p>
-                )}
+                ) : aviso ? (
+                  <p className="text-base font-semibold text-warning">
+                    Sin membresía registrada
+                  </p>
+                ) : null}
               </>
             ) : (
               <>

@@ -4,6 +4,7 @@ import { getTenant } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import { countMiembrosVencenHoy } from "@/lib/queries/miembros.queries";
+import { countCongelacionesPendientes } from "@/lib/queries/miembro-eventos.queries";
 import { countStockBajo } from "@/lib/queries/productos.queries";
 import { countProspectosNuevos } from "@/lib/queries/prospectos.queries";
 import { getAlertas } from "@/lib/queries/alertas.queries";
@@ -60,6 +61,7 @@ export default async function TenantLayout({
   const [
     gym,
     miembrosVencenHoy,
+    congelacionesPendientes,
     stockBajo,
     prospectosNuevos,
     alertas,
@@ -72,6 +74,7 @@ export default async function TenantLayout({
   ] = await Promise.all([
     getGymInfo(tenant.id),
     countMiembrosVencenHoy(tenant.id),
+    countCongelacionesPendientes(tenant.id),
     countStockBajo(tenant.id),
     countProspectosNuevos(tenant.id),
     tieneAlertas ? getAlertas(tenant.id, slug) : Promise.resolve([]),
@@ -112,7 +115,7 @@ export default async function TenantLayout({
     : undefined;
 
   const badges = {
-    miembros: miembrosVencenHoy,
+    miembros: miembrosVencenHoy + congelacionesPendientes,
     inventario: stockBajo,
     prospectos: prospectosNuevos,
     alertas: alertasBadge,

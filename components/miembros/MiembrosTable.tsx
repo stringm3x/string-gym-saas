@@ -17,6 +17,7 @@ interface MiembrosTableProps {
   onToggleAll: () => void;
   soloArchivados?: boolean;
   selectable?: boolean;
+  congeladosIds?: string[];
 }
 
 /**
@@ -32,7 +33,9 @@ export function MiembrosTable({
   onToggleAll,
   soloArchivados = false,
   selectable = true,
+  congeladosIds = [],
 }: MiembrosTableProps) {
+  const congelados = new Set(congeladosIds);
   return (
     <div className="card-surface overflow-x-auto">
       <table className="min-w-full">
@@ -115,6 +118,7 @@ export function MiembrosTable({
                 <MiembroStatusBadge
                   fechaVencimiento={m.fecha_vencimiento}
                   visitasRestantes={m.visitas_restantes}
+                  congelada={congelados.has(m.id)}
                 />
               </Td>
 
