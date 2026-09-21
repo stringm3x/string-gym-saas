@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { isoMasDias } from "@/lib/utils/dates";
+import { logError } from "@/lib/log";
 import type { Audiencia, CampanaInput } from "@/lib/validations/campanas.schema";
 
 export interface Destinatario {
@@ -22,6 +23,8 @@ export interface Campana {
   audiencia: Audiencia;
   total_destinatarios: number;
   enviada_at: string | null;
+  /** Cómo se confirmó el envío. Null = quedó pendiente de confirmar. */
+  canal: "api" | "manual" | null;
   created_at: string;
 }
 
@@ -131,7 +134,15 @@ export async function getDestinatariosByAudiencia(
   return partirPorTelefono((data ?? []) as MiembroRow[]);
 }
 
-/** Registra una campaña como enviada. */
+const CAMPANA_COLS =
+  "id, nombre, mensaje, audiencia, total_destinatarios, enviada_at, canal, created_at";
+
+/**
+ * Crea la campaña SIN marcarla enviada — antes `enviada_at` se escribía acá,
+ * antes de siquiera intentar el envío, así que una campaña quedaba
+ * "enviada" aunque el envío fallara entero o el flujo cayera a wa.me manual
+ * y nadie terminara de mandarlo. `marcarCampanaEnviada` es quien confirma.
+ */
 export async function createCampana(
   tenantId: string,
   input: CampanaInput,
@@ -147,12 +158,9 @@ export async function createCampana(
       mensaje: input.mensaje,
       audiencia: input.audiencia,
       total_destinatarios: totalDestinatarios,
-      enviada_at: new Date().toISOString(),
       creada_by: userId,
     })
-    .select(
-      "id, nombre, mensaje, audiencia, total_destinatarios, enviada_at, created_at"
-    )
+    .select(CAMPANA_COLS)
     .single();
 
   if (error || !data) {
@@ -161,14 +169,44 @@ export async function createCampana(
   return { ok: true, campana: data as Campana };
 }
 
+/** Confirma el envío: enviada_at + por qué canal se confirmó. */
+export async function marcarCampanaEnviada(
+  tenantId: string,
+  campanaId: string,
+  canal: "api" | "manual"
+): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("campanas")
+    .update({ enviada_at: new Date().toISOString(), canal })
+    .eq("tenant_id", tenantId)
+    .eq("id", campanaId);
+  if (error) {
+    logError("campanas.marcar_enviada_fallo", { tenantId, campanaId, canal, error: error.message });
+  }
+}
+
+/** Una campaña puntual (para reabrir sus links manuales sin duplicarla). */
+export async function getCampanaById(
+  tenantId: string,
+  campanaId: string
+): Promise<Campana | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("campanas")
+    .select(CAMPANA_COLS)
+    .eq("tenant_id", tenantId)
+    .eq("id", campanaId)
+    .maybeSingle();
+  return (data as Campana) ?? null;
+}
+
 /** Historial de campañas del tenant (máx. 50, más recientes primero). */
 export async function getCampanas(tenantId: string): Promise<Campana[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("campanas")
-    .select(
-      "id, nombre, mensaje, audiencia, total_destinatarios, enviada_at, created_at"
-    )
+    .select(CAMPANA_COLS)
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(50);

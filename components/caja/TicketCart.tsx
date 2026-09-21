@@ -57,7 +57,7 @@ export function TicketCart({ slug, productos, planes }: TicketCartProps) {
 
   function agregarProducto() {
     const p = productos.find((x) => x.id === prodSel);
-    if (!p) return;
+    if (!p || p.stock_actual <= 0) return;
     setLineas((prev) => {
       const existe = prev.find((l) => l.producto_id === p.id);
       if (existe) {
@@ -140,6 +140,10 @@ export function TicketCart({ slug, productos, planes }: TicketCartProps) {
   const disponibles = productos.filter(
     (p) => p.stock_actual > 0 && !lineas.some((l) => l.producto_id === p.id && l.cantidad >= p.stock_actual)
   );
+  // Bloque 07: antes stock 0 desaparecía del selector sin explicación. Ahora
+  // se muestra, deshabilitado, con "Sin stock" — el staff ve que el
+  // producto existe y por qué no se puede vender.
+  const sinStock = productos.filter((p) => p.stock_actual <= 0);
 
   return (
     <div className="space-y-4">
@@ -157,6 +161,11 @@ export function TicketCart({ slug, productos, planes }: TicketCartProps) {
             {disponibles.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nombre} — {formatMoneda(p.precio)} ({p.stock_actual} en stock)
+              </option>
+            ))}
+            {sinStock.map((p) => (
+              <option key={p.id} value={p.id} disabled>
+                {p.nombre} — Sin stock
               </option>
             ))}
           </select>

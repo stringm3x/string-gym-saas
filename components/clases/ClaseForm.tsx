@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 import { COLORES_CLASE, claseInputSchema } from "@/lib/validations/clases.schema";
 import {
   createClaseAction,
@@ -33,6 +34,7 @@ interface Props {
 
 export function ClaseForm({ mode, initial, onDone }: Props) {
   const router = useRouter();
+  const { warning } = useToast();
   const [pending, start] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -101,6 +103,9 @@ export function ClaseForm({ mode, initial, onDone }: Props) {
         if (result.fieldErrors) setErrors(result.fieldErrors);
         setFormError(result.error ?? null);
         return;
+      }
+      if (result.advertencia) {
+        warning("Clase actualizada", result.advertencia);
       }
       router.refresh();
       onDone();

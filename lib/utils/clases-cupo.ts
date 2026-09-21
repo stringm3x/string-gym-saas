@@ -10,6 +10,7 @@ import type {
   ReservaInput,
 } from "@/lib/types/clases";
 import { emitListaEspera } from "@/lib/whatsapp/emit";
+import { createNotification } from "@/lib/utils/notifications";
 
 /** Regla pura: con cupo libre se confirma; sin cupo, va a lista de espera. */
 export function decideEstadoReserva(cupoDisponible: number): ReservaEstado {
@@ -46,7 +47,11 @@ export async function reservarConCupo(
  * Promueve la primera reserva en lista de espera de una sesión a 'confirmada'.
  * Devuelve la reserva promovida, o null si la lista está vacía.
  *
- * C2: avisa por WhatsApp al promovido (fire-and-forget, dormido sin infra).
+ * C2 + bloque 07: avisa por WhatsApp al promovido, y SIEMPRE deja una
+ * notificación in-app para el staff — antes el único aviso era el WhatsApp
+ * (dormido sin infra, silencioso si fallaba, y nunca disparado para
+ * prospectos/visitantes sin miembro_id), así que una promoción real podía
+ * pasar sin que nadie en el gym se enterara.
  */
 export async function promoverListaEspera(
   tenantId: string,
@@ -60,8 +65,26 @@ export async function promoverListaEspera(
   const { reserva } = await confirmarReserva(tenantId, primera.id, client);
   const promovida = reserva ?? { ...primera, estado: "confirmada" };
 
+  const nombre =
+    primera.miembro?.nombre ??
+    primera.prospecto?.nombre ??
+    primera.nombre_visitante ??
+    "Alguien";
+
+  let avisado = false;
   if (promovida.miembro_id) {
-    void emitListaEspera(tenantId, sesionId, promovida.miembro_id);
+    avisado = await emitListaEspera(tenantId, sesionId, promovida.miembro_id);
   }
+
+  await createNotification(
+    tenantId,
+    "clase",
+    "Se confirmó un lugar en lista de espera",
+    avisado
+      ? `${nombre} pasó a confirmado y se le avisó por WhatsApp.`
+      : `${nombre} pasó a confirmado. No se le pudo avisar por WhatsApp — contáctalo directamente.`,
+    `clases/${sesionId}`
+  );
+
   return promovida;
 }

@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   getDestinatariosByAudiencia,
   createCampana,
+  marcarCampanaEnviada,
+  getCampanaById,
   type Destinatario,
 } from "@/lib/queries/campanas.queries";
 import { enviarCampanaWhatsapp } from "@/lib/whatsapp/emit";
@@ -37,6 +39,7 @@ export const enviarCampanaAction = panelAction(
   ): Promise<{
     ok: boolean;
     error?: string;
+    campanaId?: string;
     total?: number;
     enviadoPorApi?: boolean;
     enviados?: number;
@@ -78,13 +81,67 @@ export const enviarCampanaAction = panelAction(
       }))
     );
 
+    // Se confirma "enviada" solo si de verdad se intentó por la API — el modo
+    // manual (wa.me) se confirma aparte, cuando el staff termina de mandar
+    // los links (marcarCampanaEnviadaManualAction).
+    if (wa.activo) {
+      await marcarCampanaEnviada(tenant.id, r.campana.id, "api");
+    }
+
     revalidatePath(`/${tenant.slug}/comunicaciones/campanas`);
     return {
       ok: true,
+      campanaId: r.campana.id,
       total: destinatarios.length,
       enviadoPorApi: wa.activo,
       enviados: wa.enviados,
       fallidos: wa.fallidos,
+    };
+  }
+);
+
+/**
+ * Confirma una campaña en modo manual (wa.me) una vez que el staff terminó
+ * de abrir los chats — antes no existía este paso, así que el historial
+ * nunca sabía si el envío manual de verdad se completó.
+ */
+export const marcarCampanaEnviadaManualAction = panelAction(
+  "campanas.confirmar_manual",
+  {},
+  async (tenant, campanaId: string): Promise<{ ok: boolean }> => {
+    await marcarCampanaEnviada(tenant.id, campanaId, "manual");
+    revalidatePath(`/${tenant.slug}/comunicaciones/campanas`);
+    return { ok: true };
+  }
+);
+
+/**
+ * Recalcula los links wa.me de una campaña YA CREADA, sin crear una fila
+ * nueva — antes "rehacer" el envío manual significaba pasar todo el wizard
+ * de nuevo, lo que duplicaba la campaña en el historial.
+ */
+export const reabrirCampanaManualAction = panelAction(
+  "campanas.reabrir_manual",
+  {},
+  async (
+    tenant,
+    campanaId: string
+  ): Promise<
+    | { ok: true; nombre: string; mensaje: string; destinatarios: Destinatario[] }
+    | { ok: false; error: string }
+  > => {
+    const campana = await getCampanaById(tenant.id, campanaId);
+    if (!campana) return { ok: false, error: "Campaña no encontrada." };
+
+    const { destinatarios } = await getDestinatariosByAudiencia(
+      tenant.id,
+      campana.audiencia
+    );
+    return {
+      ok: true,
+      nombre: campana.nombre,
+      mensaje: campana.mensaje,
+      destinatarios,
     };
   }
 );

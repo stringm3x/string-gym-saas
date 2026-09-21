@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isoMasDias } from "@/lib/utils/dates";
+import { logError } from "@/lib/log";
+import { registrarCheckinPorClase } from "@/lib/queries/checkins.queries";
 import type {
   Clase,
   ClaseInput,
@@ -117,6 +119,57 @@ export async function updateClase(
   return { ok: true };
 }
 
+/**
+ * Al cambiar hora_inicio de la clase, las sesiones futuras ya generadas con
+ * la hora vieja quedan obsoletas: como el unique es (clase_id, fecha,
+ * hora_inicio), la próxima regeneración las duplica en vez de reemplazarlas
+ * (bloque 07). Cancela las que no tienen a nadie anotado — la próxima
+ * regeneración las recrea limpias con la hora nueva — y deja intactas las
+ * que sí tienen reservas: nunca se le mueve el horario a alguien que ya se
+ * anotó sin que el staff lo decida a mano.
+ */
+export async function limpiarSesionesFuturasSinReservas(
+  tenantId: string,
+  claseId: string,
+  hoy: string
+): Promise<{ canceladas: number; conReservas: number }> {
+  const supabase = await createClient();
+  const { data: sesiones } = await supabase
+    .from("clases_sesiones")
+    .select("id, reservas:clases_reservas(estado)")
+    .eq("tenant_id", tenantId)
+    .eq("clase_id", claseId)
+    .eq("estado", "programada")
+    .gte("fecha", hoy);
+
+  const vacias: string[] = [];
+  let conReservas = 0;
+  for (const s of sesiones ?? []) {
+    const activas = (
+      (s.reservas as { estado: string }[] | null) ?? []
+    ).filter((r) => r.estado === "confirmada" || r.estado === "en_lista_espera");
+    if (activas.length > 0) conReservas++;
+    else vacias.push(s.id as string);
+  }
+
+  if (vacias.length > 0) {
+    const { error } = await supabase
+      .from("clases_sesiones")
+      .update({ estado: "cancelada" })
+      .eq("tenant_id", tenantId)
+      .in("id", vacias);
+    if (error) {
+      logError("clases.limpiar_sesiones_futuras_fallo", {
+        tenantId,
+        claseId,
+        error: error.message,
+      });
+      return { canceladas: 0, conReservas };
+    }
+  }
+  return { canceladas: vacias.length, conReservas };
+}
+
 export async function toggleClaseActiva(
   tenantId: string,
   claseId: string
@@ -231,6 +284,12 @@ export async function insertSesiones(
   return { insertadas: data?.length ?? 0 };
 }
 
+/**
+ * Cancela la sesión completa y arrastra sus reservas activas a "cancelada"
+ * — antes solo se tocaba `clases_sesiones`, así que una reserva confirmada
+ * seguía viéndose (y reservable como cancelable) en el portal como si la
+ * clase siguiera en pie.
+ */
 export async function cancelarSesion(
   tenantId: string,
   sesionId: string,
@@ -243,6 +302,24 @@ export async function cancelarSesion(
     .eq("tenant_id", tenantId)
     .eq("id", sesionId);
   if (error) return { ok: false, error: error.message };
+
+  const { error: reservasErr } = await supabase
+    .from("clases_reservas")
+    .update({ estado: "cancelada" })
+    .eq("tenant_id", tenantId)
+    .eq("sesion_id", sesionId)
+    .in("estado", ["confirmada", "en_lista_espera"]);
+  // La sesión ya quedó cancelada (lo que importa para bloquear nuevas
+  // reservas y para el check-in); si esto falla, se loguea pero no se
+  // revierte — el staff ya está esperando la confirmación.
+  if (reservasErr) {
+    logError("clases.cancelar_sesion_reservas_fallo", {
+      tenantId,
+      sesionId,
+      error: reservasErr.message,
+    });
+  }
+
   return { ok: true };
 }
 
@@ -438,13 +515,21 @@ export async function cancelarReserva(
   return { ok: true, sesionId: data.sesion_id };
 }
 
+/**
+ * Marca la asistencia a la clase Y, si es un socio, cuenta como su visita
+ * del día (bloque 07): antes esto solo tocaba `clases_reservas` — dos
+ * check-ins separados para lo mismo, y asistir a clase no contaba para el
+ * plan por visitas ni limpiaba la alerta de 14 días sin actividad.
+ * `registrarCheckinPorClase` ya deduplica si el socio asiste a más de una
+ * clase el mismo día (o ya había hecho check-in normal).
+ */
 export async function checkInReserva(
   tenantId: string,
   reservaId: string,
   adminUserId: string
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("clases_reservas")
     .update({
       estado: "asistio",
@@ -452,9 +537,80 @@ export async function checkInReserva(
       check_in_by: adminUserId,
     })
     .eq("tenant_id", tenantId)
-    .eq("id", reservaId);
+    .eq("id", reservaId)
+    .select("miembro_id")
+    .single();
   if (error) return { ok: false, error: error.message };
+
+  const miembroId = data?.miembro_id as string | null;
+  if (miembroId) {
+    await registrarCheckinPorClase(tenantId, miembroId, supabase);
+  }
+
   return { ok: true };
+}
+
+/**
+ * Revierte "Asistió"/"No llegó" de vuelta a "confirmada" — un mis-tap en
+ * "No llegó" alimenta el bloqueo de 30 días (noShowBloqueo) sin forma de
+ * corregirlo. El trigger de cupo solo cuenta 'confirmada', así que asistio/
+ * no_asistio ya liberaron ese lugar; si mientras tanto se ocupó (se promovió
+ * a alguien de la lista de espera, o se sumó otra reserva), deshacer volvería
+ * a confirmar sobre un cupo que ya no existe — se bloquea en vez de sobrevender.
+ */
+export async function deshacerAsistencia(
+  tenantId: string,
+  reservaId: string
+): Promise<{ ok: boolean; error?: string; advertencia?: string }> {
+  const supabase = await createClient();
+  const { data: r } = await supabase
+    .from("clases_reservas")
+    .select("id, sesion_id, estado, miembro_id")
+    .eq("tenant_id", tenantId)
+    .eq("id", reservaId)
+    .maybeSingle();
+  if (!r || (r.estado !== "asistio" && r.estado !== "no_asistio")) {
+    return {
+      ok: false,
+      error: "Esta reserva no está en un estado que se pueda deshacer.",
+    };
+  }
+  // Si estaba "asistió", registrarCheckinPorClase pudo haber contado esto
+  // como la visita del día (y descontado del plan por visitas). Deshacer no
+  // lo revierte — no hay forma segura de saber si ese check-in vino de esta
+  // clase o de otra cosa el mismo día — así que se avisa en vez de arriesgar
+  // un ajuste incorrecto al saldo.
+  const eraAsistio = r.estado === "asistio";
+
+  const { data: sesion } = await supabase
+    .from("clases_sesiones")
+    .select("cupo_disponible")
+    .eq("tenant_id", tenantId)
+    .eq("id", r.sesion_id as string)
+    .maybeSingle();
+  if (((sesion?.cupo_disponible as number | undefined) ?? 0) <= 0) {
+    return {
+      ok: false,
+      error:
+        "No hay cupo para deshacer: ese lugar ya se ocupó. Cancela otra reserva primero si quieres liberarlo.",
+    };
+  }
+
+  const { error } = await supabase
+    .from("clases_reservas")
+    .update({ estado: "confirmada", check_in_at: null, check_in_by: null })
+    .eq("tenant_id", tenantId)
+    .eq("id", reservaId)
+    .in("estado", ["asistio", "no_asistio"]);
+  if (error) return { ok: false, error: error.message };
+
+  return {
+    ok: true,
+    advertencia:
+      eraAsistio && r.miembro_id
+        ? "Si esto le había contado como visita del día, revisa su saldo — deshacer la asistencia no lo ajusta automáticamente."
+        : undefined,
+  };
 }
 
 export interface NoShowPorClase {

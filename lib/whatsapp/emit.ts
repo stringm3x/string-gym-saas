@@ -13,6 +13,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFeature, type Plan } from "@/lib/features";
 import { notifyWhatsapp } from "./notify";
 import { registrarMensaje } from "./registro";
+import { logError } from "@/lib/log";
 
 interface GymCtx {
   id: string;
@@ -304,19 +305,21 @@ export async function emitOtpWhatsapp(
 
 /**
  * LISTA_ESPERA (C2): avisa al miembro que subió de lista de espera a confirmado.
- * Fire-and-forget, gateado y no-op si la infra está dormida.
+ * Gateado y no-op si la infra está dormida. Devuelve si el aviso realmente
+ * salió — quien promueve (promoverListaEspera) lo necesita para saber si debe
+ * avisarle al staff que el socio promovido no se enteró por WhatsApp.
  */
 export async function emitListaEspera(
   tenantId: string,
   sesionId: string,
   miembroId: string
-): Promise<void> {
+): Promise<boolean> {
   const infra =
     !!process.env.N8N_WEBHOOK_URL || !!process.env.DIALOG360_API_KEY;
-  if (!infra) return;
+  if (!infra) return false;
   try {
     const gym = await gymCtx(tenantId);
-    if (!gym) return;
+    if (!gym) return false;
 
     const admin = createAdminClient();
     const [miembroRes, sesionRes] = await Promise.all([
@@ -334,7 +337,7 @@ export async function emitListaEspera(
         .maybeSingle(),
     ]);
     const miembro = miembroRes.data;
-    if (!miembro?.telefono) return;
+    if (!miembro?.telefono) return false;
 
     const claseRaw = sesionRes.data?.clases as
       | { nombre: string }
@@ -344,7 +347,7 @@ export async function emitListaEspera(
       ? claseRaw[0]?.nombre ?? "tu clase"
       : claseRaw?.nombre ?? "tu clase";
 
-    await notifyWhatsapp({
+    const enviado = await notifyWhatsapp({
       tipo: "LISTA_ESPERA",
       gymId: gym.id,
       gymSlug: gym.slug,
@@ -357,7 +360,28 @@ export async function emitListaEspera(
       fecha: (sesionRes.data?.fecha as string) ?? "",
       hora: (sesionRes.data?.hora_inicio as string) ?? "",
     });
+    if (!enviado) {
+      logError("whatsapp.lista_espera_fallo", { tenantId, sesionId, miembroId });
+      return false;
+    }
+    // Reflejar el envío en el inbox (historial completo de la conversación).
+    await registrarMensaje({
+      tenantId: gym.id,
+      telefono: miembro.telefono as string,
+      direccion: "saliente",
+      tipo: "template",
+      contenido: `Se liberó un lugar en ${claseNombre} y quedaste confirmado. ¡Te esperamos!`,
+      miembroId,
+      nombreContacto: miembro.nombre as string,
+    });
+    return true;
   } catch (err) {
-    console.error("[whatsapp] emitListaEspera:", err);
+    logError("whatsapp.lista_espera_excepcion", {
+      tenantId,
+      sesionId,
+      miembroId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
   }
 }

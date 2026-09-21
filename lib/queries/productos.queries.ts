@@ -48,6 +48,16 @@ export interface MovimientoConProducto extends MovimientoInventario {
 // ============================================================
 
 /**
+ * Sin stock siempre alerta, tenga o no un stock_minimo configurado — antes
+ * la alerta exigía stock_minimo > 0, y como la columna nace en 0, la mayoría
+ * de los productos nunca alertaban aunque llegaran a cero. Con stock_minimo
+ * configurado, ese sigue siendo el umbral (bloque 07).
+ */
+function esStockBajo(stockActual: number, stockMinimo: number): boolean {
+  return stockActual <= 0 || (stockMinimo > 0 && stockActual <= stockMinimo);
+}
+
+/**
  * Lista productos con su stock. Devuelve productos aunque no tengan fila
  * en `inventario` (mostrarán stock 0).
  */
@@ -86,19 +96,21 @@ export async function listProductosConStock(
       stock_actual,
       stock_minimo,
       unidades_vendidas: inv?.unidades_vendidas ?? 0,
-      stock_bajo: stock_minimo > 0 && stock_actual <= stock_minimo,
+      stock_bajo: esStockBajo(stock_actual, stock_minimo),
     };
   });
 }
 
 /**
- * Productos activos (con stock > 0 o sin restricción) para el selector de Caja.
+ * Productos para el selector de Caja — incluye los de stock 0 (bloque 07:
+ * antes desaparecían del selector sin explicación, como si no existieran;
+ * ahora el selector los muestra deshabilitados con "Sin stock" para que el
+ * staff sepa que el producto existe y por qué no se puede vender).
  */
 export async function listProductosParaVenta(
   tenantId: string
 ): Promise<ProductoConStock[]> {
-  const all = await listProductosConStock(tenantId);
-  return all.filter((p) => p.stock_actual > 0);
+  return listProductosConStock(tenantId);
 }
 
 export async function getProducto(
@@ -132,7 +144,7 @@ export async function getProducto(
     stock_actual,
     stock_minimo,
     unidades_vendidas: inv?.unidades_vendidas ?? 0,
-    stock_bajo: stock_minimo > 0 && stock_actual <= stock_minimo,
+    stock_bajo: esStockBajo(stock_actual, stock_minimo),
   };
 }
 
@@ -387,7 +399,5 @@ export async function countStockBajo(tenantId: string): Promise<number> {
     .select("stock_actual, stock_minimo")
     .eq("tenant_id", tenantId);
   if (error || !data) return 0;
-  return data.filter(
-    (i) => i.stock_minimo > 0 && i.stock_actual <= i.stock_minimo
-  ).length;
+  return data.filter((i) => esStockBajo(i.stock_actual, i.stock_minimo)).length;
 }
