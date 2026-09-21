@@ -27,6 +27,7 @@ import {
   type SessionMiembro,
 } from "@/lib/queries/portal.queries";
 import { getPortalSession } from "@/lib/portal/session";
+import { gymOperativo } from "@/lib/utils/gym-operativo";
 import { getCurrentAdmin } from "@/lib/admin/helpers";
 import {
   PANEL,
@@ -61,6 +62,11 @@ const MENSAJES: Record<Exclude<AuthzCode, "SIN_PLAN" | "SIN_PERMISO">, string> =
   IDENTIDAD_INVALIDA:
     "No se pudo verificar tu identidad. Vuelve a escanear tu QR.",
   GYM_NO_ENCONTRADO: "Gimnasio no encontrado.",
+  // Neutral a propósito (bloque 10): kiosco/portal hablan con el socio, no
+  // con el gimnasio — "suspendido por falta de pago" es asunto entre el
+  // gimnasio y STRING, no algo para mostrarle a quien va a entrenar.
+  GYM_NO_OPERATIVO:
+    "Este gimnasio no está disponible en este momento. Consulta directamente con el gimnasio.",
 };
 
 function mensajePlan(feature: Feature): string {
@@ -163,6 +169,9 @@ export function portalAction<A extends unknown[], R>(
       return negar(opts, "portal", politica, "GYM_NO_ENCONTRADO", MENSAJES.GYM_NO_ENCONTRADO, { slug });
     }
     const detalle = { tenantId: gym.id, plan: gym.plan };
+    if (!gymOperativo(gym)) {
+      return negar(opts, "portal", politica, "GYM_NO_OPERATIVO", MENSAJES.GYM_NO_OPERATIVO, detalle);
+    }
     if (!hasFeature(gym.plan, "portal_miembro")) {
       return negar(opts, "portal", politica, "SIN_PLAN", mensajePlan("portal_miembro"), detalle);
     }
@@ -192,6 +201,8 @@ export interface KioscoGym {
   plan: Plan;
   checkin_bloquea_vencidos: boolean | null;
   mp_access_token: string | null;
+  estado: string;
+  prueba_hasta: string | null;
 }
 
 export interface KioscoCtx {
@@ -218,7 +229,9 @@ export function kioscoAction<A extends unknown[], R>(
     const admin = createAdminClient();
     const { data } = await admin
       .from("gyms")
-      .select("id, slug, plan, checkin_bloquea_vencidos, mp_access_token")
+      .select(
+        "id, slug, plan, checkin_bloquea_vencidos, mp_access_token, estado, prueba_hasta"
+      )
       .eq("slug", slug)
       .maybeSingle();
     const gym = data as KioscoGym | null;
@@ -226,6 +239,9 @@ export function kioscoAction<A extends unknown[], R>(
       return negar(opts, "kiosco", politica, "GYM_NO_ENCONTRADO", MENSAJES.GYM_NO_ENCONTRADO, { slug });
     }
     const detalle = { tenantId: gym.id, plan: gym.plan };
+    if (!gymOperativo(gym)) {
+      return negar(opts, "kiosco", politica, "GYM_NO_OPERATIVO", MENSAJES.GYM_NO_OPERATIVO, detalle);
+    }
     if (!hasFeature(gym.plan, feature)) {
       return negar(opts, "kiosco", politica, "SIN_PLAN", mensajePlan(feature), detalle);
     }

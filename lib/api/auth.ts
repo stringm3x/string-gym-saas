@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFeature, type Plan } from "@/lib/features";
+import { gymOperativo } from "@/lib/utils/gym-operativo";
 
 export interface ApiContext {
   tenantId: string;
@@ -11,7 +12,12 @@ export interface ApiContext {
 
 export type ApiAuthResult =
   | { ok: true; ctx: ApiContext }
-  | { ok: false; status: number; code: "UNAUTHORIZED" | "FORBIDDEN"; message: string };
+  | {
+      ok: false;
+      status: number;
+      code: "UNAUTHORIZED" | "FORBIDDEN" | "GYM_NO_OPERATIVO";
+      message: string;
+    };
 
 /** Prefijo de las API keys de STRING gym. */
 export const API_KEY_PREFIX = "sgk_";
@@ -54,7 +60,7 @@ export async function authenticateApiKey(
   const admin = createAdminClient();
   const { data } = await admin
     .from("gym_api_keys")
-    .select("tenant_id, gyms(slug, plan)")
+    .select("tenant_id, gyms(slug, plan, estado, prueba_hasta)")
     .eq("api_key", key)
     .eq("activa", true)
     .maybeSingle();
@@ -68,7 +74,12 @@ export async function authenticateApiKey(
     };
   }
 
-  type GymRow = { slug: string; plan: string };
+  type GymRow = {
+    slug: string;
+    plan: string;
+    estado: string;
+    prueba_hasta: string | null;
+  };
   const raw = data.gyms as GymRow | GymRow[] | null;
   const gym = Array.isArray(raw) ? raw[0] : raw;
 
@@ -78,6 +89,18 @@ export async function authenticateApiKey(
       status: 403,
       code: "FORBIDDEN",
       message: "La API key no corresponde a este gym.",
+    };
+  }
+
+  // Bloque 10: código distinto de FORBIDDEN a propósito — quien integra
+  // contra esta API es el propio gym (o su desarrollador), no un socio, así
+  // que acá sí es útil decir exactamente por qué, no un mensaje neutral.
+  if (!gymOperativo(gym)) {
+    return {
+      ok: false,
+      status: 403,
+      code: "GYM_NO_OPERATIVO",
+      message: "Este gimnasio no está operativo (prueba vencida o cuenta suspendida).",
     };
   }
 

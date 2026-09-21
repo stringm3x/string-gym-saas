@@ -19,6 +19,7 @@ export type ApiErrorCode =
   | "RESERVA_NO_ENCONTRADA"
   | "MIEMBRO_NO_ENCONTRADO"
   | "FEATURE_NO_DISPONIBLE"
+  | "GYM_NO_OPERATIVO"
   | "INTERNAL_ERROR";
 
 function meta(slug?: string) {

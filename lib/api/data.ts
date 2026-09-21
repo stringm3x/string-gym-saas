@@ -11,6 +11,8 @@ export interface GymPublic {
   color_acento: string | null;
   telefono: string | null;
   direccion: string | null;
+  estado: string;
+  prueba_hasta: string | null;
 }
 
 /** Info pública del gym por slug (para GET /info, sin API key). */
@@ -20,7 +22,9 @@ export async function apiGetGymPublic(
 ): Promise<GymPublic | null> {
   const { data } = await admin
     .from("gyms")
-    .select("id, nombre, slug, logo_url, color_acento, telefono, direccion")
+    .select(
+      "id, nombre, slug, logo_url, color_acento, telefono, direccion, estado, prueba_hasta"
+    )
     .eq("slug", slug)
     .maybeSingle();
   return (data as GymPublic | null) ?? null;

@@ -5,6 +5,7 @@ import { panelAction } from "@/lib/authz";
 import { createClient } from "@/lib/supabase/server";
 import { checkoutMpSchema } from "@/lib/validations/mercadopago.schema";
 import { createCheckoutPreference } from "@/lib/mercadopago/preferences";
+import { gymOperativo } from "@/lib/utils/gym-operativo";
 
 export type CobroMpResult =
   | { ok: true; initPoint: string }
@@ -29,6 +30,24 @@ export const crearCobroMpAction = panelAction(
     const v = parsed.data;
 
     const supabase = await createClient();
+
+    // Bloque 10: proxy.ts ya bloquea toda la página de caja para un gym no
+    // operativo (redirige a /suspendida) — esto es defensa en profundidad
+    // por si la página quedó cargada de antes. No crear un checkout nuevo,
+    // aunque el pago que ya está en curso (el webhook) nunca se bloquea:
+    // ese dinero ya se movió y hay que registrarlo sin importar el estado.
+    const { data: gym } = await supabase
+      .from("gyms")
+      .select("estado, prueba_hasta")
+      .eq("id", tenant.id)
+      .maybeSingle();
+    if (!gym || !gymOperativo(gym)) {
+      return {
+        ok: false,
+        error: "Este gimnasio no está operativo — no se pueden generar cobros nuevos.",
+      };
+    }
+
     // Referencia interna: external_id de pagos_externos = external_reference de
     // la preferencia. El webhook la usa para encontrar la fila y confirmar.
     const refId = randomUUID();
