@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { hoyCDMX } from "@/lib/utils/dates";
 import { emitVisitasBajas } from "@/lib/whatsapp/emit";
+import { logError } from "@/lib/log";
 
 export interface Checkin {
   id: string;
@@ -161,6 +162,53 @@ export async function createCheckin(
   }
 
   return { ok: true, id: data.id, fecha_hora: data.fecha_hora };
+}
+
+/**
+ * ¿Este socio ya tiene un check-in hoy (desde medianoche, hora del gym)?
+ * A diferencia de `checkinReciente` (ventana de 2 minutos, pensada para el
+ * doble-tap del lector), esto cubre todo el día — lo usa
+ * `registrarCheckinPorClase` para que asistir a dos clases el mismo día
+ * cuente como una sola visita, no dos.
+ */
+export async function checkinHoy(
+  tenantId: string,
+  miembroId: string,
+  client?: SupabaseClient
+): Promise<boolean> {
+  const supabase = client ?? (await createClient());
+  const { count } = await supabase
+    .from("checkins")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .gte("fecha_hora", hoyCDMX().toISOString());
+  return (count ?? 0) > 0;
+}
+
+/**
+ * Check-in derivado de asistir a una clase (bloque 07): antes asistir a una
+ * clase no generaba ningún check-in real, así que no contaba para el plan
+ * por visitas ni limpiaba la alerta de 14 días sin actividad. Si el socio ya
+ * tiene un check-in hoy (entrada normal u otra clase), no crea uno segundo
+ * ni descuenta una segunda visita — una clase cuenta como la entrada del
+ * día, no una por clase.
+ */
+export async function registrarCheckinPorClase(
+  tenantId: string,
+  miembroId: string,
+  client?: SupabaseClient
+): Promise<void> {
+  const supabase = client ?? (await createClient());
+  if (await checkinHoy(tenantId, miembroId, supabase)) return;
+  const r = await createCheckin(tenantId, miembroId, supabase);
+  if (!r.ok) {
+    logError("clases.checkin_por_clase_fallo", {
+      tenantId,
+      miembroId,
+      error: r.error,
+    });
+  }
 }
 
 /**

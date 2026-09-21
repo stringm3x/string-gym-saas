@@ -8,6 +8,7 @@ import {
   cancelarReserva,
   checkInReserva,
   marcarNoShow,
+  deshacerAsistencia,
   cancelarSesion,
 } from "@/lib/queries/clases.queries";
 import {
@@ -130,8 +131,24 @@ export const marcarNoShowAction = panelAction(
     const { ok, error } = await marcarNoShow(t.id, reservaId);
     if (!ok) return { ok: false, error };
 
+    // El cupo se libera igual que al cancelar (trigger de DB): también hay
+    // que promover a quien sigue en la lista de espera.
+    await promoverListaEspera(t.id, sesionId);
+
     revalidate(t.slug, sesionId);
     return { ok: true };
+  }
+);
+
+export const deshacerAsistenciaAction = panelAction(
+  "clases.deshacer_asistencia",
+  {},
+  async (t, sesionId: string, reservaId: string): Promise<SesionActionResult> => {
+    const { ok, error, advertencia } = await deshacerAsistencia(t.id, reservaId);
+    if (!ok) return { ok: false, error };
+
+    revalidate(t.slug, sesionId);
+    return { ok: true, advertencia };
   }
 );
 

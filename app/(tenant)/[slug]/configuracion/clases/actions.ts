@@ -9,10 +9,12 @@ import {
   toggleClaseActiva,
   getClaseById,
   insertSesiones,
+  limpiarSesionesFuturasSinReservas,
 } from "@/lib/queries/clases.queries";
 import { updateClasesMaxNoshows } from "@/lib/queries/gyms.queries";
 import { generarSesionesPara } from "@/lib/utils/clases-generador";
 import { claseInputSchema } from "@/lib/validations/clases.schema";
+import { hoyISO } from "@/lib/utils/dates";
 import type { ClaseInput } from "@/lib/types/clases";
 
 export interface ClaseActionResult {
@@ -21,6 +23,8 @@ export interface ClaseActionResult {
   fieldErrors?: Record<string, string>;
   sesionesGeneradas?: number;
   activa?: boolean;
+  /** Aviso no bloqueante (ej. sesiones futuras con reservas que no se tocaron). */
+  advertencia?: string;
 }
 
 /** Guarda el máximo de no-shows antes de bloquear reservas (C1). */
@@ -92,7 +96,8 @@ export const updateClaseAction = panelAction(
       return { ok: false, fieldErrors: buildFieldErrors(parsed.error) };
     }
 
-    // No regenera sesiones: solo actualiza los datos de la clase.
+    const claseAntes = await getClaseById(tenant.id, claseId);
+
     const { ok, error } = await updateClase(
       tenant.id,
       claseId,
@@ -100,8 +105,24 @@ export const updateClaseAction = panelAction(
     );
     if (!ok) return { ok: false, error };
 
+    // Si cambió el horario, las sesiones futuras ya generadas con la hora
+    // vieja quedan obsoletas y la próxima regeneración las duplicaría en
+    // vez de reemplazarlas — limpiar las que nadie reservó, avisar de las
+    // que sí tienen gente (esas no se tocan solas).
+    let advertencia: string | undefined;
+    if (claseAntes && claseAntes.hora_inicio !== parsed.data.hora_inicio) {
+      const { conReservas } = await limpiarSesionesFuturasSinReservas(
+        tenant.id,
+        claseId,
+        hoyISO()
+      );
+      if (conReservas > 0) {
+        advertencia = `Cambiaste el horario, pero ${conReservas} sesión${conReservas === 1 ? "" : "es"} futura${conReservas === 1 ? "" : "s"} ya tiene reservas y se quedó con el horario anterior. Revísalas y cancélalas a mano si hace falta.`;
+      }
+    }
+
     revalidatePath(`/${tenant.slug}/configuracion/clases`);
-    return { ok: true };
+    return { ok: true, advertencia };
   }
 );
 

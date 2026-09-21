@@ -291,6 +291,7 @@ interface ReservaRaw {
   sesion: {
     fecha: string;
     hora_inicio: string;
+    estado: string;
     clase: { nombre: string } | null;
   } | null;
 }
@@ -304,7 +305,7 @@ export async function getProximasReservasPortal(
   const { data } = await admin
     .from("clases_reservas")
     .select(
-      "id, sesion_id, estado, sesion:clases_sesiones(fecha, hora_inicio, clase:clases(nombre))"
+      "id, sesion_id, estado, sesion:clases_sesiones(fecha, hora_inicio, estado, clase:clases(nombre))"
     )
     .eq("tenant_id", tenantId)
     .eq("miembro_id", miembroId)
@@ -312,7 +313,10 @@ export async function getProximasReservasPortal(
 
   const hoy = hoyISO();
   return ((data ?? []) as unknown as ReservaRaw[])
-    .filter((r) => r.sesion && r.sesion.fecha >= hoy)
+    // cancelarSesion ya cascada a clases_reservas, pero esto es la segunda
+    // línea de defensa: una sesión cancelada nunca debe verse como próxima
+    // clase confirmada en el portal, pase lo que pase con la reserva.
+    .filter((r) => r.sesion && r.sesion.fecha >= hoy && r.sesion.estado !== "cancelada")
     .map((r) => ({
       id: r.id,
       sesion_id: r.sesion_id,

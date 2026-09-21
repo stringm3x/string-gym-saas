@@ -248,9 +248,12 @@ export const PANEL = {
   "clases.cancelar_reserva": { feature: "clases", permission: "ver_clases" },
   "clases.checkin_reserva": { feature: "clases", permission: "ver_clases" },
   "clases.no_show": { feature: "clases", permission: "ver_clases" },
+  "clases.deshacer_asistencia": { feature: "clases", permission: "ver_clases" },
   "clases.cancelar_sesion": { feature: "clases", permission: "gestionar_clases" },
   /** enviarCampanaAction — hoy solo feature; el sidebar la muestra con ver_dashboard_ingresos (owner + gerente). */
   "campanas.enviar": { feature: "campanas", permission: "ver_dashboard_ingresos" },
+  "campanas.confirmar_manual": { feature: "campanas", permission: "ver_dashboard_ingresos" },
+  "campanas.reabrir_manual": { feature: "campanas", permission: "ver_dashboard_ingresos" },
   /**
    * Inbox de WhatsApp — hoy solo feature. El sidebar lo muestra a todo el
    * staff ("contestar es operación diaria"), así que `usar_panel` (ausencia

@@ -11,6 +11,8 @@ vi.mock("@/lib/queries/clases.queries", () => ({
   getReservasBySesion: vi.fn(),
   confirmarReserva: vi.fn(),
 }));
+vi.mock("@/lib/whatsapp/emit", () => ({ emitListaEspera: vi.fn() }));
+vi.mock("@/lib/utils/notifications", () => ({ createNotification: vi.fn() }));
 
 import {
   decideEstadoReserva,
@@ -23,6 +25,8 @@ import {
   getReservasBySesion,
   confirmarReserva,
 } from "@/lib/queries/clases.queries";
+import { emitListaEspera } from "@/lib/whatsapp/emit";
+import { createNotification } from "@/lib/utils/notifications";
 
 function mkClase(partial: Partial<Clase> = {}): Clase {
   return {
@@ -178,12 +182,14 @@ describe("reservarConCupo (delega en createReserva)", () => {
   });
 });
 
-describe("promoverListaEspera", () => {
+describe("promoverListaEspera: bloque 07 — el staff siempre se entera, no solo cuando falla el WhatsApp", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("promueve la primera en espera a confirmada", async () => {
+  it("promueve, avisa por WhatsApp y notifica al staff que se avisó", async () => {
     const espera = mkReserva({
       id: "c",
+      miembro_id: "m1",
+      miembro: { nombre: "Ana", telefono: "5512345678" },
       estado: "en_lista_espera",
       created_at: "2026-06-02T10:00:00Z",
     });
@@ -194,20 +200,75 @@ describe("promoverListaEspera", () => {
     vi.mocked(confirmarReserva).mockResolvedValue({
       reserva: { ...espera, estado: "confirmada" },
     });
+    vi.mocked(emitListaEspera).mockResolvedValue(true);
 
     const r = await promoverListaEspera("t1", "s1");
     expect(getReservasBySesion).toHaveBeenCalledWith("t1", "s1", undefined);
     expect(confirmarReserva).toHaveBeenCalledWith("t1", "c", undefined);
+    expect(emitListaEspera).toHaveBeenCalledWith("t1", "s1", "m1");
     expect(r?.id).toBe("c");
     expect(r?.estado).toBe("confirmada");
+    expect(createNotification).toHaveBeenCalledWith(
+      "t1",
+      "clase",
+      expect.any(String),
+      expect.stringContaining("Ana"),
+      "clases/s1"
+    );
+    const mensaje = vi.mocked(createNotification).mock.calls[0][3] as string;
+    expect(mensaje).toContain("se le avisó por WhatsApp");
   });
 
-  it("lista vacía → null (no confirma nada)", async () => {
+  it("el WhatsApp falla → notifica al staff que NO se avisó (antes era invisible)", async () => {
+    const espera = mkReserva({
+      id: "c",
+      miembro_id: "m1",
+      miembro: { nombre: "Ana", telefono: "5512345678" },
+      estado: "en_lista_espera",
+      created_at: "2026-06-02T10:00:00Z",
+    });
+    vi.mocked(getReservasBySesion).mockResolvedValue([espera]);
+    vi.mocked(confirmarReserva).mockResolvedValue({
+      reserva: { ...espera, estado: "confirmada" },
+    });
+    vi.mocked(emitListaEspera).mockResolvedValue(false);
+
+    await promoverListaEspera("t1", "s1");
+    const mensaje = vi.mocked(createNotification).mock.calls[0][3] as string;
+    expect(mensaje).toContain("No se le pudo avisar por WhatsApp");
+  });
+
+  it("promovido sin miembro_id (visitante/prospecto) → no intenta WhatsApp, pero sí notifica al staff", async () => {
+    const espera = mkReserva({
+      id: "c",
+      miembro_id: null,
+      nombre_visitante: "Juan Visita",
+      estado: "en_lista_espera",
+      created_at: "2026-06-02T10:00:00Z",
+    });
+    vi.mocked(getReservasBySesion).mockResolvedValue([espera]);
+    vi.mocked(confirmarReserva).mockResolvedValue({
+      reserva: { ...espera, estado: "confirmada" },
+    });
+
+    await promoverListaEspera("t1", "s1");
+    expect(emitListaEspera).not.toHaveBeenCalled();
+    expect(createNotification).toHaveBeenCalledWith(
+      "t1",
+      "clase",
+      expect.any(String),
+      expect.stringContaining("Juan Visita"),
+      "clases/s1"
+    );
+  });
+
+  it("lista vacía → null (no confirma ni notifica nada)", async () => {
     vi.mocked(getReservasBySesion).mockResolvedValue([
       mkReserva({ estado: "confirmada" }),
     ]);
     const r = await promoverListaEspera("t1", "s1");
     expect(r).toBeNull();
     expect(confirmarReserva).not.toHaveBeenCalled();
+    expect(createNotification).not.toHaveBeenCalled();
   });
 });

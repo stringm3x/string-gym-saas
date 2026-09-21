@@ -16,7 +16,10 @@ import { Label } from "@/components/ui/Label";
 import { useToast } from "@/components/ui/Toast";
 import { buildWhatsAppUrl } from "@/lib/utils/whatsapp";
 import { compilarPlantilla } from "@/lib/utils/plantilla";
-import { enviarCampanaAction } from "@/app/(tenant)/[slug]/comunicaciones/campanas/actions";
+import {
+  enviarCampanaAction,
+  marcarCampanaEnviadaManualAction,
+} from "@/app/(tenant)/[slug]/comunicaciones/campanas/actions";
 import type { Audiencia } from "@/lib/validations/campanas.schema";
 import type { Destinatario } from "@/lib/queries/campanas.queries";
 
@@ -60,6 +63,8 @@ export function CampanaWizard({
   const [apiSent, setApiSent] = useState(false);
   const [enviadosApi, setEnviadosApi] = useState(0);
   const [fallidosApi, setFallidosApi] = useState(0);
+  const [campanaId, setCampanaId] = useState<string | null>(null);
+  const [confirmando, startConfirmar] = useTransition();
 
   const audData = useMemo(
     () => audiencias.find((a) => a.value === audiencia) ?? null,
@@ -76,6 +81,7 @@ export function CampanaWizard({
         return;
       }
       setEnviada(true);
+      setCampanaId(r.campanaId ?? null);
       if (r.enviadoPorApi) {
         // Enviada por la API: no abrimos wa.me.
         setApiSent(true);
@@ -420,7 +426,20 @@ export function CampanaWizard({
                 ))}
               </ul>
               <div className="flex justify-end">
-                <Button type="button" onClick={onDone}>
+                <Button
+                  type="button"
+                  loading={confirmando}
+                  onClick={() => {
+                    if (!campanaId) {
+                      onDone();
+                      return;
+                    }
+                    startConfirmar(async () => {
+                      await marcarCampanaEnviadaManualAction(campanaId);
+                      onDone();
+                    });
+                  }}
+                >
                   Terminar
                 </Button>
               </div>
