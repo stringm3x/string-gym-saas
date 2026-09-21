@@ -20,14 +20,9 @@ export default async function SuspendidaPage() {
 
   return (
     <AuthShell
-      headline={
-        <>
-          TU CUENTA
-          <br />
-          ESTÁ EN{" "}
-          <span className="bg-brand-green px-2.5 text-on-brand">PAUSA</span>.
-        </>
-      }
+      lineas={["TU CUENTA", "ESTÁ EN PAUSA."]}
+      forma="corta"
+      cinta="CUENTA EN PAUSA · STRING GYM"
       lead="Tus socios, pagos y check-ins siguen guardados. Nada se borra: en cuanto se reactive la cuenta, todo está donde lo dejaste."
     >
       <AuthCardHeader

@@ -147,7 +147,7 @@ export function ProspectosKanban({ prospectos, slug, availableTags = [], plantil
       </div>
 
       {prospectos.length === 0 ? (
-        <EmptyState
+        <EmptyState ilustracion="telefono"
           icon={<LuTarget />}
           title="Sin prospectos todavía"
           description="Registra a quien pregunta por precios o pasa a conocer el gimnasio, y muévelo por el tablero hasta inscribirlo."

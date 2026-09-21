@@ -16,6 +16,7 @@ import {
   type KioscoError,
 } from "@/app/kiosco/[slug]/actions";
 import { KioscoMarco, QrPictograma } from "./KioscoMarco";
+import { TitularBrochada } from "@/components/arte/Brochada";
 
 const QrCameraScanner = dynamic(
   () => import("@/components/checkins/QrCameraScanner"),
@@ -189,11 +190,11 @@ export function KioscoEntrada({ slug }: { slug: string }) {
   return (
     <div className="flex w-full max-w-5xl flex-col items-center gap-10 lg:flex-row lg:justify-center lg:gap-24">
       <div className="flex max-w-[480px] flex-col gap-6 text-center lg:text-left">
-        <h1 className="font-display text-[64px] uppercase leading-[58px] text-text-primary sm:text-[80px] sm:leading-[72px] xl:text-[96px] xl:leading-[88px]">
-          Escanea
-          <br />
-          tu código
-        </h1>
+        <TitularBrochada
+          lineas={["ESCANEA", "TU CÓDIGO"]}
+          forma="corta"
+          className="font-display text-[64px] uppercase leading-[58px] text-text-primary sm:text-[80px] sm:leading-[72px] xl:text-[96px] xl:leading-[88px]"
+        />
         <p className="text-xl leading-8 text-text-secondary sm:text-2xl sm:leading-[34px]">
           {modo === "camara"
             ? "Muestra el QR de tu celular a la cámara para registrar tu entrada."

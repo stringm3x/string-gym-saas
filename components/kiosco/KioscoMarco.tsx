@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { MarcasRegistro } from "@/components/arte/MarcasRegistro";
 
 /**
  * Marco de escaneo del kiosco (artboard "Kiosco — autoservicio"): cuatro
@@ -13,6 +14,9 @@ export function KioscoMarco({ children }: { children: ReactNode }) {
       <span aria-hidden="true" className={`${esquina} right-0 top-0 border-r-8 border-t-8`} />
       <span aria-hidden="true" className={`${esquina} bottom-0 left-0 border-b-8 border-l-8`} />
       <span aria-hidden="true" className={`${esquina} bottom-0 right-0 border-b-8 border-r-8`} />
+      <div className="absolute inset-4">
+        <MarcasRegistro className="text-text-muted/50" />
+      </div>
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 p-6">
         {children}
       </div>

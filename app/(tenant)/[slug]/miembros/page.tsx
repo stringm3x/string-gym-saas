@@ -139,7 +139,7 @@ export default async function MiembrosPage({
 
       {miembros.length === 0 ? (
         soloArchivados ? (
-          <EmptyState
+          <EmptyState ilustracion="libreta"
             icon={<LuArchive />}
             title="Nada en el archivo"
             description="Cuando archives a un miembro queda aquí, con todo su historial. Lo puedes reactivar cuando quieras."

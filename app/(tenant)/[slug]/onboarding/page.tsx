@@ -12,6 +12,8 @@ import {
   getDemoMiembro,
 } from "@/lib/queries/onboarding.queries";
 import { Badge } from "@/components/ui/Badge";
+import { TitularBrochada } from "@/components/arte/Brochada";
+import { Sello } from "@/components/arte/Sello";
 import { completarOnboardingAction } from "./actions";
 
 interface PageProps {
@@ -85,13 +87,16 @@ export default async function OnboardingPage({
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 py-4">
-      <div className="flex flex-col gap-3">
+      <div className="relative flex flex-col gap-3">
+        <Sello className="absolute -top-2 right-0 hidden sm:block" />
         <p className="font-mono text-etiqueta uppercase text-brand-green">
           Guía de inicio
         </p>
-        <h1 className="font-display text-titular-l uppercase text-text-primary">
-          Bienvenido a STRING GYM
-        </h1>
+        <TitularBrochada
+          lineas={["BIENVENIDO A", "STRING GYM"]}
+          forma="tachon"
+          className="font-display text-titular-l uppercase text-text-primary"
+        />
         <p className="max-w-lg text-cuerpo text-text-secondary">
           {requiereProducto ? "Tres pasos" : "Dos pasos"} dejan tu gimnasio
           listo para operar. Puedes volver a esta guía cuando quieras desde

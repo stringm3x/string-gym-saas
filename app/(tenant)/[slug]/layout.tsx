@@ -21,6 +21,7 @@ import { SidebarWithActiveSection } from "@/components/layout/SidebarWithActiveS
 import { Header } from "@/components/layout/Header";
 import { TerminosGate } from "@/components/layout/TerminosGate";
 import { ToastProvider } from "@/components/ui/Toast";
+import { Grano } from "@/components/arte/Grano";
 import { AddonsProvider } from "@/lib/contexts/AddonsContext";
 import { StaffProvider } from "@/lib/contexts/StaffContext";
 
@@ -143,6 +144,7 @@ export default async function TenantLayout({
       <StaffProvider staff={currentStaff}>
         <AddonsProvider addons={addons}>
           <div className="flex h-screen overflow-hidden bg-bg">
+          <Grano opacidad={0.08} />
           <SidebarWithActiveSection
             slug={slug}
             plan={tenant.plan}

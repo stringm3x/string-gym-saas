@@ -17,13 +17,9 @@ export default function AdminLoginPage() {
   return (
     <AuthShell
       marca="STRING · Panel interno"
-      headline={
-        <>
-          SOLO PARA
-          <br />
-          <span className="bg-brand-green px-2.5 text-on-brand">STRING</span>.
-        </>
-      }
+      lineas={["SOLO PARA", "STRING."]}
+      forma="tachon"
+      cinta="PANEL INTERNO · STRING"
       lead="Gimnasios, solicitudes de prueba y bitácora de cambios. Acceso restringido a administradores."
     >
       <AuthCardHeader kicker="Panel interno" titulo="Entrar" />

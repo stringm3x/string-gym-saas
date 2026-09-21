@@ -21,6 +21,8 @@ import {
   LuPanelLeftOpen,
 } from "react-icons/lu";
 import { SidebarLink } from "./SidebarLink";
+import { LogotipoVertical } from "./LogotipoVertical";
+import { MarcasRegistro } from "@/components/arte/MarcasRegistro";
 import { hasFeature, type Plan } from "@/lib/features";
 import { useStaff } from "@/lib/contexts/StaffContext";
 
@@ -131,9 +133,10 @@ export function Sidebar({
         className={
           collapsed
             ? "mb-4 flex justify-center"
-            : "mb-4 flex items-center gap-3 px-5"
+            : "relative mb-4 flex items-center gap-3 px-5 py-2"
         }
       >
+        {!collapsed && <MarcasRegistro className="text-text-muted/40" />}
         {logoUrl ? (
           <div
             className={collapsed ? "relative h-8 w-8" : "relative h-10 w-full"}
@@ -162,7 +165,7 @@ export function Sidebar({
         )}
       </div>
 
-      <nav className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+      <nav className="flex flex-col overflow-y-auto overflow-x-hidden">
         {v.hoy && (
           <SidebarLink
             href={`${base}/hoy`}
@@ -309,7 +312,10 @@ export function Sidebar({
         )}
       </nav>
 
-      <div className="mt-auto flex flex-col pt-3">
+      {/* Firma: logotipo vertical, como al costado de una sección del sitio */}
+      {collapsed ? <div className="flex-1" /> : <LogotipoVertical />}
+
+      <div className="flex flex-col pt-3">
         <div className="mb-1 border-t border-border" />
         {can("configurar_general") && (
           <SidebarLink
@@ -337,11 +343,6 @@ export function Sidebar({
             </>
           )}
         </button>
-        {!collapsed && (
-          <p className="px-5 pt-4 font-mono text-etiqueta uppercase text-text-muted">
-            STRING GYM
-          </p>
-        )}
       </div>
     </aside>
   );

@@ -114,6 +114,32 @@ body {
   }
 }
 
+/* ============================================================
+   Arte de marca (components/arte): cinta que avanza y sello que gira.
+   Ambos son decorativos y se quedan quietos con prefers-reduced-motion
+   (la regla global de abajo lleva la duración a 0.01ms).
+   ============================================================ */
+@keyframes cinta {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-cinta {
+  animation: cinta 30s linear infinite;
+}
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-girar {
+  animation: girar 40s linear infinite;
+  transform-origin: 50% 50%;
+}
+
 /* Entrada de cards (dashboard) — stagger vía animation-delay inline */
 @keyframes statCardIn {
   from {

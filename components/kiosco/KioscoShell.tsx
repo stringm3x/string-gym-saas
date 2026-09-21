@@ -7,6 +7,7 @@ import { LuScanLine, LuShoppingCart, LuCreditCard } from "react-icons/lu";
 import { KioscoEntrada } from "./KioscoEntrada";
 import { KioscoComprar } from "./KioscoComprar";
 import { KioscoMembresia } from "./KioscoMembresia";
+import { Grano } from "@/components/arte/Grano";
 
 type Tab = "entrada" | "comprar" | "membresia";
 
@@ -19,9 +20,15 @@ const TABS: { id: Tab; label: string; icon: typeof LuScanLine }[] = [
 function useReloj() {
   const [ahora, setAhora] = useState<Date | null>(null);
   useEffect(() => {
-    setAhora(new Date());
-    const t = setInterval(() => setAhora(new Date()), 30_000);
-    return () => clearInterval(t);
+    // El primer tick va en un timeout: el reloj es un dato externo (la hora),
+    // no un estado derivado, y así no hay setState síncrono en el efecto.
+    const tick = () => setAhora(new Date());
+    const primero = setTimeout(tick, 0);
+    const t = setInterval(tick, 30_000);
+    return () => {
+      clearTimeout(primero);
+      clearInterval(t);
+    };
   }, []);
   if (!ahora) return "";
   const fecha = new Intl.DateTimeFormat("es-MX", {
@@ -58,6 +65,7 @@ export function KioscoShell({
 
   return (
     <div className="fixed inset-0 flex flex-col bg-bg px-6 py-6 sm:px-12 sm:py-10">
+      <Grano opacidad={0.2} />
       {/* Cabecera: identidad del gimnasio + fecha y hora */}
       <header className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
