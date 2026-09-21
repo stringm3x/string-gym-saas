@@ -65,6 +65,7 @@ export function SolicitudesList({
     email: string;
     inviteLink: string;
     slug: string;
+    emailEnviado: boolean;
   } | null>(null);
 
   function filtrar(estado: string) {
@@ -95,20 +96,20 @@ export function SolicitudesList({
         setMsg({ ok: false, text: r.error ?? "Error" });
         return;
       }
-      if (r.emailEnviado) {
+      // El enlace se muestra siempre, no solo cuando el correo falla: la
+      // venta es en persona, y Carlos lo manda por WhatsApp ahí mismo.
+      if (r.email && r.inviteLink && r.slug) {
+        setCredenciales({
+          email: r.email,
+          inviteLink: r.inviteLink,
+          slug: r.slug,
+          emailEnviado: !!r.emailEnviado,
+        });
+      } else if (r.emailEnviado) {
         setMsg({
           ok: true,
           text: `Gimnasio activado, correo enviado a ${r.email} (/${r.slug})`,
         });
-      } else {
-        setMsg(null);
-        if (r.email && r.inviteLink && r.slug) {
-          setCredenciales({
-            email: r.email,
-            inviteLink: r.inviteLink,
-            slug: r.slug,
-          });
-        }
       }
       router.refresh();
     });
@@ -152,14 +153,26 @@ export function SolicitudesList({
       )}
 
       {credenciales && (
-        <div className="space-y-3 border border-warning/40 bg-warning/10 p-5 text-sm">
+        <div
+          className={`space-y-3 border p-5 text-sm ${
+            credenciales.emailEnviado
+              ? "border-brand-green/40 bg-brand-green/10"
+              : "border-warning/40 bg-warning/10"
+          }`}
+        >
           <div className="flex items-start justify-between gap-4">
-            <p className="flex items-start gap-2 text-warning">
-              <LuTriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <p
+              className={`flex items-start gap-2 ${
+                credenciales.emailEnviado ? "text-brand-green" : "text-warning"
+              }`}
+            >
+              {!credenciales.emailEnviado && (
+                <LuTriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              )}
               <span>
-                Gimnasio activado (/{credenciales.slug}), pero el correo de
-                bienvenida no se pudo enviar. Comparte este enlace con el
-                dueño:
+                {credenciales.emailEnviado
+                  ? `Gimnasio activado (/${credenciales.slug}). Correo enviado a ${credenciales.email} — también puedes compartir el enlace directamente:`
+                  : `Gimnasio activado (/${credenciales.slug}), pero el correo de bienvenida no se pudo enviar. Comparte este enlace con el dueño:`}
               </span>
             </p>
             <button
