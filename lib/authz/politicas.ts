@@ -380,6 +380,8 @@ export const ADMIN = {
   "admin.toggle_addon": { rol: "super_admin" },
   /** resetPasswordOwnerAction — reset al dueño: vector de toma de cuenta. */
   "admin.reset_password_owner": { rol: "super_admin" },
+  /** reenviarInvitacionOwnerAction — genera un link que fija la contraseña: mismo vector. */
+  "admin.reenviar_invitacion_owner": { rol: "super_admin" },
   /** extenderPruebaAction — soporte/ventas; el schema acota los días. */
   "admin.extender_prueba": { rol: "admin" },
   /** registrarPagoManualAction — afirmar que entró dinero = facturación. */

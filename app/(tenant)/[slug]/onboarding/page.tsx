@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { TitularBrochada } from "@/components/arte/Brochada";
 import { Sello } from "@/components/arte/Sello";
-import { completarOnboardingAction } from "./actions";
+import { completarOnboardingAction, saltarOnboardingAction } from "./actions";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -31,12 +31,14 @@ function Paso({
   titulo,
   texto,
   hecho,
+  opcional,
   children,
 }: {
   numero: string;
   titulo: string;
   texto: string;
   hecho: boolean;
+  opcional?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -45,12 +47,13 @@ function Paso({
         <div className="flex flex-col gap-1.5">
           <p className="font-mono text-etiqueta uppercase text-text-muted">
             Paso {numero}
+            {opcional && " (opcional)"}
           </p>
           <h2 className="text-lg font-semibold text-text-primary">{titulo}</h2>
           <p className="text-cuerpo-s text-text-secondary">{texto}</p>
         </div>
         <Badge variant={hecho ? "success" : "neutral"}>
-          {hecho ? "Hecho" : "Pendiente"}
+          {hecho ? "Hecho" : opcional ? "Opcional" : "Pendiente"}
         </Badge>
       </div>
       <div className="flex flex-wrap gap-3">{children}</div>
@@ -78,12 +81,11 @@ export default async function OnboardingPage({
     getDemoMiembro(tenant.id),
   ]);
 
-  // El inventario solo aplica a planes con la feature (Pro/Escala).
+  // El inventario solo aplica a planes con la feature (Pro/Escala), y es
+  // siempre opcional: un gym que no vende productos no debe quedar
+  // atrapado en la guía por eso (Bloque 10 PR2).
   const requiereProducto = hasFeature(tenant.plan, "inventario");
-  const puedeCompletar =
-    estado.tienePlanes &&
-    estado.tieneMiembros &&
-    (!requiereProducto || estado.tieneProductos);
+  const puedeCompletar = estado.tienePlanes && estado.tieneMiembros;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 py-4">
@@ -98,9 +100,9 @@ export default async function OnboardingPage({
           className="font-display text-titular-l uppercase text-text-primary"
         />
         <p className="max-w-lg text-cuerpo text-text-secondary">
-          {requiereProducto ? "Tres pasos" : "Dos pasos"} dejan tu gimnasio
-          listo para operar. Puedes volver a esta guía cuando quieras desde
-          Configuración.
+          Dos pasos dejan tu gimnasio listo para operar
+          {requiereProducto && " (el inventario es opcional)"}. Puedes volver
+          a esta guía cuando quieras desde Configuración.
         </p>
       </div>
 
@@ -138,8 +140,9 @@ export default async function OnboardingPage({
         <Paso
           numero="03"
           titulo="Carga tu inventario"
-          texto="Agrega los productos que vendes en el gimnasio (suplementos, bebidas, snacks)."
+          texto="Agrega los productos que vendes en el gimnasio (suplementos, bebidas, snacks). Sáltalo si no vendes productos."
           hecho={estado.tieneProductos}
+          opcional
         >
           <Link href={`/${slug}/inventario`} className={btnPrimary}>
             Ir a Inventario <LuArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -185,9 +188,8 @@ export default async function OnboardingPage({
           role="alert"
           className="border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
         >
-          Completa los pasos antes de finalizar: crea un plan, registra al menos
-          un socio
-          {requiereProducto ? " y carga un producto." : "."}
+          Completa los pasos antes de finalizar: crea un plan y registra al
+          menos un socio.
         </p>
       )}
 
@@ -201,13 +203,18 @@ export default async function OnboardingPage({
         </button>
         {!puedeCompletar && (
           <p className="text-center font-mono text-etiqueta uppercase text-text-muted">
-            Termina{" "}
-            {requiereProducto
-              ? "los 3 pasos"
-              : "los 2 pasos"}{" "}
-            para finalizar
+            Termina los 2 pasos para finalizar
           </p>
         )}
+      </form>
+
+      <form action={saltarOnboardingAction} className="pb-2 text-center">
+        <button
+          type="submit"
+          className="font-mono text-etiqueta uppercase text-text-muted underline-offset-4 transition-colors hover:text-text-primary hover:underline"
+        >
+          Saltar por ahora
+        </button>
       </form>
     </div>
   );

@@ -6,7 +6,7 @@
  * México es UTC-6 fijo (sin horario de verano desde 2022).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { gymOperativo } from "./gym-operativo";
+import { gymOperativo, diasRestantesPrueba } from "./gym-operativo";
 
 /** Fija el reloj del sistema a un instante de pared en México (UTC-6). */
 function fijarHoraMX(iso: string) {
@@ -101,5 +101,29 @@ describe("gymOperativo: borde de la prueba, hora de México (bloque 10)", () => 
     expect(
       gymOperativo({ estado: "prueba", prueba_hasta: "2026-06-10T00:00:00Z" })
     ).toBe(false);
+  });
+});
+
+describe("diasRestantesPrueba: para el banner de días restantes (bloque 10 PR2)", () => {
+  it("vence hoy → 0", () => {
+    fijarHoraMX("2026-06-10T10:00:00");
+    expect(diasRestantesPrueba("2026-06-10T06:00:00Z")).toBe(0);
+  });
+
+  it("vence en 3 días → 3, sin importar la hora del día", () => {
+    fijarHoraMX("2026-06-10T23:00:00");
+    expect(diasRestantesPrueba("2026-06-13T06:00:00Z")).toBe(3);
+  });
+
+  it("venció ayer → -1", () => {
+    fijarHoraMX("2026-06-10T08:00:00");
+    expect(diasRestantesPrueba("2026-06-09T06:00:00Z")).toBe(-1);
+  });
+
+  it('borde de las 18:00: prueba_hasta "2026-06-10T00:00:00Z" consultado el 9 en México → todavía cuenta como que vence el 9, 0 días', () => {
+    // Mismo caso que el bug de gymOperativo de arriba: en México esa marca
+    // es el día 9, no el 10 — el banner debe decir "vence hoy", no "mañana".
+    fijarHoraMX("2026-06-09T10:00:00");
+    expect(diasRestantesPrueba("2026-06-10T00:00:00Z")).toBe(0);
   });
 });

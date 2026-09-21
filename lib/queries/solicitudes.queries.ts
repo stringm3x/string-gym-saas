@@ -112,25 +112,24 @@ async function slugUnico(admin: SupabaseClient, base: string): Promise<string> {
   return `${root}-${randomBytes(3).toString("hex")}`;
 }
 
-/** Contraseña temporal legible (sin caracteres ambiguos). */
-function tempPassword(): string {
-  return "Sg" + randomBytes(9).toString("base64url").replace(/[-_]/g, "x");
-}
-
 export interface ActivarResult {
   ok: boolean;
   error?: string;
   slug?: string;
   email?: string;
   nombreGym?: string;
-  tempPassword?: string;
+  inviteLink?: string;
 }
 
 /**
- * Activa una solicitud: crea el owner en Supabase Auth y el gym (tenant). El
- * trigger create_owner_staff genera el staff owner. Devuelve las credenciales
- * para que el caller envíe el email de bienvenida. Rollback del usuario si el
- * insert del gym falla.
+ * Activa una solicitud: invita al owner en Supabase Auth y crea el gym
+ * (tenant). El trigger create_owner_staff genera el staff owner. Nunca
+ * existe una contraseña temporal: el dueño la crea él mismo al abrir el
+ * enlace de invitación (Bloque 10 PR2 — mismo mecanismo que las
+ * invitaciones de staff en configuracion/staff/actions.ts, reutilizando
+ * /auth/nueva-password como landing en vez de un flujo nuevo). Devuelve el
+ * enlace para que el caller envíe el email de bienvenida. Rollback del
+ * usuario si el insert del gym falla.
  */
 export async function activarSolicitud(id: string): Promise<ActivarResult> {
   const admin = createAdminClient();
@@ -150,24 +149,27 @@ export async function activarSolicitud(id: string): Promise<ActivarResult> {
   // y así se decidió). El plan de interés queda en la solicitud para que
   // Carlos active el plan pagado correcto al terminar la prueba.
   const plan = "pro";
-  const pass = tempPassword();
 
-  // 1. Owner en Auth.
-  const { data: userRes, error: userErr } = await admin.auth.admin.createUser({
+  // 1. Owner en Auth: invitación, no contraseña temporal.
+  const redirectTo = process.env.APP_DOMAIN
+    ? `https://${process.env.APP_DOMAIN}/auth/nueva-password`
+    : undefined;
+  const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
+    type: "invite",
     email: sol.email,
-    password: pass,
-    email_confirm: true,
+    options: { redirectTo },
   });
-  if (userErr || !userRes.user) {
+  if (linkErr || !link?.user) {
     return {
       ok: false,
       error:
-        userErr?.message?.includes("registered") || userErr?.code === "email_exists"
+        linkErr?.message?.includes("registered") || linkErr?.code === "email_exists"
           ? "Ya existe un usuario con ese email."
-          : (userErr?.message ?? "No se pudo crear el usuario."),
+          : (linkErr?.message ?? "No se pudo invitar al usuario."),
     };
   }
-  const ownerId = userRes.user.id;
+  const ownerId = link.user.id;
+  const inviteLink = link.properties.action_link;
 
   // 2. Gym en prueba gratuita (Fase 7.3): estado 'prueba' + fin de prueba a
   // TRIAL_DIAS. El trigger create_owner_staff crea el staff owner. Al vencer,
@@ -246,6 +248,6 @@ export async function activarSolicitud(id: string): Promise<ActivarResult> {
     slug: gym.slug,
     email: sol.email,
     nombreGym,
-    tempPassword: pass,
+    inviteLink,
   };
 }

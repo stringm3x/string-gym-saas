@@ -13,7 +13,7 @@
  * pago que ya se movió se registra sin importar el estado del gym (mismo
  * argumento que "el pago sin caja default" del bloque 3).
  */
-import { hoyCDMX } from "@/lib/utils/dates";
+import { hoyCDMX, hoyISO, isoEnMX } from "@/lib/utils/dates";
 
 export interface GymEstadoPrueba {
   estado: string;
@@ -32,4 +32,20 @@ export function gymOperativo(gym: GymEstadoPrueba): boolean {
     return new Date(gym.prueba_hasta) >= hoyCDMX();
   }
   return true; // activo, o prueba sin prueba_hasta todavía (no se corta sin fecha)
+}
+
+/**
+ * Días de calendario (México) que faltan para que venza la prueba. 0 el día
+ * en que vence (todavía operativo ese día completo, ver gymOperativo),
+ * negativo si ya venció. Para el banner de "te quedan N días" — no para
+ * decidir acceso, eso lo hace gymOperativo con el instante real.
+ */
+export function diasRestantesPrueba(prueba_hasta: string): number {
+  const hoy = hoyISO();
+  const vence = isoEnMX(prueba_hasta);
+  return Math.round(
+    (new Date(vence + "T00:00:00Z").getTime() -
+      new Date(hoy + "T00:00:00Z").getTime()) /
+      86_400_000
+  );
 }
