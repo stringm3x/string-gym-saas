@@ -48,7 +48,7 @@ export function InscribirMiembroModal({
   planes,
 }: Props) {
   const router = useRouter();
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, warning } = useToast();
   const [state, formAction, isPending] = useActionState(
     createMiembroAction,
     initialState
@@ -81,12 +81,16 @@ export function InscribirMiembroModal({
   useEffect(() => {
     if (state.ok && state.miembroId) {
       success("Miembro creado");
+      if (state.reciboError) {
+        warning("El recibo no se pudo enviar por correo", state.reciboError);
+      }
       router.push(`/${slug}/miembros/${state.miembroId}`);
       return;
     }
     if (state.error && Object.keys(state.fieldErrors).length === 0) {
       toastError("Error", state.error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   const sinPlanes = planes.length === 0;

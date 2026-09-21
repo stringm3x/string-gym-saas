@@ -33,6 +33,8 @@ export interface MiembroFormState {
   miembroId?: string;
   /** Devuelto si se cobró la inscripción — para abrir el recibo. */
   pagoId?: string;
+  /** El cobro de inscripción se registró; el recibo por email no salió. */
+  reciboError?: string;
   /** Devuelto si nombre/teléfono/correo coincide con un miembro existente. */
   duplicate?: MiembroDuplicado | null;
 }
@@ -147,6 +149,7 @@ export const createMiembroAction = panelAction(
     // 2. Cobro de la primera membresía (opcional). createPago también
     //    actualiza la fecha_vencimiento del miembro a periodo_fin.
     let pagoId: string | undefined;
+    let reciboError: string | undefined;
     if (data.cobrar_inscripcion && data.monto_pago && data.metodo_pago) {
       const pagoResult = await createPago(tenant.id, {
         miembro_id: result.id,
@@ -162,6 +165,7 @@ export const createMiembroAction = panelAction(
       });
       if (pagoResult.ok) {
         pagoId = pagoResult.id;
+        reciboError = pagoResult.reciboError;
         revalidatePath(`/${tenant.slug}/caja`);
       }
     }
@@ -179,6 +183,7 @@ export const createMiembroAction = panelAction(
       fieldErrors: {},
       miembroId: result.id,
       pagoId,
+      reciboError,
     };
   }
 );

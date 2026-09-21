@@ -43,7 +43,7 @@ const initialState: MiembroFormState = {
 
 export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, availableTags = [], disabled = false, planes = [], promocionesMembresia = [], referidoPorNombre = null }: MiembroFormProps) {
   const router = useRouter();
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, warning } = useToast();
   const [isNavigating, startNavigation] = useTransition();
 
   const action =
@@ -81,6 +81,9 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
       success("Miembro actualizado");
     } else if (state.ok && mode === "create" && state.miembroId) {
       success(state.pagoId ? "Miembro registrado y cobrado" : "Miembro registrado");
+      if (state.reciboError) {
+        warning("El recibo no se pudo enviar por correo", state.reciboError);
+      }
       const destino = state.pagoId
         ? `/${slug}/recibos/${state.pagoId}`
         : `/${slug}/miembros/${state.miembroId}`;
@@ -90,7 +93,7 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
     } else if (state.error && !state.fieldErrors) {
       toastError("No se pudo guardar", state.error);
     }
-  }, [state, mode, slug, router, success, toastError]);
+  }, [state, mode, slug, router, success, toastError, warning]);
 
   return (
     <form action={formAction} className="space-y-6">

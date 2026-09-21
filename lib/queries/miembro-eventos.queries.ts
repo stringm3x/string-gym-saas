@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { hoyISO, isoMasDias } from "@/lib/utils/dates";
 import { crearNotaCredito } from "@/lib/queries/notas-credito.queries";
+import { logError } from "@/lib/log";
 
 export interface EventoMiembro {
   id: string;
@@ -34,7 +35,7 @@ async function extenderVencimiento(
   miembroId: string,
   fechaInicio: string,
   fechaFin: string
-): Promise<number> {
+): Promise<{ ok: true; dias: number } | { ok: false; error: string }> {
   const dias = diasEntre(fechaInicio, fechaFin);
   const { data: m } = await supabase
     .from("miembros")
@@ -43,13 +44,14 @@ async function extenderVencimiento(
     .eq("id", miembroId)
     .maybeSingle();
   if (m?.fecha_vencimiento) {
-    await supabase
+    const { error } = await supabase
       .from("miembros")
       .update({ fecha_vencimiento: isoMasDias(dias, m.fecha_vencimiento as string) })
       .eq("tenant_id", tenantId)
       .eq("id", miembroId);
+    if (error) return { ok: false, error: error.message };
   }
-  return dias;
+  return { ok: true, dias };
 }
 
 /** Congela la membresía: extiende el vencimiento y registra el evento (D1). */
@@ -68,13 +70,25 @@ export async function congelarMembresia(
   }
 
   const supabase = await createClient();
-  const dias = await extenderVencimiento(
+  const extendido = await extenderVencimiento(
     supabase,
     tenantId,
     miembroId,
     input.fechaInicio,
     input.fechaFin
   );
+  // Sin la extensión de vigencia no hay congelación que registrar: antes se
+  // insertaba el evento igual, y la ficha mostraba "congelado" con la fecha
+  // de vencimiento sin tocar.
+  if (!extendido.ok) {
+    logError("congelacion.extender_vencimiento_fallo", {
+      tenantId,
+      miembroId,
+      error: extendido.error,
+    });
+    return { ok: false, error: "No se pudo extender la vigencia. Inténtalo de nuevo." };
+  }
+  const dias = extendido.dias;
 
   const { error } = await supabase.from("miembro_eventos").insert({
     tenant_id: tenantId,
@@ -138,9 +152,28 @@ export async function solicitarCongelacionPortal(
   const auto = await congelacionAutoAprobar(tenantId, client);
   const dias = diasEntre(input.fechaInicio, input.fechaFin);
 
+  // Si el gym auto-aprueba pero la extensión de vigencia falla, la solicitud
+  // se guarda como 'solicitada' (no 'activa'): el dueño la aprueba a mano en
+  // vez de que el socio vea "congelado" sin que la fecha se haya movido.
+  let estadoFinal: "activa" | "solicitada" = auto ? "activa" : "solicitada";
   if (auto) {
-    await extenderVencimiento(client, tenantId, miembroId, input.fechaInicio, input.fechaFin);
+    const extendido = await extenderVencimiento(
+      client,
+      tenantId,
+      miembroId,
+      input.fechaInicio,
+      input.fechaFin
+    );
+    if (!extendido.ok) {
+      logError("congelacion.portal_auto_extender_fallo", {
+        tenantId,
+        miembroId,
+        error: extendido.error,
+      });
+      estadoFinal = "solicitada";
+    }
   }
+  const aplicada = estadoFinal === "activa";
 
   const { error } = await client.from("miembro_eventos").insert({
     tenant_id: tenantId,
@@ -148,12 +181,12 @@ export async function solicitarCongelacionPortal(
     tipo: "congelacion",
     fecha_inicio: input.fechaInicio,
     fecha_fin: input.fechaFin,
-    estado: auto ? "activa" : "solicitada",
+    estado: estadoFinal,
     creado_por_nombre: "Socio (portal)",
-    descripcion: `${auto ? "Congelación" : "Solicitud de congelación"} de ${dias} día${dias === 1 ? "" : "s"}`,
+    descripcion: `${aplicada ? "Congelación" : "Solicitud de congelación"} de ${dias} día${dias === 1 ? "" : "s"}`,
   });
   if (error) return { ok: false, error: error.message, aplicada: false };
-  return { ok: true, aplicada: auto };
+  return { ok: true, aplicada };
 }
 
 /** Aprueba una solicitud de congelación (D7): aplica la pausa. */
@@ -173,13 +206,22 @@ export async function aprobarCongelacion(
     return { ok: false, error: "Solicitud no encontrada." };
   }
 
-  await extenderVencimiento(
+  const extendido = await extenderVencimiento(
     supabase,
     tenantId,
     ev.miembro_id as string,
     ev.fecha_inicio as string,
     ev.fecha_fin as string
   );
+  if (!extendido.ok) {
+    logError("congelacion.aprobar_extender_fallo", {
+      tenantId,
+      eventoId,
+      miembroId: ev.miembro_id,
+      error: extendido.error,
+    });
+    return { ok: false, error: "No se pudo extender la vigencia. Inténtalo de nuevo." };
+  }
   const { error } = await supabase
     .from("miembro_eventos")
     .update({ estado: "activa" })
@@ -311,7 +353,7 @@ export async function descongelarMembresia(
       .eq("id", miembroId)
       .maybeSingle();
     if (m?.fecha_vencimiento) {
-      await supabase
+      const { error: revertErr } = await supabase
         .from("miembros")
         .update({
           fecha_vencimiento: isoMasDias(
@@ -321,6 +363,17 @@ export async function descongelarMembresia(
         })
         .eq("tenant_id", tenantId)
         .eq("id", miembroId);
+      // No se aborta el descongelamiento por esto (el socio ya está
+      // esperando en recepción), pero si falla los días no se devuelven y
+      // nadie se enteraba: antes esta escritura no se revisaba.
+      if (revertErr) {
+        logError("congelacion.descongelar_revertir_fallo", {
+          tenantId,
+          miembroId,
+          diasNoConsumidos,
+          error: revertErr.message,
+        });
+      }
     }
   }
 

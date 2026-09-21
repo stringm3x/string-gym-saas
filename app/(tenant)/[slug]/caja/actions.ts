@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { panelAction, type Denegado } from "@/lib/authz";
 import { createClient } from "@/lib/supabase/server";
+import { logError } from "@/lib/log";
 import {
   createPago,
   createVisitaRapida,
@@ -26,9 +26,6 @@ import { createAbonoMembresia } from "@/lib/queries/creditos.queries";
 import { resolverCajaDeVenta } from "@/lib/queries/cajas.queries";
 import { getActiveStaff } from "@/lib/queries/staff.queries";
 import { getMiembro } from "@/lib/queries/miembros.queries";
-import { getGymFull } from "@/lib/queries/gyms.queries";
-import { getGymMarca } from "@/lib/queries/marca.queries";
-import { sendRecibo } from "@/lib/email/send-recibo";
 import { pagoSchema } from "@/lib/validations/pago.schema";
 import { visitaRapidaSchema } from "@/lib/validations/visita-rapida.schema";
 
@@ -40,6 +37,8 @@ export interface PagoResult {
   /** true si el error es un aviso de posible doble cobro (no un rechazo
    * definitivo): el cliente puede reenviar con confirmar_pago_duplicado=1. */
   duplicado?: boolean;
+  /** El cobro sí se registró; el recibo por email no salió. Toast "warning" en el cliente. */
+  reciboError?: string;
 }
 
 const denegarPago = (d: Denegado): PagoResult => ({
@@ -234,16 +233,31 @@ export const registerPagoAction = panelAction(
         creditoAplicado
       );
       if (creditoResult.ok && creditoResult.aplicado < creditoAplicado) {
-        console.error(
-          `[caja] pago ${result.id}: se descontaron ${creditoAplicado} de crédito pero solo se pudo aplicar ${creditoResult.aplicado} (carrera con otro cobro sobre la misma nota del miembro ${parsed.data.miembro_id}).`
-        );
+        logError("caja.credito_carrera", {
+          tenantId: tenant.id,
+          pagoId: result.id,
+          creditoAplicado,
+          creditoRealmenteAplicado: creditoResult.aplicado,
+          miembroId: parsed.data.miembro_id,
+        });
       }
       const supabase = await createClient();
-      await supabase
+      const { error: creditoAplicadoErr } = await supabase
         .from("pagos")
         .update({ credito_aplicado: creditoAplicado })
         .eq("tenant_id", tenant.id)
         .eq("id", result.id);
+      // El crédito ya se consumió (aplicarCredito de arriba); si esto falla
+      // solo se pierde el reflejo en el recibo/detalle del pago — no se
+      // revierte el cobro — pero antes no quedaba ni rastro del fallo.
+      if (creditoAplicadoErr) {
+        logError("caja.credito_aplicado_no_guardado", {
+          tenantId: tenant.id,
+          pagoId: result.id,
+          creditoAplicado,
+          error: creditoAplicadoErr.message,
+        });
+      }
     }
 
     revalidatePath(`/${tenant.slug}/caja`);
@@ -256,41 +270,17 @@ export const registerPagoAction = panelAction(
       revalidatePath(`/${tenant.slug}/inventario/movimientos`);
     }
 
-    // Recibo automático (no bloquea el pago).
-    if (parsed.data.miembro_id) {
-      const miembro = await getMiembro(tenant.id, parsed.data.miembro_id);
-      if (miembro) {
-        const h = await headers();
-        const origin =
-          h.get("origin") ?? `https://${h.get("host") ?? "app.stringwebs.com"}`;
-        const reciboUrl = `${origin}/recibos/${result.token}`;
-
-        // Capa 1: email con link (solo si tiene email; sendRecibo no lanza).
-        if (miembro.email) {
-          const [gym, marca] = await Promise.all([
-            getGymFull(tenant.id),
-            getGymMarca(tenant.id),
-          ]);
-          await sendRecibo({
-            miembroEmail: miembro.email,
-            miembroNombre: miembro.nombre,
-            gymNombre: gym?.nombre ?? "",
-            gymTelefono: gym?.telefono ?? null,
-            gymDireccion: gym?.direccion ?? null,
-            logoUrl: gym?.logo_url ?? null,
-            colorAcento: tenant.has("color_gimnasio") ? marca?.color_acento : undefined,
-            monto: parsed.data.monto,
-            fechaVencimiento: periodoMembresia.periodo_fin || null,
-            reciboUrl,
-          });
-        }
-
-        // WhatsApp automático (PAGO_REGISTRADO) se emite centralizado dentro de
-        // createPago (Bloque 2), cubriendo caja, kiosco, créditos e inscripción.
-      }
-    }
-
-    return { ok: true, error: null, fieldErrors: {}, pagoId: result.id };
+    // Recibo por email y WhatsApp (PAGO_REGISTRADO) se emiten centralizados
+    // dentro de createPago (Bloque 2 y Bloque 5), cubriendo caja, ticket,
+    // renovar, cuota, kiosco y el webhook de MercadoPago por igual. Aquí solo
+    // se recoge si el recibo falló, para avisar en el cliente (toast warning).
+    return {
+      ok: true,
+      error: null,
+      fieldErrors: {},
+      pagoId: result.id,
+      reciboError: result.reciboError,
+    };
   }
 );
 
@@ -338,6 +328,7 @@ export interface AbonoResult {
   error?: string;
   pagoId?: string;
   montoRestante?: number;
+  reciboError?: string;
 }
 
 /**
@@ -366,7 +357,12 @@ export const registrarAbonoAction = panelAction(
     revalidatePath(`/${tenant.slug}/caja`);
     revalidatePath(`/${tenant.slug}/miembros/${miembroId}`);
     revalidatePath(`/${tenant.slug}/cuentas-por-cobrar`);
-    return { ok: true, pagoId: r.pagoId, montoRestante: r.montoRestante };
+    return {
+      ok: true,
+      pagoId: r.pagoId,
+      montoRestante: r.montoRestante,
+      reciboError: r.reciboError,
+    };
   }
 );
 
@@ -427,7 +423,7 @@ export const registrarTicketAction = panelAction(
       productos: { producto_id: string; cantidad: number }[];
       membresia: { plan_id: string } | null;
     }
-  ): Promise<{ ok: boolean; error?: string; ticketId?: string }> => {
+  ): Promise<{ ok: boolean; error?: string; ticketId?: string; reciboError?: string }> => {
     if (input.productos.length === 0 && !input.membresia) {
       return { ok: false, error: "El ticket está vacío." };
     }
@@ -502,7 +498,7 @@ export const registrarTicketAction = panelAction(
     if (input.miembroId) {
       revalidatePath(`/${tenant.slug}/miembros/${input.miembroId}`);
     }
-    return { ok: true, ticketId: r.ticketId };
+    return { ok: true, ticketId: r.ticketId, reciboError: r.reciboError };
   }
 );
 

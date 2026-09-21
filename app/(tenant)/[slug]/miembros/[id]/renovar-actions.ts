@@ -26,7 +26,7 @@ export const renovarMiembroAction = panelAction(
      *  cálculo automático sin soltar el plan_id. */
     periodoInicio?: string,
     periodoFin?: string
-  ): Promise<{ ok: boolean; error?: string; pagoId?: string }> => {
+  ): Promise<{ ok: boolean; error?: string; pagoId?: string; reciboError?: string }> => {
     const [miembro, plan] = await Promise.all([
       getMiembro(tenant.id, miembroId),
       getPlan(tenant.id, planId),
@@ -67,6 +67,6 @@ export const renovarMiembroAction = panelAction(
 
     revalidatePath(`/${tenant.slug}/miembros/${miembroId}`);
     revalidatePath(`/${tenant.slug}/caja`);
-    return { ok: true, pagoId: r.id };
+    return { ok: true, pagoId: r.id, reciboError: r.reciboError };
   }
 );

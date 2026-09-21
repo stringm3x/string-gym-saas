@@ -13,7 +13,9 @@
  * Todo pasa por notifyWhatsapp (no-op si la infra está dormida). Aquí SÍ se
  * hace await (no hay respuesta HTTP en juego): el envío debe completar antes de
  * que termine la función. Cada gym va en try/catch: uno que falle no aborta el
- * resto.
+ * resto. Solo se registra en el inbox (wa_mensajes, "saliente") lo que
+ * notifyWhatsapp confirmó enviado — un envío fallido no aparece como si
+ * hubiera salido, se cuenta en `fallidos` y queda logueado.
  *
  * Deduplicación: por diseño, no por tabla de tracking — cada bloque filtra por
  * IGUALDAD EXACTA de fecha (ej. fecha_vencimiento = hoy-3), así que un miembro
@@ -25,8 +27,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFeature, type Plan } from "@/lib/features";
 import { hoyISO, isoMasDias, hoyCDMX } from "@/lib/utils/dates";
-import { notifyWhatsapp } from "./notify";
-import { registrarMensaje } from "./registro";
+import { logError } from "@/lib/log";
+import { notifyWhatsapp, type WhatsappEvent } from "./notify";
+import { registrarMensaje, type RegistrarMensajeParams } from "./registro";
 
 interface GymRow {
   id: string;
@@ -208,9 +211,42 @@ async function resumenGym(
   };
 }
 
+interface Contadores {
+  intentos: number;
+  enviados: number;
+  fallidos: number;
+}
+
+/**
+ * Envía el evento y, SOLO si notifyWhatsapp confirma el envío, lo registra
+ * en el inbox como "saliente". Antes se registraba siempre, sin importar el
+ * resultado: el inbox mostraba mensajes que nunca salieron (infra dormida,
+ * 360dialog caído, número sin WhatsApp) como si el socio los hubiera
+ * recibido. Un fallo se cuenta y se loguea — antes el cron solo contaba
+ * intentos y respondía `ok: true` sin decir cuántos de verdad llegaron.
+ */
+async function enviarYRegistrar(
+  gymId: string,
+  event: WhatsappEvent,
+  registro: Omit<RegistrarMensajeParams, "direccion"> | null,
+  c: Contadores
+): Promise<void> {
+  c.intentos++;
+  const enviado = await notifyWhatsapp(event);
+  if (!enviado) {
+    c.fallidos++;
+    logError("whatsapp_cron.envio_fallido", { gymId, tipo: event.tipo });
+    return;
+  }
+  c.enviados++;
+  if (registro) await registrarMensaje({ ...registro, direccion: "saliente" });
+}
+
 export async function runWhatsappCron(): Promise<{
   gyms: number;
-  eventos: number;
+  intentos: number;
+  enviados: number;
+  fallidos: number;
 }> {
   const admin = createAdminClient();
   const gyms = await gymsActivos(admin);
@@ -219,7 +255,7 @@ export async function runWhatsappCron(): Promise<{
   const en7 = isoMasDias(7);
   const vencioHace3 = isoMasDias(-3);
   const mesDiaHoy = hoy.slice(5);
-  let eventos = 0;
+  const c: Contadores = { intentos: 0, enviados: 0, fallidos: 0 };
 
   for (const gym of gyms) {
     try {
@@ -233,134 +269,156 @@ export async function runWhatsappCron(): Promise<{
 
       // 1. Vencen en exactamente 7 días.
       for (const m of await miembrosConVencimiento(admin, gym.id, en7)) {
-        await notifyWhatsapp({
-          ...base,
-          tipo: "MEMBRESIA_POR_VENCER",
-          miembroNombre: m.nombre,
-          miembroTelefono: m.telefono,
-          diasRestantes: 7,
-          fechaVencimiento: en7,
-        });
-        await registrarMensaje({
-          tenantId: gym.id,
-          telefono: m.telefono ?? "",
-          direccion: "saliente",
-          tipo: "template",
-          contenido: `Recordatorio: tu membresía vence el ${en7} (en 7 días).`,
-          nombreContacto: m.nombre,
-        });
-        eventos++;
+        await enviarYRegistrar(
+          gym.id,
+          {
+            ...base,
+            tipo: "MEMBRESIA_POR_VENCER",
+            miembroNombre: m.nombre,
+            miembroTelefono: m.telefono,
+            diasRestantes: 7,
+            fechaVencimiento: en7,
+          },
+          {
+            tenantId: gym.id,
+            telefono: m.telefono ?? "",
+            tipo: "template",
+            contenido: `Recordatorio: tu membresía vence el ${en7} (en 7 días).`,
+            nombreContacto: m.nombre,
+          },
+          c
+        );
       }
 
       // 1b. Vencen en exactamente 3 días (recordatorio intermedio, mismo
       //     tipo que el de 7 días — la plantilla ya parametriza los días).
       for (const m of await miembrosConVencimiento(admin, gym.id, en3)) {
-        await notifyWhatsapp({
-          ...base,
-          tipo: "MEMBRESIA_POR_VENCER",
-          miembroNombre: m.nombre,
-          miembroTelefono: m.telefono,
-          diasRestantes: 3,
-          fechaVencimiento: en3,
-        });
-        await registrarMensaje({
-          tenantId: gym.id,
-          telefono: m.telefono ?? "",
-          direccion: "saliente",
-          tipo: "template",
-          contenido: `Recordatorio: tu membresía vence el ${en3} (en 3 días).`,
-          nombreContacto: m.nombre,
-        });
-        eventos++;
+        await enviarYRegistrar(
+          gym.id,
+          {
+            ...base,
+            tipo: "MEMBRESIA_POR_VENCER",
+            miembroNombre: m.nombre,
+            miembroTelefono: m.telefono,
+            diasRestantes: 3,
+            fechaVencimiento: en3,
+          },
+          {
+            tenantId: gym.id,
+            telefono: m.telefono ?? "",
+            tipo: "template",
+            contenido: `Recordatorio: tu membresía vence el ${en3} (en 3 días).`,
+            nombreContacto: m.nombre,
+          },
+          c
+        );
       }
 
       // 2. Vencieron hoy.
       for (const m of await miembrosConVencimiento(admin, gym.id, hoy)) {
-        await notifyWhatsapp({
-          ...base,
-          tipo: "MEMBRESIA_VENCIDA",
-          miembroNombre: m.nombre,
-          miembroTelefono: m.telefono,
-          fechaVencimiento: hoy,
-        });
-        await registrarMensaje({
-          tenantId: gym.id,
-          telefono: m.telefono ?? "",
-          direccion: "saliente",
-          tipo: "template",
-          contenido: `Tu membresía venció hoy (${hoy}). Renueva para seguir entrenando.`,
-          nombreContacto: m.nombre,
-        });
-        eventos++;
+        await enviarYRegistrar(
+          gym.id,
+          {
+            ...base,
+            tipo: "MEMBRESIA_VENCIDA",
+            miembroNombre: m.nombre,
+            miembroTelefono: m.telefono,
+            fechaVencimiento: hoy,
+          },
+          {
+            tenantId: gym.id,
+            telefono: m.telefono ?? "",
+            tipo: "template",
+            contenido: `Tu membresía venció hoy (${hoy}). Renueva para seguir entrenando.`,
+            nombreContacto: m.nombre,
+          },
+          c
+        );
       }
 
       // 2b. Vencieron hace exactamente 3 días y no han renovado (si hubieran
       //     renovado, fecha_vencimiento ya no sería esta — la igualdad
       //     exacta los excluye solos).
       for (const m of await miembrosConVencimiento(admin, gym.id, vencioHace3)) {
-        await notifyWhatsapp({
-          ...base,
-          tipo: "MEMBRESIA_REACTIVACION",
-          miembroNombre: m.nombre,
-          miembroTelefono: m.telefono,
-          diasVencido: 3,
-        });
-        await registrarMensaje({
-          tenantId: gym.id,
-          telefono: m.telefono ?? "",
-          direccion: "saliente",
-          tipo: "template",
-          contenido: `Te extrañamos por ${gym.nombre} — tu membresía venció hace 3 días. ¿Renovamos?`,
-          nombreContacto: m.nombre,
-        });
-        eventos++;
+        await enviarYRegistrar(
+          gym.id,
+          {
+            ...base,
+            tipo: "MEMBRESIA_REACTIVACION",
+            miembroNombre: m.nombre,
+            miembroTelefono: m.telefono,
+            diasVencido: 3,
+          },
+          {
+            tenantId: gym.id,
+            telefono: m.telefono ?? "",
+            tipo: "template",
+            contenido: `Te extrañamos por ${gym.nombre} — tu membresía venció hace 3 días. ¿Renovamos?`,
+            nombreContacto: m.nombre,
+          },
+          c
+        );
       }
 
       // 2c. Cumpleaños hoy.
       for (const m of await miembrosDeCumpleanos(admin, gym.id, mesDiaHoy)) {
-        await notifyWhatsapp({
-          ...base,
-          tipo: "CUMPLEANOS",
-          miembroNombre: m.nombre,
-          miembroTelefono: m.telefono,
-        });
-        await registrarMensaje({
-          tenantId: gym.id,
-          telefono: m.telefono ?? "",
-          direccion: "saliente",
-          tipo: "template",
-          contenido: `¡Feliz cumpleaños de parte de ${gym.nombre}! 🎉`,
-          nombreContacto: m.nombre,
-        });
-        eventos++;
+        await enviarYRegistrar(
+          gym.id,
+          {
+            ...base,
+            tipo: "CUMPLEANOS",
+            miembroNombre: m.nombre,
+            miembroTelefono: m.telefono,
+          },
+          {
+            tenantId: gym.id,
+            telefono: m.telefono ?? "",
+            tipo: "template",
+            contenido: `¡Feliz cumpleaños de parte de ${gym.nombre}! 🎉`,
+            nombreContacto: m.nombre,
+          },
+          c
+        );
       }
 
-      // 3. Inactivos 14+ días → al owner.
+      // 3. Inactivos 14+ días → al owner. Sin registro en el inbox del
+      //    socio: el destinatario es el dueño, no el miembro inactivo.
       for (const m of await miembrosInactivos(admin, gym.id, hoy)) {
-        await notifyWhatsapp({
-          ...base,
-          tipo: "MIEMBRO_SIN_ACTIVIDAD",
-          miembroNombre: m.nombre,
-          miembroTelefono: m.telefono,
-          ownerTelefono: gym.telefono,
-          diasSinVenir: m.dias,
-        });
-        eventos++;
+        await enviarYRegistrar(
+          gym.id,
+          {
+            ...base,
+            tipo: "MIEMBRO_SIN_ACTIVIDAD",
+            miembroNombre: m.nombre,
+            miembroTelefono: m.telefono,
+            ownerTelefono: gym.telefono,
+            diasSinVenir: m.dias,
+          },
+          null,
+          c
+        );
       }
 
       // 4. Resumen del día → al owner.
       const resumen = await resumenGym(admin, gym.id, hoy, en7);
-      await notifyWhatsapp({
-        ...base,
-        tipo: "RESUMEN_DIARIO",
-        ownerTelefono: gym.telefono,
-        ...resumen,
-      });
-      eventos++;
+      await enviarYRegistrar(
+        gym.id,
+        {
+          ...base,
+          tipo: "RESUMEN_DIARIO",
+          ownerTelefono: gym.telefono,
+          ...resumen,
+        },
+        null,
+        c
+      );
     } catch (err) {
-      console.error("[cron whatsapp] gym", gym.id, err);
+      logError("whatsapp_cron.gym_fallo", {
+        gymId: gym.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
-  return { gyms: gyms.length, eventos };
+  return { gyms: gyms.length, ...c };
 }

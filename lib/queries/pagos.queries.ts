@@ -8,6 +8,9 @@ import { createNotification } from "@/lib/utils/notifications";
 import { hoyCDMX, hoyISO, inicioDeMesCDMX, isoMasDias } from "@/lib/utils/dates";
 import { emitPagoRegistrado } from "@/lib/whatsapp/emit";
 import { getCajaDefault, resolverCajaDeVenta } from "@/lib/queries/cajas.queries";
+import { logError } from "@/lib/log";
+import { hasFeature, type Plan } from "@/lib/features";
+import { sendRecibo } from "@/lib/email/send-recibo";
 
 /**
  * Enlaza uno o más pagos ya creados a una caja (ver sql/063_cajas_multiples.sql).
@@ -121,7 +124,15 @@ export async function createPago(
   input: PagoInput,
   cajaId?: string
 ): Promise<
-  { ok: true; id: string; token: string } | { ok: false; error: string }
+  | {
+      ok: true;
+      id: string;
+      token: string;
+      /** undefined si el pago no tenía miembro (visita rápida sin socio). */
+      reciboEnviado?: boolean;
+      reciboError?: string;
+    }
+  | { ok: false; error: string }
 > {
   const supabase = await createClient();
   const token = generarTokenRecibo();
@@ -191,7 +202,94 @@ export async function createPago(
     });
   }
 
-  return { ok: true, id: data.id, token };
+  // Recibo por email — centralizado aquí (Bloque 5): antes solo lo mandaba
+  // el cobro rápido de caja, a mano, después de llamar a createPago. Ticket,
+  // renovar, cuota y el webhook de MercadoPago se quedaban sin recibo.
+  let reciboEnviado: boolean | undefined;
+  let reciboError: string | undefined;
+  if (input.miembro_id) {
+    const recibo = await enviarReciboDePago(tenantId, {
+      miembroId: input.miembro_id,
+      monto: input.monto,
+      token,
+      periodoFin: input.periodo_fin || null,
+    });
+    reciboEnviado = recibo.enviado;
+    reciboError = recibo.error;
+  }
+
+  return { ok: true, id: data.id, token, reciboEnviado, reciboError };
+}
+
+/**
+ * Envía el recibo por email del pago recién registrado. Centraliza lo que
+ * antes hacía a mano `registerPagoAction` (caja): resolver el email del
+ * socio, los datos del gym/marca, y armar la URL del recibo público. No
+ * lanza y no revierte nada si falla — el cobro ya es real — pero SÍ deja
+ * rastro (log) y devuelve el resultado para que el caller pueda avisar en
+ * la UI si quiere (toast "warning": el cobro salió bien, el correo no).
+ *
+ * `client` opcional para contextos sin sesión (el webhook de MercadoPago
+ * usa el admin client — mismo patrón que registrarCajaDePagos).
+ */
+export async function enviarReciboDePago(
+  tenantId: string,
+  params: {
+    miembroId: string;
+    monto: number;
+    token: string;
+    periodoFin?: string | null;
+  },
+  client?: SupabaseClient
+): Promise<{ enviado: boolean; error?: string }> {
+  const supabase = client ?? (await createClient());
+
+  const [{ data: miembro }, { data: gym }] = await Promise.all([
+    supabase
+      .from("miembros")
+      .select("nombre, email")
+      .eq("tenant_id", tenantId)
+      .eq("id", params.miembroId)
+      .maybeSingle(),
+    supabase
+      .from("gyms")
+      .select("nombre, telefono, direccion, logo_url, plan, color_acento")
+      .eq("id", tenantId)
+      .maybeSingle(),
+  ]);
+
+  // Sin email en el socio no hay a dónde mandarlo — no es un fallo, es que
+  // no aplica (igual que antes: "Capa 1: email con link, solo si tiene email").
+  if (!miembro?.email || !gym) return { enviado: false };
+
+  const domain = process.env.APP_DOMAIN ?? "app.gym.stringwebs.com";
+  const reciboUrl = `https://${domain}/recibos/${params.token}`;
+  const colorAcento = hasFeature(gym.plan as Plan, "color_gimnasio")
+    ? (gym.color_acento as string | null) ?? undefined
+    : undefined;
+
+  const r = await sendRecibo({
+    miembroEmail: miembro.email as string,
+    miembroNombre: miembro.nombre as string,
+    gymNombre: (gym.nombre as string | null) ?? "",
+    gymTelefono: gym.telefono as string | null,
+    gymDireccion: gym.direccion as string | null,
+    logoUrl: gym.logo_url as string | null,
+    colorAcento,
+    monto: params.monto,
+    fechaVencimiento: params.periodoFin ?? null,
+    reciboUrl,
+  });
+
+  if (!r.ok) {
+    logError("recibo.envio_fallido", {
+      tenantId,
+      miembroId: params.miembroId,
+      error: r.error,
+    });
+    return { enviado: false, error: r.error };
+  }
+  return { enviado: true };
 }
 
 export interface TicketLinea {
@@ -286,7 +384,14 @@ export async function registrarTicket(
     items: TicketItemInput[];
   }
 ): Promise<
-  { ok: true; ticketId: string; token: string } | { ok: false; error: string }
+  | {
+      ok: true;
+      ticketId: string;
+      token: string;
+      reciboEnviado?: boolean;
+      reciboError?: string;
+    }
+  | { ok: false; error: string }
 > {
   const supabase = await createClient();
   const token = generarTokenRecibo();
@@ -331,7 +436,24 @@ export async function registrarTicket(
     })
   );
 
-  return { ok: true, ticketId, token };
+  // Recibo por email del ticket completo — antes solo lo mandaba el cobro
+  // rápido; un ticket con membresía + productos se quedaba sin recibo.
+  let reciboEnviado: boolean | undefined;
+  let reciboError: string | undefined;
+  if (input.miembroId) {
+    const total = input.items.reduce((s, it) => s + it.monto, 0);
+    const lineaMembresia = input.items.find((it) => it.tipo === "membresia");
+    const recibo = await enviarReciboDePago(tenantId, {
+      miembroId: input.miembroId,
+      monto: total,
+      token,
+      periodoFin: lineaMembresia?.periodo_fin ?? null,
+    });
+    reciboEnviado = recibo.enviado;
+    reciboError = recibo.error;
+  }
+
+  return { ok: true, ticketId, token, reciboEnviado, reciboError };
 }
 
 /**
@@ -425,11 +547,22 @@ export async function anularPago(
       const vencimientoPrevio = pago.periodo_inicio
         ? isoMasDias(-1, pago.periodo_inicio as string)
         : null;
-      await supabase
+      const { error: revertErr } = await supabase
         .from("miembros")
         .update({ fecha_vencimiento: vencimientoPrevio })
         .eq("tenant_id", tenantId)
         .eq("id", pago.miembro_id as string);
+      // El pago ya se anuló (RPC arriba); si esto falla el socio se queda
+      // con la vigencia extendida por un pago que ya no cuenta como
+      // ingreso — antes nadie se enteraba.
+      if (revertErr) {
+        logError("pago.anular_revertir_vigencia_fallo", {
+          tenantId,
+          pagoId,
+          miembroId: pago.miembro_id,
+          error: revertErr.message,
+        });
+      }
     }
   }
 
@@ -458,12 +591,20 @@ export async function anularPago(
     }
 
     // Si el plan estaba completado, vuelve a tener una cuota pendiente.
-    await supabase
+    const { error: reabrirErr } = await supabase
       .from("planes_pago")
       .update({ estado: "activo" })
       .eq("tenant_id", tenantId)
       .eq("id", cuota.plan_id as string)
       .eq("estado", "completado");
+    if (reabrirErr) {
+      logError("pago.anular_reabrir_plan_pago_fallo", {
+        tenantId,
+        pagoId,
+        planPagoId: cuota.plan_id,
+        error: reabrirErr.message,
+      });
+    }
   }
 
   return { ok: true };

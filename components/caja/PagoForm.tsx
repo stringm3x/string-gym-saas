@@ -112,7 +112,7 @@ export function PagoForm({
   productos,
   canWhatsapp = true,
 }: PagoFormProps) {
-  const { success, error: toastError } = useToast();
+  const { success, error: toastError, warning } = useToast();
   const [state, formAction, isPending] = useActionState(
     registerPagoAction,
     initial
@@ -336,6 +336,9 @@ export function PagoForm({
   useEffect(() => {
     if (state.ok) {
       success("Pago registrado");
+      if (state.reciboError) {
+        warning("El recibo no se pudo enviar por correo", state.reciboError);
+      }
       // Captura datos del pago para el panel de confirmación (WhatsApp/recibo)
       // ANTES de resetear el form.
       if (miembro) {
@@ -358,7 +361,7 @@ export function PagoForm({
       toastError("No se pudo registrar", state.error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, success, toastError]);
+  }, [state, success, toastError, warning]);
 
   const maxCantidad =
     selProd.kind === "producto" ? selProd.producto.stock_actual : null;
@@ -403,6 +406,9 @@ export function PagoForm({
           ? `Pendiente: ${formatMoneda(r.montoRestante)}`
           : undefined
       );
+      if (r.reciboError) {
+        warning("El recibo no se pudo enviar por correo", r.reciboError);
+      }
       setLastPago({
         nombre: miembro.nombre,
         telefono: miembro.telefono,
