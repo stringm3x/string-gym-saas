@@ -7,6 +7,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { aplicarMovimiento } from "@/lib/queries/productos.queries";
 import { crearNotaCredito } from "@/lib/queries/notas-credito.queries";
+import { logError } from "@/lib/log";
 
 export type TipoDevolucion =
   | "efectivo"
@@ -130,6 +131,49 @@ export async function crearReembolso(
       cantidad,
       motivo: "Reembolso",
     });
+  }
+
+  // 5. Si este pago era el que saldaba una cuota de un plan a plazos,
+  // desmarcarla — antes quedaba "pagada" para siempre aunque el dinero ya
+  // se hubiera devuelto, así que Cuentas por Cobrar dejaba de mostrar una
+  // deuda real. Si esa cuota era la última pendiente y había dejado el plan
+  // "completado", el plan vuelve a "activo" — si no, el botón de cobrar esa
+  // cuota de nuevo no aparece en la ficha (se gatea con estado === "activo").
+  const { data: cuota } = await supabase
+    .from("cuotas_pago")
+    .select("id, plan_id")
+    .eq("tenant_id", tenantId)
+    .eq("pago_id", pago.id)
+    .maybeSingle();
+  if (cuota) {
+    const { error: cuotaErr } = await supabase
+      .from("cuotas_pago")
+      .update({ pagado_at: null, pago_id: null })
+      .eq("tenant_id", tenantId)
+      .eq("id", cuota.id);
+    if (cuotaErr) {
+      logError("credito.reembolso_desmarcar_cuota_fallo", {
+        tenantId,
+        pagoId: pago.id,
+        cuotaId: cuota.id,
+        error: cuotaErr.message,
+      });
+    } else {
+      const { error: planErr } = await supabase
+        .from("planes_pago")
+        .update({ estado: "activo" })
+        .eq("tenant_id", tenantId)
+        .eq("id", cuota.plan_id)
+        .eq("estado", "completado");
+      if (planErr) {
+        logError("credito.reembolso_reabrir_plan_fallo", {
+          tenantId,
+          pagoId: pago.id,
+          planId: cuota.plan_id,
+          error: planErr.message,
+        });
+      }
+    }
   }
 
   return { ok: true, id: reemb.id as string };

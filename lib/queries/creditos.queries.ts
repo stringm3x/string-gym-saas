@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createPago } from "@/lib/queries/pagos.queries";
 import { logError } from "@/lib/log";
 import { aplicarMovimiento } from "@/lib/queries/productos.queries";
@@ -49,11 +50,21 @@ async function borrarPlanPagoHuerfano(
   }
 }
 
-/** Crea un plan de pago y genera sus N cuotas espaciadas por la frecuencia. */
+/**
+ * Crea un plan de pago, genera sus N cuotas espaciadas por la frecuencia, y
+ * cobra la cuota 1 de inmediato (paridad con createAbonoMembresia — antes
+ * el plan quedaba con cuota 1 sin cobrar y nada se lo recordaba a nadie).
+ * El total NO llega del cliente: se calcula acá del precio real del plan de
+ * membresía o del producto (× cantidad) — antes era un campo libre sin
+ * relación con lo que de verdad cuesta lo que se está financiando.
+ */
 export async function createPlanPago(
   tenantId: string,
   input: PlanPagoInput
-): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; id: string; reciboError?: string; cuota1Error?: string }
+  | { ok: false; error: string }
+> {
   const supabase = await createClient();
   const esProducto = input.tipo === "producto";
   const cantidad = input.cantidad ?? 1;
@@ -69,6 +80,32 @@ export async function createPlanPago(
     }
   };
 
+  // 0. Total real del plan/producto — nunca el que mande el cliente.
+  let total: number;
+  if (esProducto) {
+    if (!input.producto_id) return { ok: false, error: "Selecciona un producto." };
+    const { data: producto } = await supabase
+      .from("productos")
+      .select("precio")
+      .eq("tenant_id", tenantId)
+      .eq("id", input.producto_id)
+      .maybeSingle();
+    if (!producto) return { ok: false, error: "Producto no encontrado." };
+    total = Math.round(Number(producto.precio) * cantidad * 100) / 100;
+  } else {
+    if (!input.plan_membresia_id) {
+      return { ok: false, error: "Selecciona un plan de membresía." };
+    }
+    const { data: planMembresia } = await supabase
+      .from("planes_membresia")
+      .select("precio")
+      .eq("tenant_id", tenantId)
+      .eq("id", input.plan_membresia_id)
+      .maybeSingle();
+    if (!planMembresia) return { ok: false, error: "Plan de membresía no encontrado." };
+    total = Number(planMembresia.precio);
+  }
+
   // 1. Crear el plan primero — el movimiento de stock (paso 2) necesita su id
   //    para poder trazar el costo de esta venta hasta el corte de caja
   //    (el pago real llega después, en cuotas separadas sin producto_id).
@@ -80,7 +117,7 @@ export async function createPlanPago(
       plan_membresia_id: esProducto ? null : input.plan_membresia_id,
       producto_id: esProducto ? input.producto_id : null,
       cantidad: esProducto ? cantidad : null,
-      total: input.total,
+      total,
       cuotas: input.cuotas,
       concepto: input.concepto || null,
       estado: "activo",
@@ -112,7 +149,7 @@ export async function createPlanPago(
     }
   }
 
-  const montos = repartirMonto(input.total, input.cuotas);
+  const montos = repartirMonto(total, input.cuotas);
   const fechas = fechasCuotas(input.cuotas, input.frecuencia);
   const filas = montos.map((monto, i) => ({
     plan_id: plan.id,
@@ -122,18 +159,38 @@ export async function createPlanPago(
     fecha_vencimiento: fechas[i],
   }));
 
-  const { error: cuotasErr } = await supabase
+  const { data: cuotasIns, error: cuotasErr } = await supabase
     .from("cuotas_pago")
-    .insert(filas);
+    .insert(filas)
+    .select("id, numero_cuota");
 
-  if (cuotasErr) {
+  if (cuotasErr || !cuotasIns) {
     // Rollback: no quedan planes sin cuotas, y se regresa el stock.
     await borrarPlanPagoHuerfano(supabase, tenantId, plan.id, "cuotas_insert_fallo");
     await restaurarStock();
-    return { ok: false, error: cuotasErr.message };
+    return { ok: false, error: cuotasErr?.message ?? "No se pudieron crear las cuotas." };
   }
 
-  return { ok: true, id: plan.id };
+  const cuota1 = cuotasIns.find((c) => c.numero_cuota === 1);
+  if (!cuota1) {
+    await borrarPlanPagoHuerfano(supabase, tenantId, plan.id, "cuota_1_no_encontrada");
+    await restaurarStock();
+    return { ok: false, error: "No se pudo registrar el plan." };
+  }
+
+  const pagoRes = await pagarCuota(tenantId, cuota1.id, input.metodo);
+  if (!pagoRes.ok) {
+    // El plan y sus cuotas YA EXISTEN — esto no es "no se pudo crear el
+    // plan", es "se creó, pero la cuota 1 no se cobró". Devolverlo como
+    // ok:false (como se hacía antes) le hacía creer al staff que nada
+    // pasó, sin refrescar ni avisar del plan real que quedó a medias — con
+    // la puerta abierta a reintentar "Crear plan" y duplicar el registro.
+    // Se trata como éxito con aviso, mismo patrón que reciboError: cuota 1
+    // queda pendiente, cobrable de inmediato desde la tarjeta del plan.
+    return { ok: true, id: plan.id, cuota1Error: pagoRes.error };
+  }
+
+  return { ok: true, id: plan.id, reciboError: pagoRes.reciboError };
 }
 
 /**
@@ -152,30 +209,59 @@ export async function pagarCuota(
 > {
   const supabase = await createClient();
 
-  const { data: cuota } = await supabase
+  // Reclamo atómico: la condición pagado_at IS NULL va en el propio UPDATE,
+  // no en un SELECT previo — así dos llamadas concurrentes para la misma
+  // cuota (doble tap, dos pestañas, un reintento) no pueden ganar las dos.
+  // Postgres re-evalúa el WHERE contra el valor vigente al tomar el lock de
+  // fila, igual que el descuento de visitas en createCheckin. Antes el
+  // check era un SELECT separado del UPDATE que marca pagada, con espacio
+  // de sobra para que las dos pasaran el check y cobraran dos veces.
+  const { data: claimed, error: claimErr } = await supabase
     .from("cuotas_pago")
-    .select("id, plan_id, monto, pagado_at")
+    .update({ pagado_at: new Date().toISOString() })
     .eq("tenant_id", tenantId)
     .eq("id", cuotaId)
+    .is("pagado_at", null)
+    .select("id, plan_id, monto")
     .maybeSingle();
-  if (!cuota) return { ok: false, error: "Cuota no encontrada." };
-  if (cuota.pagado_at) return { ok: false, error: "La cuota ya está pagada." };
+  if (claimErr) return { ok: false, error: claimErr.message };
+  if (!claimed) return { ok: false, error: "La cuota ya está pagada." };
+
+  const revertirClaim = async () => {
+    const { error } = await supabase
+      .from("cuotas_pago")
+      .update({ pagado_at: null })
+      .eq("tenant_id", tenantId)
+      .eq("id", cuotaId);
+    if (error) {
+      logError("credito.pagar_cuota_revertir_fallo", {
+        tenantId,
+        cuotaId,
+        error: error.message,
+      });
+    }
+  };
 
   const { data: plan } = await supabase
     .from("planes_pago")
     .select("id, miembro_id, plan_membresia_id, producto_id")
     .eq("tenant_id", tenantId)
-    .eq("id", cuota.plan_id)
+    .eq("id", claimed.plan_id)
     .single();
-  if (!plan) return { ok: false, error: "Plan de pago no encontrado." };
+  if (!plan) {
+    await revertirClaim();
+    return { ok: false, error: "Plan de pago no encontrado." };
+  }
 
-  // ¿Primer pago del plan? (ninguna cuota pagada aún)
+  // ¿Primer pago del plan? (ninguna OTRA cuota pagada aún — esta ya cuenta
+  // como pagada por el reclamo de arriba, así que se excluye a sí misma).
   const { count: pagadasPrevias } = await supabase
     .from("cuotas_pago")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
     .eq("plan_id", plan.id)
-    .not("pagado_at", "is", null);
+    .not("pagado_at", "is", null)
+    .neq("id", cuotaId);
   const esPrimerPago = (pagadasPrevias ?? 0) === 0;
 
   // Solo el primer pago extiende la membresía (paridad con cobro normal).
@@ -209,25 +295,35 @@ export async function pagarCuota(
   const pagoRes = await createPago(tenantId, {
     miembro_id: plan.miembro_id,
     concepto: esProducto ? "producto" : "membresia",
-    monto: Number(cuota.monto),
+    monto: Number(claimed.monto),
     metodo_pago: metodo,
     periodo_inicio: periodoInicio,
     periodo_fin: periodoFin,
     plan_id: plan.plan_membresia_id ?? undefined,
   });
-  if (!pagoRes.ok) return { ok: false, error: pagoRes.error };
+  if (!pagoRes.ok) {
+    // El cobro real falló: liberar el reclamo para que la cuota se pueda
+    // volver a intentar, en vez de quedar "pagada" sin ningún pago real.
+    await revertirClaim();
+    return { ok: false, error: pagoRes.error };
+  }
 
+  // pagado_at ya quedó puesto por el reclamo de arriba — solo falta enlazar
+  // qué pago la saldó. El dinero YA se cobró (createPago ya corrió), así
+  // que si esto falla no se revierte: la cuota queda correctamente pagada,
+  // solo sin el link directo al pago. Se loguea para poder enlazarlo a mano.
   const { error: linkErr } = await supabase
     .from("cuotas_pago")
-    .update({ pagado_at: new Date().toISOString(), pago_id: pagoRes.id })
+    .update({ pago_id: pagoRes.id })
     .eq("tenant_id", tenantId)
     .eq("id", cuotaId);
   if (linkErr) {
-    return {
-      ok: false,
-      error:
-        "El pago se registró, pero no se pudo marcar la cuota. Revísalo en caja.",
-    };
+    logError("credito.pagar_cuota_link_pago_fallo", {
+      tenantId,
+      cuotaId,
+      pagoId: pagoRes.id,
+      error: linkErr.message,
+    });
   }
 
   // ¿Era la última cuota pendiente? → plan completado.
@@ -281,7 +377,13 @@ export async function createAbonoMembresia(
     metodoPago: MetodoPago;
   }
 ): Promise<
-  | { ok: true; pagoId: string; montoRestante: number; reciboError?: string }
+  | {
+      ok: true;
+      pagoId?: string;
+      montoRestante: number;
+      reciboError?: string;
+      cuota1Error?: string;
+    }
   | { ok: false; error: string }
 > {
   const supabase = await createClient();
@@ -363,9 +465,13 @@ export async function createAbonoMembresia(
 
   const pagoRes = await pagarCuota(tenantId, cuota1.id, input.metodoPago);
   if (!pagoRes.ok) {
-    // No se revierte: la cuota 1 queda pendiente y se puede cobrar de nuevo
-    // desde Cuentas por Cobrar en vez de perder el registro del abono.
-    return { ok: false, error: pagoRes.error };
+    // El plan de 2 cuotas ya existe — no se revierte, se puede cobrar de
+    // nuevo desde la ficha. Pero devolver ok:false acá (como antes) le
+    // hacía creer al caller que nada pasó: sin refrescar caja/ficha/CxC, y
+    // con la puerta abierta a reintentar "Registrar abono" y crear un
+    // segundo plan huérfano encima. Mismo patrón que reciboError: éxito
+    // con aviso.
+    return { ok: true, montoRestante, cuota1Error: pagoRes.error };
   }
 
   return {
@@ -472,6 +578,45 @@ export async function getCuotasPendientes(
       dias_para_vencer: dias,
     };
   });
+}
+
+/**
+ * Deuda vencida de un socio en planes a plazos activos (bloque 08) — antes
+ * esto no se veía en ningún lado: el socio entraba igual al gym y la ficha
+ * solo mostraba el plan a plazos si alguien bajaba a buscarlo hasta el
+ * final de la página. Se usa para AVISAR, nunca para bloquear el check-in
+ * (créditos nunca se ha usado con un socio real; un bloqueo duro arriesga
+ * trabar a alguien por un recordatorio olvidado).
+ */
+export async function getDeudaVencida(
+  tenantId: string,
+  miembroId: string,
+  client?: SupabaseClient
+): Promise<{ monto: number; cuotas: number } | null> {
+  const supabase = client ?? (await createClient());
+
+  const { data: planes } = await supabase
+    .from("planes_pago")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("miembro_id", miembroId)
+    .eq("estado", "activo");
+  const planIds = (planes ?? []).map((p) => p.id as string);
+  if (planIds.length === 0) return null;
+
+  const { data: cuotas } = await supabase
+    .from("cuotas_pago")
+    .select("monto")
+    .eq("tenant_id", tenantId)
+    .in("plan_id", planIds)
+    .is("pagado_at", null)
+    .lt("fecha_vencimiento", hoyISO());
+  if (!cuotas || cuotas.length === 0) return null;
+
+  return {
+    monto: cuotas.reduce((sum, c) => sum + Number(c.monto), 0),
+    cuotas: cuotas.length,
+  };
 }
 
 /** Resumen de Cuentas por Cobrar: total pendiente, vencidas y por vencer (7d). */

@@ -17,6 +17,7 @@ import {
 } from "@/app/kiosco/[slug]/actions";
 import { KioscoMarco, QrPictograma } from "./KioscoMarco";
 import { TitularBrochada } from "@/components/arte/Brochada";
+import { money } from "@/lib/utils/creditos-calc";
 
 const QrCameraScanner = dynamic(
   () => import("@/components/checkins/QrCameraScanner"),
@@ -78,7 +79,11 @@ export function KioscoEntrada({ slug }: { slug: string }) {
       // sin timeout, el siguiente de la fila ve la pantalla del anterior. Le
       // damos más tiempo a esa pantalla (20s) que al aviso normal (3s).
       const pideContacto = r.success && r.sinContacto;
-      timerRef.current = setTimeout(reset, pideContacto ? 20000 : 3000);
+      const avisoAlgo = r.success && (r.avisoVencido || r.deudaVencida);
+      timerRef.current = setTimeout(
+        reset,
+        pideContacto ? 20000 : avisoAlgo ? 5000 : 3000
+      );
     });
   }
 
@@ -90,7 +95,7 @@ export function KioscoEntrada({ slug }: { slug: string }) {
   }
 
   const ok = result?.success === true;
-  const aviso = ok && result.avisoVencido;
+  const aviso = ok && (result.avisoVencido || !!result.deudaVencida);
 
   // ── Resultado: pantalla completa, se lee a un metro ──
   if (result) {
@@ -123,11 +128,16 @@ export function KioscoEntrada({ slug }: { slug: string }) {
                 {result.plan}
               </p>
             )}
-            {aviso && (
+            {result.avisoVencido && (
               <p className="text-lg font-semibold text-warning">
                 {result.fechaVencimiento
                   ? `Tu membresía venció el ${result.fechaVencimiento.split("-").reverse().join("/")}. Pasa a recepción.`
                   : "No tienes una membresía registrada. Pasa a recepción."}
+              </p>
+            )}
+            {result.deudaVencida && (
+              <p className="text-lg font-semibold text-warning">
+                Debes {money(result.deudaVencida.monto)} de tu plan a plazos. Pasa a recepción.
               </p>
             )}
 

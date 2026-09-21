@@ -9,6 +9,7 @@ import {
   checkinReciente,
 } from "@/lib/queries/checkins.queries";
 import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
+import { getDeudaVencida } from "@/lib/queries/creditos.queries";
 import {
   getProductosKiosco,
   getPlanesMembresiaKiosco,
@@ -44,6 +45,8 @@ export type KioscoResult =
       /** true si se dejó pasar con membresía vencida/sin registrar (política "solo avisar"). */
       avisoVencido: boolean;
       fechaVencimiento: string | null;
+      /** Solo aviso, nunca bloquea (bloque 08): cuotas vencidas de un plan a plazos. */
+      deudaVencida: { monto: number; cuotas: number } | null;
     }
   | { success: false; error: KioscoError; nombre?: string };
 
@@ -120,6 +123,7 @@ export const checkInKioscoAction = kioscoAction(
       sinContacto: sinTelefono(miembro.telefono),
       avisoVencido: vencidoOSinMembresia,
       fechaVencimiento: miembro.fecha_vencimiento ?? null,
+      deudaVencida: await getDeudaVencida(gym.id, miembro.id, admin),
     };
   }
 );

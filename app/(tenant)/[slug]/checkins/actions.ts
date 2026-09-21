@@ -14,6 +14,7 @@ import {
 } from "@/lib/queries/miembros.queries";
 import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
 import { getEstadoMembresia } from "@/lib/utils/estado-membresia";
+import { getDeudaVencida } from "@/lib/queries/creditos.queries";
 
 export interface CheckinResult {
   ok: boolean;
@@ -25,6 +26,8 @@ export interface CheckinResult {
     nombre: string;
     estadoMembresia: string;
   };
+  /** Solo aviso, nunca bloquea (bloque 08): cuotas vencidas de un plan a plazos. */
+  deudaVencida?: { monto: number; cuotas: number } | null;
 }
 
 export const registerCheckinAction = panelAction(
@@ -108,6 +111,7 @@ export const registerCheckinAction = panelAction(
         nombre: miembro.nombre,
         estadoMembresia: estado,
       },
+      deudaVencida: await getDeudaVencida(tenant.id, miembroId),
     };
   }
 );

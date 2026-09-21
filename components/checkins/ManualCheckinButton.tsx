@@ -5,6 +5,7 @@ import { LuScanLine } from "react-icons/lu";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { registerCheckinAction } from "@/app/(tenant)/[slug]/checkins/actions";
+import { money } from "@/lib/utils/creditos-calc";
 
 interface ManualCheckinButtonProps {
   miembroId: string;
@@ -36,6 +37,14 @@ export function ManualCheckinButton({
           );
         } else {
           success("Check-in registrado", miembroNombre);
+        }
+        // Nunca bloquea el check-in — solo avisa (créditos nunca se ha
+        // usado con un socio real, no vale la pena arriesgar un bloqueo).
+        if (result.deudaVencida) {
+          warning(
+            "Tiene una cuota vencida",
+            `${miembroNombre} debe ${money(result.deudaVencida.monto)} de su plan a plazos.`
+          );
         }
       } else {
         error("No se pudo registrar", result.error ?? "Inténtalo de nuevo");

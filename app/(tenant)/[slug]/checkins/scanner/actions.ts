@@ -9,6 +9,7 @@ import {
   checkinReciente,
 } from "@/lib/queries/checkins.queries";
 import { congelacionActiva } from "@/lib/queries/miembro-eventos.queries";
+import { getDeudaVencida } from "@/lib/queries/creditos.queries";
 import { hoyISO } from "@/lib/utils/dates";
 
 export type CheckInQrError =
@@ -27,6 +28,8 @@ export type CheckInQrResult =
       fechaVencimiento: string | null;
       /** true si se dejó pasar con membresía vencida/sin registrar (política "solo avisar"). */
       avisoVencido: boolean;
+      /** Solo aviso, nunca bloquea (bloque 08): cuotas vencidas de un plan a plazos. */
+      deudaVencida: { monto: number; cuotas: number } | null;
     }
   | { success: false; error: CheckInQrError; nombre?: string };
 
@@ -81,6 +84,7 @@ export const checkInPorQrAction = panelAction(
       nombre: miembro.nombre,
       fechaVencimiento: miembro.fecha_vencimiento,
       avisoVencido: vencidoOSinMembresia,
+      deudaVencida: await getDeudaVencida(tenant.id, miembro.id),
     };
   }
 );

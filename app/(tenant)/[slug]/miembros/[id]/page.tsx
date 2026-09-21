@@ -16,6 +16,7 @@ import { MiembroForm } from "@/components/miembros/MiembroForm";
 import { NotasTimeline } from "@/components/miembros/NotasTimeline";
 import { NotasLegacy } from "@/components/miembros/NotasLegacy";
 import { AccionesRapidas } from "@/components/ui/AccionesRapidas";
+import { Badge } from "@/components/ui/Badge";
 import { MiembroStatusBadge } from "@/components/miembros/MiembroStatusBadge";
 import { RiesgoInactividadBadge } from "@/components/miembros/RiesgoInactividadBadge";
 import { MiembroArchivarButton } from "@/components/miembros/MiembroArchivarButton";
@@ -43,6 +44,7 @@ import { listPlanes } from "@/lib/queries/planes.queries";
 import { listProductosConStock } from "@/lib/queries/productos.queries";
 import { MiembroCreditos } from "@/components/creditos/MiembroCreditos";
 import type { PlanPagoConCuotas } from "@/lib/types/creditos";
+import { money } from "@/lib/utils/creditos-calc";
 import {
   getPlanesNutricion,
   type PlanNutricion,
@@ -160,6 +162,15 @@ export default async function MiembroDetailPage({ params }: PageProps) {
     : null;
   const enRiesgo = vigente && diasSinCheckin !== null && diasSinCheckin >= 14;
 
+  // Deuda vencida de planes a plazos (bloque 08): antes solo se veía
+  // bajando hasta el final de la página, dentro de la tarjeta de cada plan.
+  const hoy = hoyISO();
+  const montoDeudaVencida = planesPago
+    .filter((p) => p.estado === "activo")
+    .flatMap((p) => p.cuotas_lista)
+    .filter((c) => !c.pagado_at && c.fecha_vencimiento < hoy)
+    .reduce((sum, c) => sum + Number(c.monto), 0);
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -186,6 +197,9 @@ export default async function MiembroDetailPage({ params }: PageProps) {
               hasFeature(tenant.plan, "riesgo_panel") && (
                 <RiesgoInactividadBadge dias={diasSinCheckin} />
               )}
+            {montoDeudaVencida > 0 && (
+              <Badge variant="warning">Debe {money(montoDeudaVencida)}</Badge>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

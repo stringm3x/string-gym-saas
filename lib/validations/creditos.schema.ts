@@ -15,6 +15,10 @@ export const DIAS_FRECUENCIA: Record<FrecuenciaCuota, number> = {
 export const tipoPlanPagoEnum = z.enum(["membresia", "producto"]);
 export type TipoPlanPago = z.infer<typeof tipoPlanPagoEnum>;
 
+/** Mismos 3 métodos que el resto de caja/créditos. */
+export const metodoPagoEnum = z.enum(["efectivo", "tarjeta", "transferencia"]);
+export type MetodoPago = z.infer<typeof metodoPagoEnum>;
+
 export const planPagoInputSchema = z
   .object({
     miembro_id: z.string().uuid("Selecciona un miembro"),
@@ -22,10 +26,10 @@ export const planPagoInputSchema = z
     plan_membresia_id: z.string().uuid().optional(),
     producto_id: z.string().uuid().optional(),
     cantidad: z.number().int().min(1).max(999).optional(),
-    total: z
-      .number({ error: "Monto inválido" })
-      .positive("El total debe ser mayor a 0")
-      .max(1_000_000, "Monto demasiado alto"),
+    // El total NO viaja del cliente: se calcula server-side del precio real
+    // del plan/producto seleccionado (createPlanPago). Antes era un campo
+    // libre que el staff podía escribir sin relación con lo que costaba lo
+    // que se estaba financiando.
     cuotas: z
       .number({ error: "Número de cuotas inválido" })
       .int()
@@ -33,6 +37,7 @@ export const planPagoInputSchema = z
       .max(12, "Máximo 12 cuotas"),
     concepto: z.string().max(200).optional(),
     frecuencia: frecuenciaCuotaEnum.default("quincenal"),
+    metodo: metodoPagoEnum.default("efectivo"),
   })
   .refine(
     (d) => d.tipo !== "membresia" || !!d.plan_membresia_id,
