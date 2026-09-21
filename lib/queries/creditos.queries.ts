@@ -62,7 +62,7 @@ export async function createPlanPago(
   tenantId: string,
   input: PlanPagoInput
 ): Promise<
-  | { ok: true; id: string; reciboError?: string }
+  | { ok: true; id: string; reciboError?: string; cuota1Error?: string }
   | { ok: false; error: string }
 > {
   const supabase = await createClient();
@@ -180,10 +180,14 @@ export async function createPlanPago(
 
   const pagoRes = await pagarCuota(tenantId, cuota1.id, input.metodo);
   if (!pagoRes.ok) {
-    // No se revierte (mismo criterio que createAbonoMembresia): el plan y
-    // sus cuotas ya existen, cuota 1 queda pendiente y se puede cobrar desde
-    // Cuentas por Cobrar en vez de perder el registro completo del plan.
-    return { ok: false, error: pagoRes.error };
+    // El plan y sus cuotas YA EXISTEN — esto no es "no se pudo crear el
+    // plan", es "se creó, pero la cuota 1 no se cobró". Devolverlo como
+    // ok:false (como se hacía antes) le hacía creer al staff que nada
+    // pasó, sin refrescar ni avisar del plan real que quedó a medias — con
+    // la puerta abierta a reintentar "Crear plan" y duplicar el registro.
+    // Se trata como éxito con aviso, mismo patrón que reciboError: cuota 1
+    // queda pendiente, cobrable de inmediato desde la tarjeta del plan.
+    return { ok: true, id: plan.id, cuota1Error: pagoRes.error };
   }
 
   return { ok: true, id: plan.id, reciboError: pagoRes.reciboError };
@@ -373,7 +377,13 @@ export async function createAbonoMembresia(
     metodoPago: MetodoPago;
   }
 ): Promise<
-  | { ok: true; pagoId: string; montoRestante: number; reciboError?: string }
+  | {
+      ok: true;
+      pagoId?: string;
+      montoRestante: number;
+      reciboError?: string;
+      cuota1Error?: string;
+    }
   | { ok: false; error: string }
 > {
   const supabase = await createClient();
@@ -455,9 +465,13 @@ export async function createAbonoMembresia(
 
   const pagoRes = await pagarCuota(tenantId, cuota1.id, input.metodoPago);
   if (!pagoRes.ok) {
-    // No se revierte: la cuota 1 queda pendiente y se puede cobrar de nuevo
-    // desde Cuentas por Cobrar en vez de perder el registro del abono.
-    return { ok: false, error: pagoRes.error };
+    // El plan de 2 cuotas ya existe — no se revierte, se puede cobrar de
+    // nuevo desde la ficha. Pero devolver ok:false acá (como antes) le
+    // hacía creer al caller que nada pasó: sin refrescar caja/ficha/CxC, y
+    // con la puerta abierta a reintentar "Registrar abono" y crear un
+    // segundo plan huérfano encima. Mismo patrón que reciboError: éxito
+    // con aviso.
+    return { ok: true, montoRestante, cuota1Error: pagoRes.error };
   }
 
   return {

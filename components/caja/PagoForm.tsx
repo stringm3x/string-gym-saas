@@ -400,22 +400,33 @@ export function PagoForm({
         toastError("No se pudo registrar el abono", r.error ?? "Inténtalo de nuevo");
         return;
       }
-      success(
-        "Abono registrado",
-        r.montoRestante
-          ? `Pendiente: ${formatMoneda(r.montoRestante)}`
-          : undefined
-      );
-      if (r.reciboError) {
-        warning("El recibo no se pudo enviar por correo", r.reciboError);
+      // El plan de 2 cuotas ya existe en ambos casos — por eso los dos
+      // resetean el formulario. Si la cuota 1 no se cobró, no hay un pago
+      // real que mandar por recibo/WhatsApp (setLastPago), así que se
+      // avisa aparte en vez de mostrar el panel de confirmación normal.
+      if (r.cuota1Error) {
+        warning(
+          "Plan creado, pero la cuota 1 no se cobró",
+          `${r.cuota1Error} Cóbrala desde la ficha del socio.`
+        );
+      } else {
+        success(
+          "Abono registrado",
+          r.montoRestante
+            ? `Pendiente: ${formatMoneda(r.montoRestante)}`
+            : undefined
+        );
+        if (r.reciboError) {
+          warning("El recibo no se pudo enviar por correo", r.reciboError);
+        }
+        setLastPago({
+          nombre: miembro.nombre,
+          telefono: miembro.telefono,
+          montoStr: formatMoneda(monto),
+          fechaStr: null,
+          pagoId: r.pagoId,
+        });
       }
-      setLastPago({
-        nombre: miembro.nombre,
-        telefono: miembro.telefono,
-        montoStr: formatMoneda(monto),
-        fechaStr: null,
-        pagoId: r.pagoId,
-      });
       resetPagoForm();
     });
   }

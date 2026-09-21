@@ -15,7 +15,12 @@ export const crearPlanPagoAction = panelAction(
   async (
     tenant,
     input: unknown
-  ): Promise<{ ok: boolean; error?: string; reciboError?: string }> => {
+  ): Promise<{
+    ok: boolean;
+    error?: string;
+    reciboError?: string;
+    cuota1Error?: string;
+  }> => {
     const parsed = planPagoInputSchema.safeParse(input);
     if (!parsed.success) {
       return {
@@ -28,7 +33,7 @@ export const crearPlanPagoAction = panelAction(
     if (!r.ok) return { ok: false, error: r.error };
 
     revalidatePath(`/${tenant.slug}/miembros/${parsed.data.miembro_id}`);
-    return { ok: true, reciboError: r.reciboError };
+    return { ok: true, reciboError: r.reciboError, cuota1Error: r.cuota1Error };
   }
 );
 

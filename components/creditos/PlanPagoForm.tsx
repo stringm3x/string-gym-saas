@@ -149,9 +149,20 @@ export function PlanPagoForm({
         toastError("No se pudo crear el plan", r.error);
         return;
       }
-      success("Plan creado y cuota 1 cobrada");
-      if (r.reciboError) {
-        warning("El recibo no se pudo enviar por correo", r.reciboError);
+      // El plan ya existe en cualquiera de los dos casos de acá para abajo
+      // — por eso ambos refrescan y cierran el formulario. Si la cuota 1
+      // no se cobró, decirlo aparte en vez de mezclarlo con el éxito: el
+      // plan quedó creado, pendiente de cobrar desde su propia tarjeta.
+      if (r.cuota1Error) {
+        warning(
+          "Plan creado, pero la cuota 1 no se cobró",
+          `${r.cuota1Error} Cóbrala desde la tarjeta del plan.`
+        );
+      } else {
+        success("Plan creado y cuota 1 cobrada");
+        if (r.reciboError) {
+          warning("El recibo no se pudo enviar por correo", r.reciboError);
+        }
       }
       router.refresh();
       onDone();

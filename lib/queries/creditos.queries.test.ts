@@ -274,7 +274,7 @@ describe("createPlanPago: rollback si fallan las cuotas", () => {
 });
 
 describe("createPlanPago: cobra la cuota 1 al crear el plan (bloque 08)", () => {
-  it("cuota 1 falla al cobrarse → el plan NO se revierte (mismo criterio que createAbonoMembresia)", async () => {
+  it("cuota 1 falla al cobrarse → ok:true con cuota1Error (el plan SÍ se creó, no es un fallo total)", async () => {
     vi.mocked(createPago).mockResolvedValue({ ok: false, error: "Fondos insuficientes." });
     const from = vi
       .fn()
@@ -318,11 +318,19 @@ describe("createPlanPago: cobra la cuota 1 al crear el plan (bloque 08)", () => 
       metodo: "efectivo",
     });
 
-    // El error de pagarCuota se propaga...
-    expect(r).toEqual({ ok: false, error: "Fondos insuficientes." });
-    // ...pero NO se llamó borrarPlanPagoHuerfano (no hay un 8vo from() de
+    // ok:true — el plan y sus cuotas YA EXISTEN, el error de pagarCuota
+    // viaja aparte (cuota1Error), no como fallo total: devolver ok:false
+    // acá le hacía creer al caller que nada pasó (sin refrescar ni avisar
+    // del plan real que quedó a medias), con la puerta abierta a
+    // reintentar "Crear plan" y duplicar el registro.
+    expect(r).toEqual({
+      ok: true,
+      id: "plan-1",
+      cuota1Error: "Fondos insuficientes.",
+    });
+    // NO se llamó borrarPlanPagoHuerfano (no hay un 8vo from() de
     // planes_pago.delete): el plan y sus cuotas quedan, cuota 1 pendiente,
-    // cobrable de nuevo desde Cuentas por Cobrar.
+    // cobrable de nuevo desde la tarjeta del plan.
     expect(from).toHaveBeenCalledTimes(7);
     expect(logError).not.toHaveBeenCalledWith(
       "credito.rollback_plan_huerfano",
@@ -390,6 +398,59 @@ describe("createAbonoMembresia: mismo rollback, mismo helper", () => {
         planId: "plan-1",
         motivo: "cuotas_insert_fallo",
       })
+    );
+  });
+
+  it("cuota 1 falla al cobrarse → ok:true con cuota1Error, sin pagoId (mismo criterio que createPlanPago)", async () => {
+    vi.mocked(createPago).mockResolvedValue({ ok: false, error: "Fondos insuficientes." });
+    const from = vi
+      .fn()
+      .mockReturnValueOnce(
+        supaResult({ data: { id: "pm-1", nombre: "Mensual", precio: "1000", dias_duracion: 30 } })
+      )
+      .mockReturnValueOnce(supaResult({ data: { fecha_vencimiento: null } }))
+      .mockReturnValueOnce(supaResult({ data: { id: "plan-1" }, error: null }))
+      .mockReturnValueOnce(
+        supaResult({
+          data: [
+            { id: "cuota-1", numero_cuota: 1 },
+            { id: "cuota-2", numero_cuota: 2 },
+          ],
+          error: null,
+        })
+      )
+      // --- dentro de pagarCuota(cuota-1) ---
+      .mockReturnValueOnce(
+        supaResult({ data: { id: "cuota-1", plan_id: "plan-1", monto: 300 } })
+      )
+      .mockReturnValueOnce(
+        supaResult({
+          data: { id: "plan-1", miembro_id: "m-1", plan_membresia_id: null, producto_id: null },
+        })
+      )
+      .mockReturnValueOnce(supaResult({ count: 0 }))
+      // revertirClaim tras el fallo de createPago
+      .mockReturnValueOnce(supaResult({ error: null }));
+    vi.mocked(createClient).mockResolvedValue(clienteCon(from));
+
+    const r = await createAbonoMembresia("t-1", {
+      miembroId: "m-1",
+      planMembresiaId: "pm-1",
+      montoPagado: 300,
+      metodoPago: "efectivo",
+    });
+
+    // ok:true — el abono/plan ya existe. Antes esto era ok:false, lo que
+    // le hacía creer al staff que nada pasó y dejaba la puerta abierta a
+    // reintentar "Registrar abono" y crear un segundo plan huérfano.
+    expect(r).toEqual({
+      ok: true,
+      montoRestante: 700,
+      cuota1Error: "Fondos insuficientes.",
+    });
+    expect(logError).not.toHaveBeenCalledWith(
+      "credito.rollback_plan_huerfano",
+      expect.anything()
     );
   });
 });

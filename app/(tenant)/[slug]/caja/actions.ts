@@ -329,6 +329,7 @@ export interface AbonoResult {
   pagoId?: string;
   montoRestante?: number;
   reciboError?: string;
+  cuota1Error?: string;
 }
 
 /**
@@ -362,6 +363,7 @@ export const registrarAbonoAction = panelAction(
       pagoId: r.pagoId,
       montoRestante: r.montoRestante,
       reciboError: r.reciboError,
+      cuota1Error: r.cuota1Error,
     };
   }
 );
