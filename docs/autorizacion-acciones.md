@@ -300,6 +300,13 @@ no quitarle nada a nadie por accidente.
   consulta; la venta de productos usa `registrar_pagos`. Se conserva así
   en `caja.vender_productos` para no cambiar comportamiento.
 - Son 25 permisos (24 + `usar_panel`), no 23.
+- **Términos de servicio (decidido 2026-09-20)**: el modal de aceptación se
+  muestra solo al owner (`layout.tsx`, `debeAceptarTerminos`), porque
+  aceptar tiene efecto legal sobre la cuenta y eso lo hace su dueño, no
+  quien la administra. `aceptarTerminosAction` es `usar_panel` y eso es un
+  detalle sin consecuencia mientras el modal siga siendo del owner: no es
+  una divergencia que "arreglar". Si el modal se abre a más roles, la
+  política cambia con él.
 - **Decisión de producto pendiente, no bug (2026-09-20)**: el análisis de
   procesos señaló que el recepcionista no puede registrar prospectos y lo
   llamó "la tarea más de recepción del sistema" — anotar a quien pregunta

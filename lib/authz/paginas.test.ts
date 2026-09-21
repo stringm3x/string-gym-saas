@@ -56,7 +56,8 @@ describe("páginas del panel y requirePanel", () => {
       .filter((p) => /role (===|!==) "owner"/.test(p.src))
       .map((p) => p.rel)
       .sort();
-    // Los que quedan no son gates de página sino UI de un bloque; ver PR 9b.
-    expect(literales).toEqual(["caja/page.tsx", "layout.tsx"]);
+    // El único que queda es el layout raíz: onboarding y el modal de
+    // Términos son del dueño por decisión (legal), no por permiso.
+    expect(literales).toEqual(["layout.tsx"]);
   });
 });
