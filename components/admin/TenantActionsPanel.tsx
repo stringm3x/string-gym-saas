@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { LuCopy } from "react-icons/lu";
 import { ADDONS_CATALOG } from "@/lib/addons";
 import type { TenantDetail, TenantAddon } from "@/lib/queries/admin.queries";
+import { diasRestantesPrueba } from "@/lib/utils/gym-operativo";
 import { Button } from "@/components/ui/Button";
 import {
   cambiarPlanAction,
@@ -15,6 +17,7 @@ import {
   extenderPruebaAction,
   toggleAddonAction,
   resetPasswordOwnerAction,
+  reenviarInvitacionOwnerAction,
   type ActionResult,
 } from "@/app/admin/(panel)/tenants/[tenantId]/actions";
 
@@ -54,9 +57,14 @@ export function TenantActionsPanel({
   const [planMotivo, setPlanMotivo] = useState("");
   const [planActivar, setPlanActivar] = useState(tenant.plan);
   const [motivoActivar, setMotivoActivar] = useState("");
+  const [registrarPago, setRegistrarPago] = useState(false);
+  const [pagoConcepto, setPagoConcepto] = useState("mensualidad");
+  const [pagoMonto, setPagoMonto] = useState("");
+  const [pagoMetodo, setPagoMetodo] = useState("transferencia");
   const [suspMotivo, setSuspMotivo] = useState("");
   const [cancelMotivo, setCancelMotivo] = useState("");
   const [dias, setDias] = useState(14);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
 
   function run(fn: () => Promise<ActionResult>, okText = "Hecho") {
     setMsg(null);
@@ -70,6 +78,25 @@ export function TenantActionsPanel({
       }
     });
   }
+
+  function reenviarInvitacion() {
+    setMsg(null);
+    setInviteLink(null);
+    start(async () => {
+      const r = await reenviarInvitacionOwnerAction(tenant.id);
+      if (!r.ok) {
+        setMsg({ ok: false, text: r.error ?? "Error" });
+        return;
+      }
+      setMsg({ ok: true, text: "Invitación reenviada" });
+      if (r.inviteLink) setInviteLink(r.inviteLink);
+    });
+  }
+
+  const pruebaVencida =
+    tenant.estado === "prueba" &&
+    !!tenant.prueba_hasta &&
+    diasRestantesPrueba(tenant.prueba_hasta) < 0;
 
   const activeAddonIds = new Set(
     addons.filter((a) => a.estado === "activo").map((a) => a.addon_id)
@@ -177,9 +204,59 @@ export function TenantActionsPanel({
               aria-label="Motivo de la activación"
               className={`${FIELD} min-w-[160px] flex-1`}
             />
+          </div>
+
+          <label className="mt-3 flex items-center gap-2 text-sm text-text-secondary">
+            <input
+              type="checkbox"
+              checked={registrarPago}
+              onChange={(e) => setRegistrarPago(e.target.checked)}
+            />
+            Registrar el pago que originó esta activación
+          </label>
+
+          {registrarPago && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <select
+                value={pagoConcepto}
+                onChange={(e) => setPagoConcepto(e.target.value)}
+                aria-label="Concepto del pago"
+                className={`${FIELD} max-w-[150px]`}
+              >
+                <option value="mensualidad">Mensualidad</option>
+                <option value="anualidad">Anualidad</option>
+                <option value="setup">Setup</option>
+                <option value="migracion">Migración</option>
+                <option value="otro">Otro</option>
+              </select>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={pagoMonto}
+                onChange={(e) => setPagoMonto(e.target.value)}
+                placeholder="Monto"
+                aria-label="Monto del pago"
+                className={`${FIELD} max-w-[120px] font-mono tabular-nums`}
+              />
+              <select
+                value={pagoMetodo}
+                onChange={(e) => setPagoMetodo(e.target.value)}
+                aria-label="Método de pago"
+                className={`${FIELD} max-w-[150px]`}
+              >
+                <option value="transferencia">Transferencia</option>
+                <option value="efectivo">Efectivo</option>
+                <option value="deposito">Depósito</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              disabled={pending}
+              disabled={pending || (registrarPago && !pagoMonto)}
               onClick={() => {
                 if (
                   !confirm(
@@ -192,6 +269,14 @@ export function TenantActionsPanel({
                     activarPlanPagadoAction(tenant.id, {
                       plan: planActivar,
                       motivo: motivoActivar,
+                      pago: registrarPago
+                        ? {
+                            concepto: pagoConcepto,
+                            monto: Number(pagoMonto),
+                            metodo: pagoMetodo,
+                            fecha_pago: new Date().toISOString().slice(0, 10),
+                          }
+                        : undefined,
                     }),
                   "Gimnasio activado con plan pagado"
                 );
@@ -211,6 +296,13 @@ export function TenantActionsPanel({
             <span className="text-text-muted"> — {tenant.suspension_motivo}</span>
           )}
         </p>
+
+        {pruebaVencida && (
+          <p className="mb-4 border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+            La prueba ya venció; el gimnasio seguirá bloqueado hasta que
+            extiendas la prueba o actives un plan pagado.
+          </p>
+        )}
 
         {tenant.estado === "prueba" && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -281,10 +373,9 @@ export function TenantActionsPanel({
                 variant="danger"
                 disabled={pending}
                 onClick={() => {
-                  if (!confirm("¿Cancelar definitivamente este gimnasio?")) return;
                   if (
                     !confirm(
-                      "CONFIRMACIÓN FINAL: esta acción es irreversible. ¿Continuar?"
+                      "¿Cancelar este gimnasio? El dueño perderá acceso; podrás reactivarlo después desde este panel."
                     )
                   )
                     return;
@@ -345,26 +436,60 @@ export function TenantActionsPanel({
 
       {/* Contraseña del dueño */}
       <Card title="Dueño">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="truncate text-sm text-text-secondary">
             {tenant.owner_email ?? "—"}
           </p>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={pending}
-            onClick={() => {
-              if (!confirm("¿Enviar correo de recuperación de contraseña al dueño?"))
-                return;
-              run(
-                () => resetPasswordOwnerAction(tenant.id),
-                "Correo de recuperación enviado"
-              );
-            }}
-          >
-            Restablecer contraseña
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => {
+                if (
+                  !confirm(
+                    "¿Reenviar el enlace de invitación al dueño? El anterior deja de servir."
+                  )
+                )
+                  return;
+                reenviarInvitacion();
+              }}
+            >
+              Reenviar invitación
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => {
+                if (!confirm("¿Enviar correo de recuperación de contraseña al dueño?"))
+                  return;
+                run(
+                  () => resetPasswordOwnerAction(tenant.id),
+                  "Correo de recuperación enviado"
+                );
+              }}
+            >
+              Restablecer contraseña
+            </Button>
+          </div>
         </div>
+
+        {inviteLink && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 border border-border bg-bg px-4 py-3 font-mono text-dato text-text-primary">
+            <span className="min-w-0 truncate">{inviteLink}</span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="ml-auto"
+              onClick={() => navigator.clipboard.writeText(inviteLink)}
+              leftIcon={<LuCopy className="h-4 w-4" />}
+            >
+              Copiar enlace
+            </Button>
+          </div>
+        )}
       </Card>
     </div>
   );

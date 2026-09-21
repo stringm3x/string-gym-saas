@@ -63,7 +63,7 @@ export function SolicitudesList({
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [credenciales, setCredenciales] = useState<{
     email: string;
-    tempPassword: string;
+    inviteLink: string;
     slug: string;
   } | null>(null);
 
@@ -102,10 +102,10 @@ export function SolicitudesList({
         });
       } else {
         setMsg(null);
-        if (r.email && r.tempPassword && r.slug) {
+        if (r.email && r.inviteLink && r.slug) {
           setCredenciales({
             email: r.email,
-            tempPassword: r.tempPassword,
+            inviteLink: r.inviteLink,
             slug: r.slug,
           });
         }
@@ -158,8 +158,8 @@ export function SolicitudesList({
               <LuTriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 Gimnasio activado (/{credenciales.slug}), pero el correo de
-                bienvenida no se pudo enviar. Comparte estas credenciales con
-                el dueño:
+                bienvenida no se pudo enviar. Comparte este enlace con el
+                dueño:
               </span>
             </p>
             <button
@@ -172,12 +172,8 @@ export function SolicitudesList({
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-3 border border-border bg-bg px-4 py-3 font-mono text-dato text-text-primary">
-            <span>
-              Usuario: <b>{credenciales.email}</b>
-            </span>
-            <span className="text-text-muted">·</span>
-            <span>
-              Contraseña temporal: <b>{credenciales.tempPassword}</b>
+            <span className="min-w-0 truncate">
+              {credenciales.email}: <b>{credenciales.inviteLink}</b>
             </span>
             <Button
               type="button"
@@ -185,13 +181,11 @@ export function SolicitudesList({
               size="sm"
               className="ml-auto"
               onClick={() =>
-                navigator.clipboard.writeText(
-                  `Usuario: ${credenciales.email}\nContraseña temporal: ${credenciales.tempPassword}`
-                )
+                navigator.clipboard.writeText(credenciales.inviteLink)
               }
               leftIcon={<LuCopy className="h-4 w-4" />}
             >
-              Copiar
+              Copiar enlace de invitación
             </Button>
           </div>
         </div>

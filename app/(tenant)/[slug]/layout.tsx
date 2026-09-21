@@ -17,9 +17,11 @@ import {
   countNotificacionesNoLeidas,
 } from "@/lib/queries/notifications.queries";
 import { hasFeature } from "@/lib/features";
+import { diasRestantesPrueba } from "@/lib/utils/gym-operativo";
 import { SidebarWithActiveSection } from "@/components/layout/SidebarWithActiveSection";
 import { Header } from "@/components/layout/Header";
 import { TerminosGate } from "@/components/layout/TerminosGate";
+import { TrialBanner } from "@/components/layout/TrialBanner";
 import { ToastProvider } from "@/components/ui/Toast";
 import { Grano } from "@/components/arte/Grano";
 import { AddonsProvider } from "@/lib/contexts/AddonsContext";
@@ -138,6 +140,16 @@ export default async function TenantLayout({
   const debeAceptarTerminos =
     !gym.acepto_terminos_at && tenant.role === "owner";
 
+  // Banner de días restantes de prueba (Bloque 10 PR2), desde el día 10 de
+  // 14 (4 días o menos). Solo el owner: es quien puede activar un plan
+  // pagado, misma lógica que el gate de Términos de arriba.
+  const diasRestantesPruebaGym =
+    tenant.role === "owner" && gym.estado === "prueba" && gym.prueba_hasta
+      ? diasRestantesPrueba(gym.prueba_hasta)
+      : null;
+  const mostrarBannerPrueba =
+    diasRestantesPruebaGym !== null && diasRestantesPruebaGym <= 4;
+
   return (
     <ToastProvider>
       {debeAceptarTerminos && <TerminosGate />}
@@ -164,6 +176,13 @@ export default async function TenantLayout({
               notificaciones={notificaciones}
               notificacionesNoLeidas={notificacionesNoLeidas}
             />
+
+            {mostrarBannerPrueba && (
+              <TrialBanner
+                nombre={gym.nombre}
+                diasRestantes={diasRestantesPruebaGym}
+              />
+            )}
 
             <main className="flex-1 overflow-y-auto px-8 py-6">{children}</main>
           </div>

@@ -36,17 +36,25 @@ export async function getOnboardingEstado(
 ): Promise<OnboardingEstado> {
   const supabase = await createClient();
 
+  // El demo se excluye del conteo por id, no por `notas <> DEMO_MIEMBRO_NOTAS`:
+  // en SQL, `NULL <> 'x'` no es verdadero, así que ese filtro habría excluido
+  // también a cualquier socio real con notas vacías.
+  const demo = await getDemoMiembro(tenantId);
+
+  let miembrosQuery = supabase
+    .from("miembros")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("archivado", false);
+  if (demo) miembrosQuery = miembrosQuery.neq("id", demo.id);
+
   const [planes, miembros, productos, gym] = await Promise.all([
     supabase
       .from("planes_membresia")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenantId)
       .eq("activo", true),
-    supabase
-      .from("miembros")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .eq("archivado", false),
+    miembrosQuery,
     supabase
       .from("productos")
       .select("id", { count: "exact", head: true })

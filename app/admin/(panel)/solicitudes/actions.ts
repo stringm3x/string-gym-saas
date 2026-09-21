@@ -6,14 +6,14 @@ import {
   updateSolicitudEstado,
   activarSolicitud,
 } from "@/lib/queries/solicitudes.queries";
-import { sendCredencialesOwner } from "@/lib/email/solicitudes";
+import { sendInvitacionOwner } from "@/lib/email/solicitudes";
 
 export interface SolicitudActionResult {
   ok: boolean;
   error?: string;
   slug?: string;
   email?: string;
-  tempPassword?: string;
+  inviteLink?: string;
   emailEnviado?: boolean;
 }
 
@@ -47,16 +47,16 @@ export const activarSolicitudAction = adminAction(
     const r = await activarSolicitud(id);
     if (!r.ok) return { ok: false, error: r.error };
 
-    // Email de bienvenida con credenciales (no bloquea la activación, pero su
-    // resultado sí se reporta — si falla, el admin necesita las credenciales
-    // para compartirlas manualmente).
+    // Email de bienvenida con el enlace de invitación (no bloquea la
+    // activación, pero su resultado sí se reporta — si falla, el admin
+    // necesita el enlace para compartirlo manualmente).
     let emailEnviado = false;
-    if (r.email && r.slug && r.nombreGym && r.tempPassword) {
-      emailEnviado = await sendCredencialesOwner({
+    if (r.email && r.slug && r.nombreGym && r.inviteLink) {
+      emailEnviado = await sendInvitacionOwner({
         email: r.email,
         nombreGym: r.nombreGym,
         slug: r.slug,
-        tempPassword: r.tempPassword,
+        inviteLink: r.inviteLink,
       });
     }
 
@@ -65,7 +65,7 @@ export const activarSolicitudAction = adminAction(
       ok: true,
       slug: r.slug,
       email: r.email,
-      tempPassword: r.tempPassword,
+      inviteLink: r.inviteLink,
       emailEnviado,
     };
   }

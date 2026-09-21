@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ADDONS_CATALOG } from "@/lib/addons";
 import { exportTenantData } from "@/lib/utils/export-tenant";
 import { sendDatosExportados } from "@/lib/email/export-tenant";
+import { sendInvitacionOwner } from "@/lib/email/solicitudes";
 import {
   cambiarPlanSchema,
   suspenderSchema,
@@ -91,17 +92,43 @@ export const marcarFundadorAction = adminAction(
 
 // ─────────────────────────── Estado del tenant ───────────────────────────
 
-/** Convierte un tenant en prueba a plan pagado: fija plan + estado activo. */
+/**
+ * Convierte un tenant en prueba a plan pagado: fija plan + estado activo.
+ * El pago es opcional (founders/cortesías se activan sin uno); si se manda,
+ * queda en admin_tenant_pagos — antes esta acción solo tocaba columnas de
+ * `gyms` y activar un plan pagado no dejaba ningún rastro de que entró
+ * dinero, igual que "Registrar pago manual" pero sin el paso extra.
+ */
 export const activarPlanPagadoAction = adminAction(
   "admin.activar_plan_pagado",
   {},
   async (
-    _ctx,
+    { admin: adminCtx },
     tenantId: string,
-    input: { plan: string; motivo?: string }
+    input: {
+      plan: string;
+      motivo?: string;
+      pago?: {
+        concepto: string;
+        monto: number;
+        metodo: string;
+        fecha_pago: string;
+        referencia?: string;
+        notas?: string;
+      };
+    }
   ): Promise<ActionResult> => {
-    const parsed = cambiarPlanSchema.safeParse(input);
+    const parsed = cambiarPlanSchema.safeParse({
+      plan: input.plan,
+      motivo: input.motivo,
+    });
     if (!parsed.success) return { ok: false, error: "Datos inválidos." };
+
+    let pagoParsed: ReturnType<typeof registrarPagoSchema.safeParse> | null = null;
+    if (input.pago) {
+      pagoParsed = registrarPagoSchema.safeParse(input.pago);
+      if (!pagoParsed.success) return { ok: false, error: "Datos del pago inválidos." };
+    }
 
     const admin = createAdminClient();
     const { error } = await admin
@@ -115,9 +142,43 @@ export const activarPlanPagadoAction = adminAction(
       .eq("id", tenantId);
     if (error) return { ok: false, error: error.message };
 
+    if (pagoParsed?.success) {
+      const { error: pagoError } = await admin.from("admin_tenant_pagos").insert({
+        tenant_id: tenantId,
+        concepto: pagoParsed.data.concepto,
+        monto: pagoParsed.data.monto,
+        metodo: pagoParsed.data.metodo,
+        fecha_pago: pagoParsed.data.fecha_pago,
+        referencia: pagoParsed.data.referencia ?? null,
+        notas: pagoParsed.data.notas ?? null,
+        admin_user_id: adminCtx.user_id,
+        admin_email: adminCtx.email,
+      });
+      // El plan ya quedó activo; si el pago no se pudo registrar, se avisa
+      // pero no se deshace la activación (mismo trade-off que el resto del
+      // setup best-effort de este archivo — el admin puede registrar el
+      // pago a mano desde "Registrar pago manual").
+      if (pagoError) {
+        await logEvent("tenant.activar_plan_pagado", tenantId, {
+          plan: parsed.data.plan,
+          motivo: parsed.data.motivo ?? null,
+          pago_error: pagoError.message,
+        });
+        revalidate(tenantId);
+        return {
+          ok: false,
+          error:
+            "Plan activado, pero no se pudo registrar el pago. ¿Aplicaste la migración 023? (" +
+            pagoError.message +
+            ")",
+        };
+      }
+    }
+
     await logEvent("tenant.activar_plan_pagado", tenantId, {
       plan: parsed.data.plan,
       motivo: parsed.data.motivo ?? null,
+      pago_registrado: !!pagoParsed?.success,
     });
     revalidate(tenantId);
     return { ok: true };
@@ -134,10 +195,19 @@ export const suspenderTenantAction = adminAction(
     }
 
     const admin = createAdminClient();
+    // Guarda el estado actual antes de pisarlo: reactivarTenantAction lo
+    // restaura en vez de asumir siempre "activo" (requiere sql/069).
+    const { data: cur } = await admin
+      .from("gyms")
+      .select("estado")
+      .eq("id", tenantId)
+      .maybeSingle();
+
     const { error } = await admin
       .from("gyms")
       .update({
         estado: "suspendido",
+        estado_previo: cur?.estado ?? "activo",
         suspendido_at: new Date().toISOString(),
         suspension_motivo: parsed.data.motivo,
       })
@@ -155,17 +225,30 @@ export const reactivarTenantAction = adminAction(
   {},
   async (_ctx, tenantId: string): Promise<ActionResult> => {
     const admin = createAdminClient();
+    // Restaura el estado que tenía ANTES de suspenderse/cancelarse — un
+    // tenant que estaba en prueba no debe reactivarse como plan pagado.
+    // Sin sql/069 aplicada, estado_previo no existe y cae a "activo" (igual
+    // que antes de este cambio).
+    const { data: cur } = await admin
+      .from("gyms")
+      .select("estado_previo")
+      .eq("id", tenantId)
+      .maybeSingle();
+
     const { error } = await admin
       .from("gyms")
       .update({
-        estado: "activo",
+        estado: cur?.estado_previo ?? "activo",
+        estado_previo: null,
         suspendido_at: null,
         suspension_motivo: null,
       })
       .eq("id", tenantId);
     if (error) return { ok: false, error: error.message };
 
-    await logEvent("tenant.reactivar", tenantId);
+    await logEvent("tenant.reactivar", tenantId, {
+      estado_restaurado: cur?.estado_previo ?? "activo",
+    });
     revalidate(tenantId);
     return { ok: true };
   }
@@ -185,6 +268,14 @@ export const cancelarTenantAction = adminAction(
     }
 
     const admin = createAdminClient();
+
+    // Guarda el estado actual antes de pisarlo: reactivarTenantAction lo
+    // restaura en vez de asumir siempre "activo".
+    const { data: curEstado } = await admin
+      .from("gyms")
+      .select("estado")
+      .eq("id", tenantId)
+      .maybeSingle();
 
     // Exportación de datos: si se pidió, se genera el ZIP y se envía al owner
     // ANTES de cancelar. Si el envío falla, se marca pendiente para reintentar.
@@ -222,6 +313,7 @@ export const cancelarTenantAction = adminAction(
       .from("gyms")
       .update({
         estado: "cancelado",
+        estado_previo: curEstado?.estado ?? "activo",
         suspendido_at: new Date().toISOString(),
         suspension_motivo: parsed.data.motivo,
         exportar_datos_pendiente: exportPendiente,
@@ -356,6 +448,61 @@ export const resetPasswordOwnerAction = adminAction(
 
     await logEvent("tenant.reset_password_owner", tenantId, { email });
     return { ok: true };
+  }
+);
+
+export interface ReenviarInvitacionResult extends ActionResult {
+  inviteLink?: string;
+}
+
+/**
+ * Regenera el enlace de invitación del dueño (mismo mecanismo que
+ * activarSolicitud) y reintenta el email. Para cuando el primer enlace
+ * caducó antes de que el dueño lo abriera — el link de Supabase para
+ * invite/recovery expira según "Email OTP Expiration" en el dashboard de
+ * Auth del proyecto; generar uno nuevo invalida el anterior.
+ */
+export const reenviarInvitacionOwnerAction = adminAction(
+  "admin.reenviar_invitacion_owner",
+  {},
+  async (_ctx, tenantId: string): Promise<ReenviarInvitacionResult> => {
+    const admin = createAdminClient();
+    const { data: gym } = await admin
+      .from("gyms")
+      .select("owner_id, nombre, slug")
+      .eq("id", tenantId)
+      .maybeSingle();
+    if (!gym?.owner_id) return { ok: false, error: "Owner no encontrado." };
+
+    const { data: u } = await admin.auth.admin.getUserById(gym.owner_id);
+    const email = u?.user?.email;
+    if (!email) return { ok: false, error: "El owner no tiene email." };
+
+    const redirectTo = process.env.APP_DOMAIN
+      ? `https://${process.env.APP_DOMAIN}/auth/nueva-password`
+      : undefined;
+    const { data: link, error: linkError } = await admin.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { redirectTo },
+    });
+    if (linkError || !link) {
+      return { ok: false, error: linkError?.message ?? "No se pudo generar el enlace." };
+    }
+    const inviteLink = link.properties.action_link;
+
+    const emailEnviado = await sendInvitacionOwner({
+      email,
+      nombreGym: gym.nombre,
+      slug: gym.slug,
+      inviteLink,
+    });
+
+    await logEvent("tenant.reenviar_invitacion_owner", tenantId, {
+      email,
+      email_enviado: emailEnviado,
+    });
+    return { ok: true, inviteLink };
   }
 );
 

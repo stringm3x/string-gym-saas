@@ -23,6 +23,9 @@ export interface GymInfo {
   acepto_terminos_at?: string | null;
   /** Guía de primer acceso completada (Fase P.1). */
   onboarding_completado?: boolean;
+  /** Para el banner de días restantes de prueba (Bloque 10 PR2). */
+  estado: string;
+  prueba_hasta: string | null;
 }
 
 export interface GymFull extends GymInfo {
@@ -44,7 +47,9 @@ export async function getGymInfo(tenantId: string): Promise<GymInfo | null> {
 
   const { data, error } = await supabase
     .from("gyms")
-    .select("id, slug, nombre, logo_url, acepto_terminos_at, onboarding_completado")
+    .select(
+      "id, slug, nombre, logo_url, acepto_terminos_at, onboarding_completado, estado, prueba_hasta"
+    )
     .eq("id", tenantId)
     .single();
 

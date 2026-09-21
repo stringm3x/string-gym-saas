@@ -52,6 +52,7 @@ function Grupo({
 export function TenantsAtencionList({ data }: { data: TenantsAtencion }) {
   const total =
     data.pruebaPorVencer.length +
+    data.pruebaVencida.length +
     data.suspendidosViejos.length +
     data.exportPendiente.length;
 
@@ -70,6 +71,11 @@ export function TenantsAtencionList({ data }: { data: TenantsAtencion }) {
           titulo="Prueba por vencer (7 días)"
           items={data.pruebaPorVencer}
           accent="bg-warning"
+        />
+        <Grupo
+          titulo="Prueba vencida"
+          items={data.pruebaVencida}
+          accent="bg-danger"
         />
         <Grupo
           titulo="Suspendidos hace +30 días"

@@ -454,6 +454,7 @@ export interface AtencionTenant {
 
 export interface TenantsAtencion {
   pruebaPorVencer: AtencionTenant[];
+  pruebaVencida: AtencionTenant[];
   suspendidosViejos: AtencionTenant[];
   exportPendiente: AtencionTenant[];
 }
@@ -466,7 +467,9 @@ export async function getTenantsRequierenAtencion(): Promise<TenantsAtencion> {
   const admin = createAdminClient();
   const { data: gyms } = await admin
     .from("gyms")
-    .select("id, nombre, slug, plan, estado, prueba_hasta, suspendido_at");
+    .select(
+      "id, nombre, slug, plan, estado, prueba_hasta, suspendido_at, exportar_datos_pendiente"
+    );
 
   const rows = gyms ?? [];
   const ahora = Date.now();
@@ -474,7 +477,9 @@ export async function getTenantsRequierenAtencion(): Promise<TenantsAtencion> {
   const hace30d = ahora - 30 * 86_400_000;
 
   const pruebaPorVencer: AtencionTenant[] = [];
+  const pruebaVencida: AtencionTenant[] = [];
   const suspendidosViejos: AtencionTenant[] = [];
+  const exportPendiente: AtencionTenant[] = [];
 
   for (const g of rows) {
     if (g.estado === "prueba" && g.prueba_hasta) {
@@ -488,6 +493,15 @@ export async function getTenantsRequierenAtencion(): Promise<TenantsAtencion> {
           plan: g.plan,
           estado: g.estado,
           detalle: `Vence en ${d} día${d === 1 ? "" : "s"}`,
+        });
+      } else if (t < ahora) {
+        pruebaVencida.push({
+          id: g.id,
+          nombre: g.nombre,
+          slug: g.slug,
+          plan: g.plan,
+          estado: g.estado,
+          detalle: `Venció el ${new Date(g.prueba_hasta).toLocaleDateString("es-MX", { timeZone: TZ_MX })}`,
         });
       }
     }
@@ -503,36 +517,23 @@ export async function getTenantsRequierenAtencion(): Promise<TenantsAtencion> {
         });
       }
     }
+    // Antes esto leía meta.exportar_datos_pendiente de admin_events, una
+    // clave que el evento nunca escribió (escribe exportar_solicitado/
+    // export_enviado) — el bucket quedaba permanentemente vacío. La verdad
+    // vive en esta columna de gyms, ya seleccionada arriba.
+    if (g.exportar_datos_pendiente === true) {
+      exportPendiente.push({
+        id: g.id,
+        nombre: g.nombre,
+        slug: g.slug,
+        plan: g.plan,
+        estado: g.estado,
+        detalle: "Exportación de datos pendiente",
+      });
+    }
   }
 
-  // Export pendiente: cancelaciones con exportar_datos_pendiente = true.
-  const byId = new Map(rows.map((g) => [g.id, g]));
-  const { data: cancelEvents } = await admin
-    .from("admin_events")
-    .select("target_tenant_id, metadata")
-    .eq("accion", "tenant.cancelar");
-
-  const exportPendiente: AtencionTenant[] = [];
-  const vistos = new Set<string>();
-  for (const e of cancelEvents ?? []) {
-    const meta = (e.metadata ?? {}) as Record<string, unknown>;
-    if (meta.exportar_datos_pendiente !== true) continue;
-    const id = e.target_tenant_id as string | null;
-    if (!id || vistos.has(id)) continue;
-    vistos.add(id);
-    const g = byId.get(id);
-    if (!g) continue;
-    exportPendiente.push({
-      id: g.id,
-      nombre: g.nombre,
-      slug: g.slug,
-      plan: g.plan,
-      estado: g.estado,
-      detalle: "Exportación de datos pendiente",
-    });
-  }
-
-  return { pruebaPorVencer, suspendidosViejos, exportPendiente };
+  return { pruebaPorVencer, pruebaVencida, suspendidosViejos, exportPendiente };
 }
 
 export interface EventoLogRow {

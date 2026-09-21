@@ -4,7 +4,6 @@ import { STRING_SOPORTE_WHATSAPP } from "@/lib/constants";
 const FROM = "STRING GYM <noreply@stringwebs.com>";
 const ALERTA_TO = "hola@stringwebs.com";
 const DEMO_URL = "https://app.gym.stringwebs.com/gym-demo/hoy";
-const LOGIN_URL = "https://app.gym.stringwebs.com/login";
 
 function resend(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;
@@ -84,20 +83,21 @@ export async function sendBienvenidaSolicitud(s: SolicitudData): Promise<void> {
 }
 
 /**
- * Email con credenciales al owner cuando se activa su gym. No lanza.
- * Devuelve true si Resend confirmó el envío, false si no hay API key
+ * Email de invitación al owner cuando se activa su gym: nunca existe una
+ * contraseña temporal, el dueño la crea él mismo al abrir `inviteLink`
+ * (Bloque 10 PR2 — mismo mecanismo que las invitaciones de staff). No
+ * lanza. Devuelve true si Resend confirmó el envío, false si no hay API key
  * configurada o el envío falló — el caller (admin) necesita saberlo para
- * poder compartir las credenciales manualmente si el email no salió.
+ * poder compartir el enlace manualmente si el email no salió.
  */
-export async function sendCredencialesOwner(params: {
+export async function sendInvitacionOwner(params: {
   email: string;
   nombreGym: string;
   slug: string;
-  tempPassword: string;
+  inviteLink: string;
 }): Promise<boolean> {
   const r = resend();
   if (!r) return false;
-  const url = `https://app.gym.stringwebs.com/${params.slug}/hoy`;
   try {
     const { error } = await r.emails.send({
       from: FROM,
@@ -106,13 +106,9 @@ export async function sendCredencialesOwner(params: {
       html: `
         <h2>¡Bienvenido a STRING GYM!</h2>
         <p>Tu gimnasio <b>${esc(params.nombreGym)}</b> ya está activo.</p>
-        <p><b>Accede aquí:</b> <a href="${LOGIN_URL}">${LOGIN_URL}</a></p>
-        <table>
-          <tr><td style="padding:4px 12px 4px 0;color:#666">Usuario</td><td><b>${esc(params.email)}</b></td></tr>
-          <tr><td style="padding:4px 12px 4px 0;color:#666">Contraseña temporal</td><td><b>${esc(params.tempPassword)}</b></td></tr>
-        </table>
-        <p>Por seguridad, <b>cambia tu contraseña</b> después de entrar.</p>
-        <p>Tu panel: <a href="${url}">${url}</a></p>
+        <p><a href="${esc(params.inviteLink)}"><b>Crea tu contraseña y entra a tu panel</b></a></p>
+        <p>Este enlace es de un solo uso. Si ya venció, pide que te lo
+        reenvíen desde STRING.</p>
         <p>— El equipo de STRING GYM</p>`,
     });
     return !error;
