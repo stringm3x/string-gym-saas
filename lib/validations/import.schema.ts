@@ -1,11 +1,28 @@
 import { z } from "zod";
 
-const fechaIso = z
-  .string()
-  .trim()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, { error: "Fecha inválida (usa YYYY-MM-DD)" })
-  .optional()
-  .or(z.literal(""));
+/**
+ * Acepta AAAA-MM-DD (ya lo aceptaba) o DD/MM/AAAA (bloque 09: Excel en
+ * español exporta así, y antes la fila entera se rechazaba). Normaliza
+ * siempre a AAAA-MM-DD — el resto del código (bulkCreateMiembros,
+ * comparaciones de fecha) asume ese formato.
+ */
+function normalizarFecha(val: string, ctx: z.RefinementCtx): string {
+  const v = val.trim();
+  if (v === "") return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const dmy = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
+  if (dmy) {
+    const [, dd, mm, yyyy] = dmy;
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  ctx.addIssue({
+    code: "custom",
+    message: "Fecha inválida (usa AAAA-MM-DD o DD/MM/AAAA)",
+  });
+  return z.NEVER;
+}
+
+const fechaIso = z.string().transform(normalizarFecha).optional();
 
 export const csvRowSchema = z
   .object({

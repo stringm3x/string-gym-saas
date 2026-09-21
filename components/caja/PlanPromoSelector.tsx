@@ -19,6 +19,10 @@ interface PlanPromoSelectorProps {
   onChange: (sel: SeleccionMembresia) => void;
   /** Permite elegir un monto/duración manual fuera de los planes/promos. Default true. */
   allowCustom?: boolean;
+  /** true si `value` es un default preseleccionado, no una elección activa
+   * todavía — marca esa tarjeta como "Sugerido" en vez de verse idéntica a
+   * una elegida a propósito. */
+  sugerido?: boolean;
 }
 
 export function PlanPromoSelector({
@@ -27,6 +31,7 @@ export function PlanPromoSelector({
   value,
   onChange,
   allowCustom = true,
+  sugerido = false,
 }: PlanPromoSelectorProps) {
   return (
     <div className="space-y-4">
@@ -45,6 +50,7 @@ export function PlanPromoSelector({
                     p.dias_duracion === 1 ? "día" : "días"
                   }`}
                   price={formatMoneda(p.precio)}
+                  badge={selected && sugerido ? "Sugerido" : undefined}
                 />
               );
             })}

@@ -35,6 +35,9 @@ export interface MiembroFormState {
   pagoId?: string;
   /** El cobro de inscripción se registró; el recibo por email no salió. */
   reciboError?: string;
+  /** Se pidió cobrar la inscripción pero el cobro en sí falló — el socio
+   * queda creado igual, sin pago. */
+  cobroError?: string;
   /** Devuelto si nombre/teléfono/correo coincide con un miembro existente. */
   duplicate?: MiembroDuplicado | null;
 }
@@ -150,6 +153,7 @@ export const createMiembroAction = panelAction(
     //    actualiza la fecha_vencimiento del miembro a periodo_fin.
     let pagoId: string | undefined;
     let reciboError: string | undefined;
+    let cobroError: string | undefined;
     if (data.cobrar_inscripcion && data.monto_pago && data.metodo_pago) {
       const pagoResult = await createPago(tenant.id, {
         miembro_id: result.id,
@@ -167,6 +171,12 @@ export const createMiembroAction = panelAction(
         pagoId = pagoResult.id;
         reciboError = pagoResult.reciboError;
         revalidatePath(`/${tenant.slug}/caja`);
+      } else {
+        // El socio ya está creado — esto no es un fallo total. Antes el
+        // error de createPago se descartaba en silencio: el toast decía
+        // "Miembro registrado" sin importar si se cobró o no, y nadie se
+        // enteraba de que la inscripción quedó sin pago.
+        cobroError = pagoResult.error;
       }
     }
 
@@ -184,6 +194,7 @@ export const createMiembroAction = panelAction(
       miembroId: result.id,
       pagoId,
       reciboError,
+      cobroError,
     };
   }
 );

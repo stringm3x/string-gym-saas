@@ -38,6 +38,10 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  // Filas excluidas de la importación — duplicados (en el CSV o ya en la
+  // base) arrancan excluidos por default; antes se importaban igual, solo
+  // con una advertencia visual que nadie tenía que atender.
+  const [excluidas, setExcluidas] = useState<Set<number>>(new Set());
 
   function pickFile(f: File | null) {
     if (!f) return;
@@ -64,14 +68,34 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
       return;
     }
     setPreview(res.preview);
+    setExcluidas(
+      new Set(
+        res.preview.validRows
+          .filter((r) => r.duplicateInCSV || r.duplicateInDB)
+          .map((r) => r.row)
+      )
+    );
     setStep(2);
   }
+
+  function toggleFila(row: number) {
+    setExcluidas((prev) => {
+      const next = new Set(prev);
+      if (next.has(row)) next.delete(row);
+      else next.add(row);
+      return next;
+    });
+  }
+
+  const filasAIncluir = preview
+    ? preview.validRows.filter((r) => !excluidas.has(r.row))
+    : [];
 
   async function importar() {
     if (!preview) return;
     setImporting(true);
     setStep(3);
-    const res = await importarMiembrosAction(preview.validRows.map((r) => r.data));
+    const res = await importarMiembrosAction(filasAIncluir.map((r) => r.data));
     setImporting(false);
     setResult(res);
   }
@@ -80,6 +104,7 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
     setFile(null);
     setPreview(null);
     setResult(null);
+    setExcluidas(new Set());
     setStep(1);
   }
 
@@ -205,7 +230,20 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
             </div>
           )}
 
-          <CSVPreviewTable rows={preview.validRows} />
+          {excluidas.size > 0 && (
+            <p className="text-sm text-text-muted">
+              {excluidas.size} fila{excluidas.size !== 1 ? "s" : ""} duplicada
+              {excluidas.size !== 1 ? "s" : ""} excluida{excluidas.size !== 1 ? "s" : ""}{" "}
+              de la importación por default — marca la casilla de una fila
+              para incluirla igual (ej. un socio que se dio de baja y vuelve).
+            </p>
+          )}
+
+          <CSVPreviewTable
+            rows={preview.validRows}
+            excluidas={excluidas}
+            onToggle={toggleFila}
+          />
 
           <ImportErrorsList errors={preview.invalidRows} />
 
@@ -213,12 +251,9 @@ export function ImportarMiembrosWizard({ slug, planesNombres }: WizardProps) {
             <Button variant="secondary" onClick={reset}>
               Volver
             </Button>
-            <Button
-              onClick={importar}
-              disabled={preview.validRows.length === 0}
-            >
-              Importar {preview.validRows.length} miembro
-              {preview.validRows.length !== 1 ? "s" : ""}
+            <Button onClick={importar} disabled={filasAIncluir.length === 0}>
+              Importar {filasAIncluir.length} miembro
+              {filasAIncluir.length !== 1 ? "s" : ""}
             </Button>
           </div>
         </div>

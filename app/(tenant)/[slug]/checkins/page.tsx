@@ -95,7 +95,7 @@ export default async function CheckinsPage({ params }: PageProps) {
         )}
       </div>
 
-      <CheckinKiosk />
+      <CheckinKiosk slug={slug} />
 
       {canAutoservicio && <AutorizacionesPendientes codigos={codigosPendientes} />}
 

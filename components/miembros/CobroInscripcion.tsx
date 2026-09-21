@@ -65,6 +65,14 @@ export function CobroInscripcion({
         ? { kind: "promo", promo: promocionesMembresia[0] }
         : { kind: "custom" }
   );
+  // El default de arriba se ve igual que una elección activa (mismo borde
+  // verde) — nada le decía al staff que era un default. Con esto, se avisa
+  // hasta que alguien de verdad toque el selector.
+  const [selTocado, setSelTocado] = useState(false);
+  function cambiarSel(sel: SeleccionMembresia) {
+    setSelTocado(true);
+    setSelMem(sel);
+  }
   const [metodo, setMetodo] = useState<Metodo>("efectivo");
   const [periodoInicio, setPeriodoInicio] = useState("");
   const [periodoFin, setPeriodoFin] = useState("");
@@ -160,12 +168,19 @@ export function CobroInscripcion({
         <div className="space-y-4 border-t border-border px-4 py-4">
           <div className="space-y-3">
             <Label>Plan o promoción</Label>
+            {!selTocado && (
+              <p className="text-sm text-warning">
+                Sugerido: {selMem.kind === "plan" ? selMem.plan.nombre : selMem.kind === "promo" ? selMem.promo.nombre : ""}.
+                Confírmalo o elige otro antes de registrar.
+              </p>
+            )}
             <PlanPromoSelector
               planes={planes}
               promocionesMembresia={promocionesMembresia}
               value={selMem}
-              onChange={setSelMem}
+              onChange={cambiarSel}
               allowCustom={false}
+              sugerido={!selTocado}
             />
             {planes.length === 0 && promocionesMembresia.length === 0 && (
               <p className="text-sm text-text-muted">

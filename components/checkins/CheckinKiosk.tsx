@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { LuSearch, LuCircleCheck, LuCircleAlert } from "react-icons/lu";
+import Link from "next/link";
+import { LuSearch, LuCircleCheck, LuCircleAlert, LuUserPlus } from "react-icons/lu";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { TZ_MX } from "@/lib/utils/dates";
@@ -32,7 +33,7 @@ interface LastCheckin {
 
 const DEBOUNCE_MS = 200;
 
-export function CheckinKiosk() {
+export function CheckinKiosk({ slug }: { slug: string }) {
   const { error: toastError } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -133,8 +134,19 @@ export function CheckinKiosk() {
         {(results.length > 0 || (query.trim().length >= 2 && !isSearching)) && (
           <div className="absolute inset-x-0 top-full z-10 mt-2 overflow-hidden border border-border bg-surface">
             {results.length === 0 ? (
-              <div className="px-5 py-6 text-center text-sm text-text-muted">
-                Sin coincidencias para “{query}”
+              <div className="flex flex-col items-center gap-3 px-5 py-6 text-center">
+                <p className="text-sm text-text-muted">
+                  Sin coincidencias para “{query}”
+                </p>
+                <Link
+                  href={`/${slug}/miembros/nuevo?${
+                    /^\d+$/.test(query.trim()) ? "telefono" : "nombre"
+                  }=${encodeURIComponent(query.trim())}`}
+                  className="inline-flex h-11 items-center gap-2 border border-border px-4 text-sm text-text-primary transition-colors hover:border-brand-green hover:text-brand-green"
+                >
+                  <LuUserPlus className="h-4 w-4" aria-hidden="true" />
+                  Crear socio “{query}”
+                </Link>
               </div>
             ) : (
               <ul className="divide-y divide-border">

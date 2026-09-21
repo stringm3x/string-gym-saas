@@ -322,8 +322,9 @@ function CambiarPlanModal({
           <div className="space-y-2 border border-border bg-bg px-4 py-3 text-sm">
             {calculo.tipo === "sin_prorrateo" ? (
               <p className="text-text-secondary">
-                {MOTIVO_SIN_PRORRATEO_MSG[calculo.motivo]} Se aplica el
-                cálculo simple: hoy + la duración del plan nuevo.
+                {MOTIVO_SIN_PRORRATEO_MSG[calculo.motivo]} Sin pago
+                registrado: se conserva la vigencia actual. El plan nuevo
+                aplica desde la próxima renovación.
               </p>
             ) : (
               <>
@@ -350,9 +351,13 @@ function CambiarPlanModal({
               </>
             )}
             <div className="flex items-center justify-between gap-4 border-t border-border pt-2">
-              <span className="text-text-secondary">Nueva vigencia hasta</span>
+              <span className="text-text-secondary">
+                {calculo.tipo === "prorrateo" ? "Nueva vigencia hasta" : "Vigencia (sin cambio)"}
+              </span>
               <span className="font-mono text-dato tabular-nums text-text-primary">
-                {formatearFechaMX(calculo.nuevoVencimiento)}
+                {calculo.nuevoVencimiento
+                  ? formatearFechaMX(calculo.nuevoVencimiento)
+                  : "Sin vigencia registrada"}
               </span>
             </div>
           </div>
