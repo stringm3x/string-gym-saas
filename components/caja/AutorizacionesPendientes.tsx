@@ -9,6 +9,7 @@ import {
   LuCreditCard,
   LuCheck,
   LuX,
+  LuVolumeOff,
 } from "react-icons/lu";
 import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
@@ -32,16 +33,36 @@ function restante(expiraAt: string, now: number): string {
   return `${mm}:${ss}`;
 }
 
-/** Beep sintetizado (sin archivo de audio) para un código nuevo. Best-effort:
- * si el navegador bloquea audio sin gesto previo, simplemente no suena. */
-function reproducirBeep(): void {
+// Un solo AudioContext compartido en vez de uno por beep: así "resume()" lo
+// desbloquea para todos los beeps siguientes, no solo el que lo creó, y
+// podemos consultar su estado para saber si el navegador lo bloqueó.
+let audioCtx: AudioContext | null = null;
+
+function getAudioContext(): AudioContext | null {
   try {
     const Ctx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext?: typeof AudioContext })
         .webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
+    if (!Ctx) return null;
+    if (!audioCtx) audioCtx = new Ctx();
+    return audioCtx;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Beep sintetizado (sin archivo de audio) para un código nuevo. Devuelve si
+ * quedó audible: Chrome/Safari crean el AudioContext en "suspended" sin un
+ * gesto previo del usuario en la página (ej. la tablet de recepción con la
+ * pantalla abierta desde la mañana, nadie tocó nada) — el beep no truena y,
+ * sin este chequeo, nadie se entera de que no sonó.
+ */
+function reproducirBeep(): boolean {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return false;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
@@ -51,9 +72,9 @@ function reproducirBeep(): void {
     osc.connect(gain).connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.3);
-    osc.onended = () => ctx.close();
+    return ctx.state === "running";
   } catch {
-    // No es crítico: el aviso visual sigue funcionando.
+    return false;
   }
 }
 
@@ -67,6 +88,7 @@ export function AutorizacionesPendientes({
   const [now, setNow] = useState(() => Date.now());
   const [confirmar, setConfirmar] = useState<CodigoPendiente | null>(null);
   const [pending, start] = useTransition();
+  const [sonidoBloqueado, setSonidoBloqueado] = useState(false);
   const idsVistosRef = useRef<Set<string> | null>(null);
 
   // Tick del countdown (1s) y polling de refresco (30s) mientras haya pendientes.
@@ -79,6 +101,23 @@ export function AutorizacionesPendientes({
     };
   }, [router]);
 
+  // Cualquier toque en la pantalla (autorizar, rechazar, lo que sea) cuenta
+  // como el gesto que el navegador pide para desbloquear audio — de ahí en
+  // adelante los beeps sí suenan, aunque nadie haya tocado nada desde que
+  // se abrió la pantalla en la mañana.
+  useEffect(() => {
+    function intentarDesbloquear() {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === "suspended") {
+        ctx.resume().then(() => {
+          if (ctx.state === "running") setSonidoBloqueado(false);
+        });
+      }
+    }
+    document.addEventListener("pointerdown", intentarDesbloquear);
+    return () => document.removeEventListener("pointerdown", intentarDesbloquear);
+  }, []);
+
   // Beep solo cuando aparece un código que no estaba antes — no en cada
   // poll de 30s mientras el mismo código sigue pendiente, ni en el montaje
   // inicial (códigos que ya estaban pendientes al abrir la página).
@@ -86,7 +125,7 @@ export function AutorizacionesPendientes({
     const ids = new Set(codigos.map((c) => c.id));
     if (idsVistosRef.current) {
       const hayNuevo = codigos.some((c) => !idsVistosRef.current!.has(c.id));
-      if (hayNuevo) reproducirBeep();
+      if (hayNuevo && !reproducirBeep()) setSonidoBloqueado(true);
     }
     idsVistosRef.current = ids;
   }, [codigos]);
@@ -122,6 +161,13 @@ export function AutorizacionesPendientes({
 
   return (
     <section className="border border-warning/40 bg-surface">
+      {sonidoBloqueado && (
+        <p className="flex items-center gap-2 border-b border-warning/40 bg-warning/10 px-5 py-2 text-sm text-warning">
+          <LuVolumeOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+          El navegador bloqueó el sonido de aviso. Tocá cualquier parte de la
+          pantalla para activarlo.
+        </p>
+      )}
       <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
         <h3 className="flex items-center gap-2 text-base font-semibold text-text-primary">
           <LuBellRing className="h-4 w-4 text-warning" aria-hidden="true" />
