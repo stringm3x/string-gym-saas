@@ -546,8 +546,10 @@ export type CambioPlanCalculo =
   | {
       tipo: "sin_prorrateo";
       motivo: CambioPlanSinProrrateoMotivo;
-      /** Comportamiento de siempre: hoy + duración del plan nuevo. */
-      nuevoVencimiento: string;
+      /** Sin prorrateo, la fecha NO se mueve — se conserva la vigencia
+       * actual del socio tal cual (null si nunca tuvo una). El plan nuevo
+       * aplica desde la próxima renovación real. */
+      nuevoVencimiento: string | null;
     };
 
 /**
@@ -565,8 +567,14 @@ export type CambioPlanCalculo =
  * periodo entero del plan nuevo, el excedente se emite como nota de crédito
  * (mismo mecanismo que un reembolso) en vez de perderse.
  *
- * Sin prorrateo (cae al comportamiento de siempre: hoy + duración del nuevo
- * plan, sin crédito) cuando:
+ * Sin prorrateo, la fecha de vencimiento NO se mueve — cambiar de plan solo
+ * mueve fecha_vencimiento cuando hay un prorrateo real calculado sobre un
+ * pago real; en cualquier otro caso, el plan cambia y la vigencia se queda
+ * exactamente donde está (el plan nuevo aplica desde la próxima renovación).
+ * Antes esto caía siempre en "hoy + duración del nuevo plan": a un socio
+ * vencido le regalaba un periodo completo sin cobrar, y a uno con una
+ * vigencia real pero sin pago vinculado (ej. importado por CSV) se la pisaba
+ * por una fecha que no correspondía a ningún pago. Pasa esto cuando:
  *  - El socio no tiene plan actual (alta nueva vía cambio de plan).
  *  - El plan actual es por visitas puras ('visitas'): no tiene un periodo en
  *    días del que prorratear (vigente mientras visitas_restantes > 0, sin
@@ -611,12 +619,13 @@ export async function calcularCambioPlan(
   if (!planNuevo) return { ok: false, error: "Plan no encontrado." };
 
   const diasDuracionNuevo = planNuevo.dias_duracion as number;
+  const vencimientoActual = miembro.fecha_vencimiento as string | null;
   const sinProrrateo = (
     motivo: CambioPlanSinProrrateoMotivo
   ): CambioPlanCalculo => ({
     tipo: "sin_prorrateo",
     motivo,
-    nuevoVencimiento: isoMasDias(diasDuracionNuevo),
+    nuevoVencimiento: vencimientoActual,
   });
 
   const planActualId = miembro.plan_id as string | null;
@@ -760,7 +769,7 @@ export async function cambiarPlan(
 ): Promise<{
   ok: boolean;
   error?: string;
-  nuevoVencimiento?: string;
+  nuevoVencimiento?: string | null;
   notaCredito?: number;
 }> {
   const supabase = await createClient();

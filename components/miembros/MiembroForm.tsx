@@ -80,9 +80,19 @@ export function MiembroForm({ mode, slug, miembro, defaultValues, prospectoId, a
     if (state.ok && mode === "edit") {
       success("Miembro actualizado");
     } else if (state.ok && mode === "create" && state.miembroId) {
-      success(state.pagoId ? "Miembro registrado y cobrado" : "Miembro registrado");
-      if (state.reciboError) {
-        warning("El recibo no se pudo enviar por correo", state.reciboError);
+      if (state.cobroError) {
+        // El socio SÍ se creó — nunca "no se pudo guardar". Pero tampoco
+        // "Miembro registrado" a secas: eso hacía parecer que el cobro de
+        // inscripción salió bien cuando en realidad no se cobró nada.
+        warning(
+          "Miembro registrado, pero no se pudo cobrar la inscripción",
+          `${state.cobroError} Cóbrala desde el botón "Renovar" en su ficha.`
+        );
+      } else {
+        success(state.pagoId ? "Miembro registrado y cobrado" : "Miembro registrado");
+        if (state.reciboError) {
+          warning("El recibo no se pudo enviar por correo", state.reciboError);
+        }
       }
       const destino = state.pagoId
         ? `/${slug}/recibos/${state.pagoId}`

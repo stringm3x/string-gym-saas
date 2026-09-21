@@ -17,7 +17,16 @@ function PlanBadge({ plan }: { plan: PlanMatch }) {
 
 /** Vista previa del CSV: encabezados en mono, fechas y teléfono en mono.
  * El detalle de cada fila se abre con un botón (no con clic en la fila). */
-export function CSVPreviewTable({ rows }: { rows: PreviewRow[] }) {
+export function CSVPreviewTable({
+  rows,
+  excluidas,
+  onToggle,
+}: {
+  rows: PreviewRow[];
+  /** Filas (por número de fila del CSV) que no se van a importar. */
+  excluidas: Set<number>;
+  onToggle: (row: number) => void;
+}) {
   const visible = rows.slice(0, 20);
   const [expanded, setExpanded] = useState<number | null>(null);
 
@@ -35,6 +44,9 @@ export function CSVPreviewTable({ rows }: { rows: PreviewRow[] }) {
         <table className="min-w-full">
           <thead>
             <tr className="border-b border-border">
+              <Th className="w-12">
+                <span className="sr-only">Incluir</span>
+              </Th>
               <Th>Nombre</Th>
               <Th>Contacto</Th>
               <Th>Vigencia</Th>
@@ -48,9 +60,25 @@ export function CSVPreviewTable({ rows }: { rows: PreviewRow[] }) {
           <tbody className="divide-y divide-border">
             {visible.map((r) => {
               const open = expanded === r.row;
+              const incluida = !excluidas.has(r.row);
               return (
                 <Fragment key={r.row}>
-                  <tr className={cn("transition-colors", open && "bg-surface-hover")}>
+                  <tr
+                    className={cn(
+                      "transition-colors",
+                      open && "bg-surface-hover",
+                      !incluida && "opacity-50"
+                    )}
+                  >
+                    <Td>
+                      <input
+                        type="checkbox"
+                        checked={incluida}
+                        onChange={() => onToggle(r.row)}
+                        aria-label={`Incluir a ${r.data.nombre} en la importación`}
+                        className="h-4 w-4 rounded border-border accent-brand-green"
+                      />
+                    </Td>
                     <Td>
                       <span className="text-[15px] leading-5 text-text-primary">
                         {r.data.nombre}
@@ -109,7 +137,7 @@ export function CSVPreviewTable({ rows }: { rows: PreviewRow[] }) {
                   {open && (
                     <tr className="bg-surface-hover">
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-4 py-3 text-sm text-text-secondary"
                       >
                         <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
@@ -143,7 +171,8 @@ export function CSVPreviewTable({ rows }: { rows: PreviewRow[] }) {
       </div>
       {rows.length > 20 && (
         <p className="text-sm text-text-muted">
-          Mostrando 20 de {rows.length} filas válidas. Todas se importarán.
+          Mostrando 20 de {rows.length} filas válidas. Las que no se ven
+          también se importan, salvo los duplicados (excluidos por default).
         </p>
       )}
     </div>

@@ -19,6 +19,8 @@ import {
   descongelarMembresia,
   solicitarCongelacionPortal,
   aprobarCongelacion,
+  calcularCambioPlan,
+  cambiarPlan,
 } from "./miembro-eventos.queries";
 
 const ERROR_VIGENCIA = { message: "boom" };
@@ -265,6 +267,110 @@ describe("aprobarCongelacion: si la extensión falla, NO se marca la solicitud c
     expect(logError).toHaveBeenCalledWith(
       "congelacion.aprobar_extender_fallo",
       expect.objectContaining({ tenantId: "t-1", eventoId: "ev-1", miembroId: "m-1" })
+    );
+  });
+});
+
+describe("calcularCambioPlan: sin prorrateo, la fecha NO se mueve (bloque 09)", () => {
+  it("socio sin plan actual → conserva su fecha_vencimiento tal cual (null si nunca tuvo)", async () => {
+    const from = vi
+      .fn()
+      // 1. miembros.select (plan_id null, sin vigencia)
+      .mockReturnValueOnce(supaResult({ data: { plan_id: null, fecha_vencimiento: null } }))
+      // 2. planes_membresia.select (plan nuevo)
+      .mockReturnValueOnce(supaResult({ data: { precio: "500", dias_duracion: 30 } }));
+    vi.mocked(createClient).mockResolvedValue(clienteCon(from));
+
+    const r = await calcularCambioPlan("t-1", "m-1", "plan-nuevo", clienteCon(from));
+
+    expect(r).toEqual({
+      ok: true,
+      calculo: { tipo: "sin_prorrateo", motivo: "sin_plan_actual", nuevoVencimiento: null },
+    });
+  });
+
+  it("socio vencido → conserva la fecha vencida tal cual, NO regala un periodo nuevo gratis", async () => {
+    const from = vi
+      .fn()
+      // 1. miembros.select (vencido hace tiempo)
+      .mockReturnValueOnce(
+        supaResult({ data: { plan_id: "plan-viejo", fecha_vencimiento: "2020-01-01" } })
+      )
+      // 2. planes_membresia.select (plan nuevo)
+      .mockReturnValueOnce(supaResult({ data: { precio: "500", dias_duracion: 30 } }))
+      // 3. planes_membresia.select (plan actual, tipo tiempo)
+      .mockReturnValueOnce(supaResult({ data: { tipo: "tiempo" } }));
+    vi.mocked(createClient).mockResolvedValue(clienteCon(from));
+
+    const r = await calcularCambioPlan("t-1", "m-1", "plan-nuevo", clienteCon(from));
+
+    expect(r).toEqual({
+      ok: true,
+      calculo: { tipo: "sin_prorrateo", motivo: "vencido", nuevoVencimiento: "2020-01-01" },
+    });
+  });
+
+  it("socio con vigencia real pero sin pago vinculado (ej. importado por CSV) → conserva esa fecha, no la pisa", async () => {
+    const from = vi
+      .fn()
+      // 1. miembros.select (vigente a futuro, importado)
+      .mockReturnValueOnce(
+        supaResult({ data: { plan_id: "plan-viejo", fecha_vencimiento: "2099-06-01" } })
+      )
+      // 2. planes_membresia.select (plan nuevo)
+      .mockReturnValueOnce(supaResult({ data: { precio: "500", dias_duracion: 30 } }))
+      // 3. planes_membresia.select (plan actual, tipo tiempo)
+      .mockReturnValueOnce(supaResult({ data: { tipo: "tiempo" } }))
+      // 4. pagos.select (pago vigente) → ninguno
+      .mockReturnValueOnce(supaResult({ data: null }));
+    vi.mocked(createClient).mockResolvedValue(clienteCon(from));
+
+    const r = await calcularCambioPlan("t-1", "m-1", "plan-nuevo", clienteCon(from));
+
+    expect(r).toEqual({
+      ok: true,
+      calculo: { tipo: "sin_prorrateo", motivo: "sin_pago_vigente", nuevoVencimiento: "2099-06-01" },
+    });
+  });
+});
+
+describe("cambiarPlan: escribe la fecha conservada sin prorrateo (bloque 09)", () => {
+  it("sin prorrateo → el UPDATE manda la MISMA fecha_vencimiento que ya tenía, no una recalculada", async () => {
+    const update = vi.fn().mockReturnValue(supaResult({ error: null }));
+    const from = vi
+      .fn()
+      // calcularCambioPlan: 1. miembros.select
+      .mockReturnValueOnce(
+        supaResult({ data: { plan_id: "plan-viejo", fecha_vencimiento: "2099-06-01" } })
+      )
+      // 2. planes_membresia.select (plan nuevo)
+      .mockReturnValueOnce(supaResult({ data: { precio: "500", dias_duracion: 30 } }))
+      // 3. planes_membresia.select (plan actual, tipo)
+      .mockReturnValueOnce(supaResult({ data: { tipo: "tiempo" } }))
+      // 4. pagos.select (pago vigente) → ninguno → sin_pago_vigente
+      .mockReturnValueOnce(supaResult({ data: null }))
+      // cambiarPlan: 5. miembros.select (plan_id actual, para el evento)
+      .mockReturnValueOnce(supaResult({ data: { plan_id: "plan-viejo" } }))
+      // 6. planes_membresia.select (nombre/tipo/visitas del plan nuevo)
+      .mockReturnValueOnce(
+        supaResult({ data: { nombre: "Trimestral", tipo: "tiempo", visitas: null } })
+      )
+      // 7. planes_membresia.select (nombre del plan anterior)
+      .mockReturnValueOnce(supaResult({ data: { nombre: "Mensual" } }))
+      // 8. miembros.update — capturado para revisar el payload
+      .mockReturnValueOnce({ update })
+      // 9. miembro_eventos.insert
+      .mockReturnValueOnce(supaResult({ error: null }));
+    vi.mocked(createClient).mockResolvedValue(clienteCon(from));
+
+    const r = await cambiarPlan("t-1", "m-1", "plan-nuevo", { userId: null, nombre: null });
+
+    expect(r).toEqual({ ok: true, nuevoVencimiento: "2099-06-01", notaCredito: 0 });
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plan_id: "plan-nuevo",
+        fecha_vencimiento: "2099-06-01",
+      })
     );
   });
 });

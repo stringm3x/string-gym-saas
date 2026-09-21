@@ -12,12 +12,16 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ prospecto_id?: string }>;
+  searchParams: Promise<{
+    prospecto_id?: string;
+    nombre?: string;
+    telefono?: string;
+  }>;
 }
 
 export default async function NuevoMiembroPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const { prospecto_id } = await searchParams;
+  const { prospecto_id, nombre, telefono } = await searchParams;
 
   const g = await requirePanel("miembros.crear", { sinPermiso: "/checkins" });
   if (!g.ok) return null; // miembros es Starter: no ocurre
@@ -90,7 +94,9 @@ export default async function NuevoMiembroPage({ params, searchParams }: PagePro
                   telefono: prospecto.telefono,
                   email: prospecto.email ?? "",
                 }
-              : undefined
+              : nombre || telefono
+                ? { nombre, telefono }
+                : undefined
           }
           prospectoId={prospecto?.id}
           availableTags={hasFeature(tenant.plan, "tags") ? availableTags : []}
