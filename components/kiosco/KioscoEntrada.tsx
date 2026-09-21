@@ -2,7 +2,13 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { LuCamera, LuKeyboard, LuCircleCheck, LuCircleX } from "react-icons/lu";
+import {
+  LuCamera,
+  LuKeyboard,
+  LuCircleCheck,
+  LuCircleX,
+  LuTriangleAlert,
+} from "react-icons/lu";
 import {
   checkInKioscoAction,
   actualizarTelefonoKioscoAction,
@@ -67,11 +73,11 @@ export function KioscoEntrada({ slug }: { slug: string }) {
       setTokenUsado(t);
       setToken("");
       if (timerRef.current) clearTimeout(timerRef.current);
-      // Si hay que pedir el teléfono, NO auto-reseteamos: esperamos al miembro.
+      // El check-in ya se registró incluso si se queda pidiendo el teléfono;
+      // sin timeout, el siguiente de la fila ve la pantalla del anterior. Le
+      // damos más tiempo a esa pantalla (20s) que al aviso normal (3s).
       const pideContacto = r.success && r.sinContacto;
-      if (!pideContacto) {
-        timerRef.current = setTimeout(reset, 3000);
-      }
+      timerRef.current = setTimeout(reset, pideContacto ? 20000 : 3000);
     });
   }
 
@@ -83,6 +89,7 @@ export function KioscoEntrada({ slug }: { slug: string }) {
   }
 
   const ok = result?.success === true;
+  const aviso = ok && result.avisoVencido;
 
   // ── Resultado: pantalla completa, se lee a un metro ──
   if (result) {
@@ -90,13 +97,19 @@ export function KioscoEntrada({ slug }: { slug: string }) {
       <div
         role="status"
         className={`flex w-full max-w-3xl flex-col items-center gap-6 border-2 p-10 text-center sm:p-14 ${
-          ok ? "border-brand-green bg-brand-green/10" : "border-danger bg-danger/10"
+          !ok
+            ? "border-danger bg-danger/10"
+            : aviso
+              ? "border-warning bg-warning/10"
+              : "border-brand-green bg-brand-green/10"
         }`}
       >
-        {ok ? (
-          <LuCircleCheck className="h-24 w-24 text-brand-green" aria-hidden="true" />
-        ) : (
+        {!ok ? (
           <LuCircleX className="h-24 w-24 text-danger" aria-hidden="true" />
+        ) : aviso ? (
+          <LuTriangleAlert className="h-24 w-24 text-warning" aria-hidden="true" />
+        ) : (
+          <LuCircleCheck className="h-24 w-24 text-brand-green" aria-hidden="true" />
         )}
 
         {ok ? (
@@ -107,6 +120,13 @@ export function KioscoEntrada({ slug }: { slug: string }) {
             {result.plan && (
               <p className="font-mono text-[15px] uppercase tracking-[0.16em] text-text-secondary">
                 {result.plan}
+              </p>
+            )}
+            {aviso && (
+              <p className="text-lg font-semibold text-warning">
+                {result.fechaVencimiento
+                  ? `Tu membresía venció el ${result.fechaVencimiento.split("-").reverse().join("/")}. Pasa a recepción.`
+                  : "No tienes una membresía registrada. Pasa a recepción."}
               </p>
             )}
 

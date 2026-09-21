@@ -16,6 +16,7 @@ interface MiembrosListClientProps {
   plantillas: PlantillaMensaje[];
   plan: Plan;
   soloArchivados?: boolean;
+  congeladosIds?: string[];
 }
 
 export function MiembrosListClient({
@@ -25,6 +26,7 @@ export function MiembrosListClient({
   plantillas,
   plan,
   soloArchivados = false,
+  congeladosIds = [],
 }: MiembrosListClientProps) {
   const canBulk = hasFeature(plan, "bulk_actions");
   const canTags = hasFeature(plan, "tags");
@@ -70,6 +72,7 @@ export function MiembrosListClient({
         onToggleAll={toggleAll}
         soloArchivados={soloArchivados}
         selectable={selectable}
+        congeladosIds={congeladosIds}
       />
       {selectable && (
         <BulkActionsBar

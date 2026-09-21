@@ -19,14 +19,24 @@ export function ManualCheckinButton({
   disabled = false,
   disabledTitle,
 }: ManualCheckinButtonProps) {
-  const { success, error } = useToast();
+  const { success, warning, error } = useToast();
   const [isPending, startTransition] = useTransition();
 
   function handleClick() {
     startTransition(async () => {
       const result = await registerCheckinAction(miembroId);
       if (result.ok) {
-        success("Check-in registrado", miembroNombre);
+        const estado = result.miembro?.estadoMembresia;
+        if (estado === "vencido" || estado === "sin_membresia") {
+          warning(
+            "Check-in registrado, pero revisá la membresía",
+            estado === "sin_membresia"
+              ? `${miembroNombre} no tiene membresía registrada`
+              : `${miembroNombre} tiene la membresía vencida`
+          );
+        } else {
+          success("Check-in registrado", miembroNombre);
+        }
       } else {
         error("No se pudo registrar", result.error ?? "Inténtalo de nuevo");
       }

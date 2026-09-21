@@ -31,22 +31,45 @@ beforeEach(() => {
   vi.mocked(logError).mockReset();
 });
 
+describe("congelarMembresia: no se puede congelar dos veces (bloque 06)", () => {
+  it("ya tiene una congelación activa → ok:false, no llega a tocar vigencia", async () => {
+    const from = vi
+      .fn()
+      // 1. miembro_eventos.select (congelación activa existente) → sí hay
+      .mockReturnValueOnce(supaResult({ data: { id: "ev-0", fecha_fin: "2099-03-01" } }));
+    vi.mocked(createClient).mockResolvedValue(clienteCon(from));
+
+    const r = await congelarMembresia("t-1", "m-1", {
+      fechaInicio: "2099-02-01",
+      fechaFin: "2099-02-10",
+      userId: null,
+      nombre: null,
+    });
+
+    expect(r.ok).toBe(false);
+    expect((r as { error: string }).error).toContain("ya tiene una congelación activa");
+    expect(from).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("congelarMembresia: si extenderVencimiento falla, no se inserta el evento", () => {
   it("falla el update de fecha_vencimiento → ok:false, sin insert, logError", async () => {
     const insert = vi.fn();
     const from = vi
       .fn()
-      // 1. miembros.select (fecha_vencimiento actual)
+      // 1. miembro_eventos.select (congelación activa existente) → ninguna
+      .mockReturnValueOnce(supaResult({ data: null }))
+      // 2. miembros.select (fecha_vencimiento actual)
       .mockReturnValueOnce(supaResult({ data: { fecha_vencimiento: "2026-01-01" } }))
-      // 2. miembros.update (revert) → falla
+      // 3. miembros.update (revert) → falla
       .mockReturnValueOnce(supaResult({ error: ERROR_VIGENCIA }))
       // Si el código llegara a insertar el evento, este mock lo revelaría.
       .mockReturnValueOnce({ insert });
     vi.mocked(createClient).mockResolvedValue(clienteCon(from));
 
     const r = await congelarMembresia("t-1", "m-1", {
-      fechaInicio: "2026-02-01",
-      fechaFin: "2026-02-10",
+      fechaInicio: "2099-02-01",
+      fechaFin: "2099-02-10",
       userId: null,
       nombre: null,
     });
@@ -55,7 +78,7 @@ describe("congelarMembresia: si extenderVencimiento falla, no se inserta el even
       ok: false,
       error: "No se pudo extender la vigencia. Inténtalo de nuevo.",
     });
-    expect(from).toHaveBeenCalledTimes(2);
+    expect(from).toHaveBeenCalledTimes(3);
     expect(insert).not.toHaveBeenCalled();
     expect(logError).toHaveBeenCalledWith(
       "congelacion.extender_vencimiento_fallo",
@@ -66,20 +89,21 @@ describe("congelarMembresia: si extenderVencimiento falla, no se inserta el even
   it("el update funciona → sí inserta el evento y devuelve ok:true", async () => {
     const from = vi
       .fn()
+      .mockReturnValueOnce(supaResult({ data: null }))
       .mockReturnValueOnce(supaResult({ data: { fecha_vencimiento: "2026-01-01" } }))
       .mockReturnValueOnce(supaResult({ error: null }))
       .mockReturnValueOnce(supaResult({ error: null }));
     vi.mocked(createClient).mockResolvedValue(clienteCon(from));
 
     const r = await congelarMembresia("t-1", "m-1", {
-      fechaInicio: "2026-02-01",
-      fechaFin: "2026-02-10",
+      fechaInicio: "2099-02-01",
+      fechaFin: "2099-02-10",
       userId: null,
       nombre: null,
     });
 
     expect(r).toEqual({ ok: true });
-    expect(from).toHaveBeenCalledTimes(3);
+    expect(from).toHaveBeenCalledTimes(4);
     expect(logError).not.toHaveBeenCalled();
   });
 });
@@ -111,27 +135,91 @@ describe("descongelarMembresia: si el revert de fecha_vencimiento falla, no se p
   });
 });
 
+describe("solicitarCongelacionPortal: valida vigencia y fechas pasadas antes de tocar nada (bloque 06)", () => {
+  it("fechaInicio en el pasado → rechaza sin ninguna consulta", async () => {
+    const from = vi.fn();
+    vi.mocked(createClient).mockResolvedValue(clienteCon(from));
+
+    const r = await solicitarCongelacionPortal(
+      "t-1",
+      "m-1",
+      { fechaInicio: "2020-01-01", fechaFin: "2020-01-10" },
+      clienteCon(from)
+    );
+
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain("no puede ser anterior a hoy");
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("membresía ya vencida → rechaza, no llega a revisar solicitudes duplicadas", async () => {
+    const from = vi
+      .fn()
+      // 1. miembros.select (fecha_vencimiento) → ya venció
+      .mockReturnValueOnce(supaResult({ data: { fecha_vencimiento: "2020-01-01" } }));
+    vi.mocked(createClient).mockResolvedValue(clienteCon(from));
+
+    const r = await solicitarCongelacionPortal(
+      "t-1",
+      "m-1",
+      { fechaInicio: "2099-02-01", fechaFin: "2099-02-10" },
+      clienteCon(from)
+    );
+
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain("ya venció");
+    expect(from).toHaveBeenCalledTimes(1);
+  });
+
+  it("ya tiene una congelación activa → rechaza antes de mirar auto-aprobar", async () => {
+    const from = vi
+      .fn()
+      // 1. miembros.select (fecha_vencimiento) → vigente
+      .mockReturnValueOnce(supaResult({ data: { fecha_vencimiento: "2099-01-01" } }))
+      // 2. miembro_eventos.select (solicitud "solicitada" existente) → ninguna
+      .mockReturnValueOnce(supaResult({ data: [] }))
+      // 3. miembro_eventos.select (congelación "activa" existente) → sí hay
+      .mockReturnValueOnce(supaResult({ data: { id: "ev-0", fecha_fin: "2099-03-01" } }));
+    vi.mocked(createClient).mockResolvedValue(clienteCon(from));
+
+    const r = await solicitarCongelacionPortal(
+      "t-1",
+      "m-1",
+      { fechaInicio: "2099-02-01", fechaFin: "2099-02-10" },
+      clienteCon(from)
+    );
+
+    expect(r.ok).toBe(false);
+    expect(r.error).toContain("Ya tienes una congelación activa");
+    expect(from).toHaveBeenCalledTimes(3);
+  });
+});
+
 describe("solicitarCongelacionPortal: auto-aprobar pero la extensión falla → queda 'solicitada', no 'activa'", () => {
   it("guarda estado solicitada y aplicada:false cuando extenderVencimiento falla", async () => {
     const insert = vi.fn().mockReturnValue(supaResult({ error: null }));
     const from = vi
       .fn()
-      // 1. miembro_eventos.select (solicitud pendiente existente) → ninguna
+      // 1. miembros.select (fecha_vencimiento) — vigencia: vigente
+      .mockReturnValueOnce(supaResult({ data: { fecha_vencimiento: "2099-01-01" } }))
+      // 2. miembro_eventos.select (solicitud pendiente existente) → ninguna
       .mockReturnValueOnce(supaResult({ data: [] }))
-      // 2. gyms.select (congelacion_auto_aprobar) → true
+      // 3. miembro_eventos.select (congelación activa existente) → ninguna
+      .mockReturnValueOnce(supaResult({ data: null }))
+      // 4. gyms.select (congelacion_auto_aprobar) → true
       .mockReturnValueOnce(supaResult({ data: { congelacion_auto_aprobar: true } }))
-      // 3. miembros.select (fecha_vencimiento, dentro de extenderVencimiento)
+      // 5. miembros.select (fecha_vencimiento, dentro de extenderVencimiento)
       .mockReturnValueOnce(supaResult({ data: { fecha_vencimiento: "2026-01-01" } }))
-      // 4. miembros.update (revert) → falla
+      // 6. miembros.update (revert) → falla
       .mockReturnValueOnce(supaResult({ error: ERROR_VIGENCIA }))
-      // 5. miembro_eventos.insert — capturado para revisar el payload
+      // 7. miembro_eventos.insert — capturado para revisar el payload
       .mockReturnValueOnce({ insert });
     vi.mocked(createClient).mockResolvedValue(clienteCon(from));
 
     const r = await solicitarCongelacionPortal(
       "t-1",
       "m-1",
-      { fechaInicio: "2026-02-01", fechaFin: "2026-02-10" },
+      { fechaInicio: "2099-02-01", fechaFin: "2099-02-10" },
       clienteCon(from)
     );
 

@@ -41,6 +41,9 @@ export type KioscoResult =
       miembroId: string;
       /** true si el miembro no tiene teléfono usable (para pedirlo). */
       sinContacto: boolean;
+      /** true si se dejó pasar con membresía vencida/sin registrar (política "solo avisar"). */
+      avisoVencido: boolean;
+      fechaVencimiento: string | null;
     }
   | { success: false; error: KioscoError; nombre?: string };
 
@@ -84,11 +87,12 @@ export const checkInKioscoAction = kioscoAction(
     if (await checkinReciente(gym.id, miembro.id, admin)) {
       return { success: false, error: "CHECKIN_RECIENTE", nombre: miembro.nombre };
     }
-    if (
-      miembro.fecha_vencimiento &&
-      miembro.fecha_vencimiento < hoyISO() &&
-      gym.checkin_bloquea_vencidos !== false
-    ) {
+    // sin_membresia sigue la misma política que vencido: no hay fecha =
+    // nunca hubo vigencia que vencer, tampoco hay nada que "avisar y dejar
+    // pasar".
+    const vencidoOSinMembresia =
+      !miembro.fecha_vencimiento || miembro.fecha_vencimiento < hoyISO();
+    if (vencidoOSinMembresia && gym.checkin_bloquea_vencidos !== false) {
       return { success: false, error: "MEMBRESIA_VENCIDA", nombre: miembro.nombre };
     }
 
@@ -114,6 +118,8 @@ export const checkInKioscoAction = kioscoAction(
       plan,
       miembroId: miembro.id,
       sinContacto: sinTelefono(miembro.telefono),
+      avisoVencido: vencidoOSinMembresia,
+      fechaVencimiento: miembro.fecha_vencimiento ?? null,
     };
   }
 );

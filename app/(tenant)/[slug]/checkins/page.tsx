@@ -3,14 +3,17 @@ import Link from "next/link";
 import { LuQrCode, LuMonitor } from "react-icons/lu";
 import { requirePanel } from "@/lib/authz/pagina";
 import { hasFeature } from "@/lib/features";
+import { hasPermission } from "@/lib/permissions";
 import { getGymInfo } from "@/lib/queries/gyms.queries";
 import {
   listCheckinsDeHoy,
   countCheckinsDeHoy,
 } from "@/lib/queries/checkins.queries";
+import { getCodigosPendientes, limpiarExpirados } from "@/lib/queries/kiosco.queries";
 import { TZ_MX } from "@/lib/utils/dates";
 import { CheckinKiosk } from "@/components/checkins/CheckinKiosk";
 import { CheckinsFeed } from "@/components/checkins/CheckinsFeed";
+import { AutorizacionesPendientes } from "@/components/caja/AutorizacionesPendientes";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -35,10 +38,16 @@ export default async function CheckinsPage({ params }: PageProps) {
   if (!g.ok) return null; // checkins es Starter: no ocurre
   const tenant = g.ctx;
 
-  const [gym, checkins, total] = await Promise.all([
+  const canAutoservicio =
+    hasFeature(tenant.plan, "kiosco_autoservicio") &&
+    hasPermission(tenant.role, "registrar_pagos");
+  if (canAutoservicio) await limpiarExpirados(tenant.id);
+
+  const [gym, checkins, total, codigosPendientes] = await Promise.all([
     getGymInfo(tenant.id),
     listCheckinsDeHoy(tenant.id, 30),
     countCheckinsDeHoy(tenant.id),
+    canAutoservicio ? getCodigosPendientes(tenant.id) : Promise.resolve([]),
   ]);
 
   const canQr = hasFeature(tenant.plan, "qr_access");
@@ -87,6 +96,8 @@ export default async function CheckinsPage({ params }: PageProps) {
       </div>
 
       <CheckinKiosk />
+
+      {canAutoservicio && <AutorizacionesPendientes codigos={codigosPendientes} />}
 
       <section className="card-surface">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">

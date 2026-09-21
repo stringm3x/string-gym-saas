@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   LuBellRing,
@@ -32,6 +32,31 @@ function restante(expiraAt: string, now: number): string {
   return `${mm}:${ss}`;
 }
 
+/** Beep sintetizado (sin archivo de audio) para un código nuevo. Best-effort:
+ * si el navegador bloquea audio sin gesto previo, simplemente no suena. */
+function reproducirBeep(): void {
+  try {
+    const Ctx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+    osc.onended = () => ctx.close();
+  } catch {
+    // No es crítico: el aviso visual sigue funcionando.
+  }
+}
+
 export function AutorizacionesPendientes({
   codigos,
 }: {
@@ -42,6 +67,7 @@ export function AutorizacionesPendientes({
   const [now, setNow] = useState(() => Date.now());
   const [confirmar, setConfirmar] = useState<CodigoPendiente | null>(null);
   const [pending, start] = useTransition();
+  const idsVistosRef = useRef<Set<string> | null>(null);
 
   // Tick del countdown (1s) y polling de refresco (30s) mientras haya pendientes.
   useEffect(() => {
@@ -52,6 +78,18 @@ export function AutorizacionesPendientes({
       clearInterval(poll);
     };
   }, [router]);
+
+  // Beep solo cuando aparece un código que no estaba antes — no en cada
+  // poll de 30s mientras el mismo código sigue pendiente, ni en el montaje
+  // inicial (códigos que ya estaban pendientes al abrir la página).
+  useEffect(() => {
+    const ids = new Set(codigos.map((c) => c.id));
+    if (idsVistosRef.current) {
+      const hayNuevo = codigos.some((c) => !idsVistosRef.current!.has(c.id));
+      if (hayNuevo) reproducirBeep();
+    }
+    idsVistosRef.current = ids;
+  }, [codigos]);
 
   function autorizar(c: CodigoPendiente) {
     start(async () => {
