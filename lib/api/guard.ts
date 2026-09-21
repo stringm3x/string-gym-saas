@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/api/rate-limit";
 import { apiError } from "@/lib/api/response";
 import { logApiRequest, clientIp } from "@/lib/api/log";
 import { apiGetGymPublic, type GymPublic } from "@/lib/api/data";
+import { gymOperativo } from "@/lib/utils/gym-operativo";
 
 type GuardResult =
   | { ok: false; response: NextResponse }
@@ -87,6 +88,17 @@ export async function apiPublicGuard(
     return {
       ok: false,
       response: apiError("NOT_FOUND", "Gym no encontrado.", 404, slug),
+    };
+  }
+  if (!gymOperativo(gym)) {
+    return {
+      ok: false,
+      response: apiError(
+        "GYM_NO_OPERATIVO",
+        "Este gimnasio no está operativo (prueba vencida o cuenta suspendida).",
+        403,
+        slug
+      ),
     };
   }
 

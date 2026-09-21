@@ -72,7 +72,10 @@ export const checkInKioscoAction = kioscoAction(
   {
     onDenied: (d): KioscoResult => ({
       success: false,
-      error: d.code === "SIN_PLAN" ? "NO_DISPONIBLE" : "QR_NO_ENCONTRADO",
+      error:
+        d.code === "SIN_PLAN" || d.code === "GYM_NO_OPERATIVO"
+          ? "NO_DISPONIBLE"
+          : "QR_NO_ENCONTRADO",
     }),
   },
   async ({ gym, miembro, admin }): Promise<KioscoResult> => {

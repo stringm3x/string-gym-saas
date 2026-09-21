@@ -13,7 +13,7 @@ import { getMiembroByQrToken } from "@/lib/queries/qr.queries";
 import { getPortalGym } from "@/lib/queries/portal.queries";
 import { getPortalSession } from "@/lib/portal/session";
 import { getCurrentAdmin } from "@/lib/admin/helpers";
-import { panelAction, kioscoAction, adminAction, anonAction } from "./index";
+import { panelAction, portalAction, kioscoAction, adminAction, anonAction } from "./index";
 import { AUTHZ, type Denegado } from "./tipos";
 
 type Cobro =
@@ -105,7 +105,15 @@ describe("kioscoAction", () => {
     const from = vi.fn().mockReturnValue({ select });
     vi.mocked(createAdminClient).mockReturnValue({ from } as never);
   }
-  const gymPro = { id: "gym-1", slug: "demo", plan: "pro", checkin_bloquea_vencidos: null, mp_access_token: null };
+  const gymPro = {
+    id: "gym-1",
+    slug: "demo",
+    plan: "pro",
+    checkin_bloquea_vencidos: null,
+    mp_access_token: null,
+    estado: "activo",
+    prueba_hasta: null,
+  };
   const socio = { id: "m-1", nombre: "Ana", telefono: null, fecha_vencimiento: null, archivado: false, plan_id: null };
 
   // Forma tipo kiosco que NO absorbe Denegado (sin `code`, `ok: true` con
@@ -150,6 +158,79 @@ describe("kioscoAction", () => {
     gymPorSlug(null);
     const r = await compra("nadie", "tok-1", { items: 1 });
     expect(r).toEqual({ ok: false, error: "Gimnasio no encontrado." });
+  });
+
+  it("gym suspendido → GYM_NO_OPERATIVO, sin consultar el token", async () => {
+    gymPorSlug({ ...gymPro, estado: "suspendido" });
+    const r = await compra("demo", "tok-1", { items: 1 });
+    expect(r).toEqual({
+      ok: false,
+      error:
+        "Este gimnasio no está disponible en este momento. Consulta directamente con el gimnasio.",
+    });
+    expect(getMiembroByQrToken).not.toHaveBeenCalled();
+  });
+
+  it("prueba vencida → GYM_NO_OPERATIVO", async () => {
+    gymPorSlug({ ...gymPro, estado: "prueba", prueba_hasta: "2020-01-01T00:00:00Z" });
+    const r = await compra("demo", "tok-1", { items: 1 });
+    expect(r).toEqual({
+      ok: false,
+      error:
+        "Este gimnasio no está disponible en este momento. Consulta directamente con el gimnasio.",
+    });
+  });
+});
+
+describe("portalAction", () => {
+  const gymEscala = {
+    id: "gym-1",
+    slug: "demo",
+    plan: "escala" as const,
+    nombre: "Demo Gym",
+    telefono: null,
+    estado: "activo",
+    prueba_hasta: null,
+  };
+  type Congelar = { ok: true; nombre: string } | Denegado;
+  const congelar = portalAction(
+    "portal.congelar",
+    {},
+    async (ctx): Promise<Congelar> => ({ ok: true, nombre: ctx.gym.nombre })
+  );
+
+  it("gym suspendido → GYM_NO_OPERATIVO, sin consultar sesión", async () => {
+    vi.mocked(getPortalGym).mockResolvedValue({ ...gymEscala, estado: "suspendido" });
+    const r = await congelar("demo");
+    expect(r).toEqual({
+      ok: false,
+      code: "GYM_NO_OPERATIVO",
+      error:
+        "Este gimnasio no está disponible en este momento. Consulta directamente con el gimnasio.",
+    });
+    expect(getPortalSession).not.toHaveBeenCalled();
+  });
+
+  it("prueba vencida → GYM_NO_OPERATIVO", async () => {
+    vi.mocked(getPortalGym).mockResolvedValue({
+      ...gymEscala,
+      estado: "prueba",
+      prueba_hasta: "2020-01-01T00:00:00Z",
+    });
+    const r = await congelar("demo");
+    expect(r).toEqual({
+      ok: false,
+      code: "GYM_NO_OPERATIVO",
+      error:
+        "Este gimnasio no está disponible en este momento. Consulta directamente con el gimnasio.",
+    });
+  });
+
+  it("gym activo con sesión válida → deja pasar", async () => {
+    vi.mocked(getPortalGym).mockResolvedValue(gymEscala);
+    vi.mocked(getPortalSession).mockResolvedValue({ tenantId: "gym-1", miembroId: "m-1" } as never);
+    const r = await congelar("demo");
+    expect(r).toEqual({ ok: true, nombre: "Demo Gym" });
   });
 });
 

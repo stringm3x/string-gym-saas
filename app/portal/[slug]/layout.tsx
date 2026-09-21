@@ -1,6 +1,7 @@
 import { ToastProvider } from "@/components/ui/Toast";
 import { Grano } from "@/components/arte/Grano";
 import { hasFeature } from "@/lib/features";
+import { gymOperativo } from "@/lib/utils/gym-operativo";
 import {
   getPortalColorAcento,
   getPortalGym,
@@ -30,6 +31,26 @@ export default async function PortalLayout({
     aplicaColor && acento && HEX.test(acento)
       ? `:root{--color-brand-green:${acento};}`
       : null;
+
+  // Bloque 10: gatea TODA la superficie del portal, login incluido — el
+  // login pide el código por OTP vía anonAction (sin portalAction de por
+  // medio), así que el gate de portalAction no lo cubre. Puesto acá, en el
+  // layout, no hay hueco: nadie llega ni siquiera a la pantalla de login de
+  // un gimnasio no operativo. Mensaje neutral a propósito, igual que kiosco.
+  if (gym && !gymOperativo(gym)) {
+    return (
+      <ToastProvider>
+        <Grano opacidad={0.15} />
+        <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-bg px-6 text-center text-text-primary">
+          <h1 className="font-display text-3xl uppercase">{gym.nombre}</h1>
+          <p className="max-w-md text-lg text-text-secondary">
+            Este gimnasio no está disponible en este momento. Consulta
+            directamente con el gimnasio.
+          </p>
+        </div>
+      </ToastProvider>
+    );
+  }
 
   return (
     <ToastProvider>

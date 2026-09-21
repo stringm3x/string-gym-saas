@@ -33,7 +33,8 @@ export type AuthzCode =
   | "SIN_PERMISO"
   | "SIN_SESION"
   | "IDENTIDAD_INVALIDA"
-  | "GYM_NO_ENCONTRADO";
+  | "GYM_NO_ENCONTRADO"
+  | "GYM_NO_OPERATIVO";
 
 /** Resultado estándar cuando la autorización falla. */
 export interface Denegado {

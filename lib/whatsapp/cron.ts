@@ -28,6 +28,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFeature, type Plan } from "@/lib/features";
 import { hoyISO, isoMasDias, hoyCDMX } from "@/lib/utils/dates";
 import { logError } from "@/lib/log";
+import { gymOperativo } from "@/lib/utils/gym-operativo";
 import { notifyWhatsapp, type WhatsappEvent } from "./notify";
 import { registrarMensaje, type RegistrarMensajeParams } from "./registro";
 
@@ -49,12 +50,16 @@ async function gymsActivos(admin: SupabaseClient): Promise<GymRow[]> {
   const { data } = await admin
     .from("gyms")
     .select(
-      "id, slug, nombre, telefono, plan, whatsapp_numero, whatsapp_api_key"
+      "id, slug, nombre, telefono, plan, whatsapp_numero, whatsapp_api_key, estado, prueba_hasta"
     )
     .eq("whatsapp_activo", true);
 
+  // Bloque 10: un gym suspendido o con la prueba vencida no debe seguirle
+  // mandando recordatorios a sus socios — antes solo se filtraba por
+  // whatsapp_activo/plan, sin mirar el estado del gym.
   return (data ?? [])
     .filter((g) => hasFeature(g.plan as Plan, "whatsapp_automatico"))
+    .filter((g) => gymOperativo(g as { estado: string; prueba_hasta: string | null }))
     .map((g) => ({
       id: g.id as string,
       slug: g.slug as string,

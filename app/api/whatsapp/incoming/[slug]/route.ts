@@ -5,6 +5,7 @@ import { procesarMensajeBot } from "@/lib/whatsapp/bot";
 import { sendWhatsappText } from "@/lib/whatsapp/360dialog";
 import { dentroDeLimite } from "@/lib/whatsapp/rate-limit";
 import { registrarMensaje, botActivoDe } from "@/lib/whatsapp/registro";
+import { gymOperativo } from "@/lib/utils/gym-operativo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,7 +64,7 @@ export async function POST(
   const admin = createAdminClient();
   const { data: gym } = await admin
     .from("gyms")
-    .select("id, whatsapp_api_key")
+    .select("id, whatsapp_api_key, estado, prueba_hasta")
     .eq("slug", slug)
     .maybeSingle();
   if (!gym) return NextResponse.json({ ok: true });
@@ -78,6 +79,13 @@ export async function POST(
     tipo: "texto",
     contenido: msg.texto,
   });
+
+  // Bloque 10: un gym suspendido o con la prueba vencida no debe seguir
+  // contestando — el mensaje ya quedó registrado en el inbox arriba (el
+  // dueño lo ve cuando reactive), pero el bot no corre ni manda nada.
+  if (!gymOperativo(gym)) {
+    return NextResponse.json({ ok: true });
+  }
 
   // Rate limit: 10 mensajes por número por hora.
   if (!dentroDeLimite(msg.from)) {
