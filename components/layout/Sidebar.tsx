@@ -21,8 +21,6 @@ import {
   LuPanelLeftOpen,
 } from "react-icons/lu";
 import { SidebarLink } from "./SidebarLink";
-import { LogotipoVertical } from "./LogotipoVertical";
-import { MarcasRegistro } from "@/components/arte/MarcasRegistro";
 import { hasFeature, type Plan } from "@/lib/features";
 import { useStaff } from "@/lib/contexts/StaffContext";
 
@@ -133,10 +131,9 @@ export function Sidebar({
         className={
           collapsed
             ? "mb-4 flex justify-center"
-            : "relative mb-4 flex items-center gap-3 px-5 py-2"
+            : "mb-4 flex items-center gap-3 px-5 py-2"
         }
       >
-        {!collapsed && <MarcasRegistro className="text-text-muted/40" />}
         {logoUrl ? (
           <div
             className={collapsed ? "relative h-8 w-8" : "relative h-10 w-full"}
@@ -312,8 +309,7 @@ export function Sidebar({
         )}
       </nav>
 
-      {/* Firma: logotipo vertical, como al costado de una sección del sitio */}
-      {collapsed ? <div className="flex-1" /> : <LogotipoVertical />}
+      <div className="flex-1" />
 
       <div className="flex flex-col pt-3">
         <div className="mb-1 border-t border-border" />
