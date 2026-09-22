@@ -191,6 +191,7 @@ describe("portalAction", () => {
     telefono: null,
     estado: "activo",
     prueba_hasta: null,
+    logo_url: null,
   };
   type Congelar = { ok: true; nombre: string } | Denegado;
   const congelar = portalAction(

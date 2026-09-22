@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ToastProvider } from "@/components/ui/Toast";
 import { Grano } from "@/components/arte/Grano";
 import { hasFeature } from "@/lib/features";
@@ -8,6 +9,35 @@ import {
 } from "@/lib/queries/portal.queries";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
+const TAGLINE = "Tu membresía, clases y recibos";
+
+/**
+ * Bloque 10 sueltos (privacidad): un solo generateMetadata cubre todo el
+ * portal (login, home, recibos, clases, renovar) — la tarjeta de
+ * WhatsApp/Slack para cualquiera de esas rutas mostraba la marca de
+ * STRING, no la del gimnasio. Solo nombre y logo del gym; nada del socio
+ * (aquí no hay socio identificado todavía en la mayoría de estas rutas).
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const gym = await getPortalGym(slug);
+  const gymNombre = gym?.nombre ?? "STRING GYM";
+  const logoUrl = gym?.logo_url ?? undefined;
+
+  return {
+    title: `${gymNombre} — ${TAGLINE}`,
+    description: TAGLINE,
+    openGraph: {
+      title: gymNombre,
+      description: TAGLINE,
+      images: logoUrl ? [logoUrl] : undefined,
+    },
+  };
+}
 
 // Layout del Portal del Miembro: pantalla completa, sin el shell del app
 // (no hay sidebar/header de staff). Los miembros no son usuarios del SaaS.

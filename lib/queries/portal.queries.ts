@@ -31,6 +31,7 @@ export interface PortalGym {
   telefono: string | null;
   estado: string;
   prueba_hasta: string | null;
+  logo_url: string | null;
 }
 
 /** ¿El gym tiene MercadoPago conectado? (para ofrecer renovación en línea). */
@@ -49,7 +50,7 @@ export async function getPortalGym(slug: string): Promise<PortalGym | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("gyms")
-    .select("id, slug, nombre, plan, telefono, estado, prueba_hasta")
+    .select("id, slug, nombre, plan, telefono, estado, prueba_hasta, logo_url")
     .eq("slug", slug)
     .maybeSingle();
   return (data as PortalGym | null) ?? null;

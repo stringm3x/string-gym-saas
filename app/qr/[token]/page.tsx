@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LuRefreshCw } from "react-icons/lu";
 import { getMiembroByQrTokenPublic } from "@/lib/queries/qr.queries";
@@ -7,6 +8,43 @@ import { hasFeature, type Plan } from "@/lib/features";
 import { MarcasRegistro } from "@/components/arte/MarcasRegistro";
 
 export const dynamic = "force-dynamic";
+
+interface PageProps {
+  params: Promise<{ token: string }>;
+}
+
+const TAGLINE = "Tu código de entrada";
+
+/**
+ * Bloque 10 sueltos (privacidad): la tarjeta que genera WhatsApp/Slack al
+ * compartir este link mostraba la marca de STRING (genérica, heredada de
+ * app/layout.tsx) — publicidad nuestra en el chat del socio. Ahora lleva la
+ * marca del GIMNASIO, sin ningún dato del socio (nombre, vencimiento, QR).
+ * `robots: noindex` es defensa en profundidad — proxy.ts ya manda el mismo
+ * header para todo /qr/*, esto cubre además a quien lea el HTML directo.
+ * `referrer: no-referrer` evita que el logo del gimnasio (recurso externo)
+ * reciba el token en el header Referer al cargarlo.
+ */
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const { token } = await params;
+  const miembro = await getMiembroByQrTokenPublic(token);
+  const gymNombre = miembro?.gym?.nombre ?? "STRING GYM";
+  const logoUrl = miembro?.gym?.logo_url ?? undefined;
+
+  return {
+    title: `${gymNombre} — ${TAGLINE}`,
+    description: TAGLINE,
+    referrer: "no-referrer",
+    robots: { index: false, follow: false },
+    openGraph: {
+      title: gymNombre,
+      description: TAGLINE,
+      images: logoUrl ? [logoUrl] : undefined,
+    },
+  };
+}
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -32,11 +70,7 @@ function fechaLarga(ymd: string | null): string {
  * veces con mala luz: QR grande sobre blanco, estado claro, nada más.
  * Manda el color del gimnasio (misma regla que portal y kiosco).
  */
-export default async function QrPublicPage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+export default async function QrPublicPage({ params }: PageProps) {
   const { token } = await params;
   const miembro = await getMiembroByQrTokenPublic(token);
   if (!miembro) notFound();
