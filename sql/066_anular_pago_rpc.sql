@@ -1,5 +1,5 @@
 -- 066_anular_pago_rpc.sql — Anular repone stock de forma atómica (bloque-02)
--- ⚠️ NO APLICADA. Carlos la valida y corre manualmente en Supabase.
+-- ✅ APLICADA en producción — confirmado por Carlos el 2026-09-20.
 --
 -- anularPago() en TypeScript (lib/queries/pagos.queries.ts) marcaba
 -- anulado_at con un update suelto y nunca tocaba inventario: anular la venta

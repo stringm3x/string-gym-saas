@@ -1,5 +1,5 @@
--- 069_gym_estado_previo.sql — PROPUESTA (Bloque 10, PR 2)
--- ⚠️ NO APLICADA. Se corre manualmente cuando se valide.
+-- 069_gym_estado_previo.sql — Bloque 10, PR 2
+-- ✅ APLICADA en producción — confirmado por Carlos el 2026-09-20.
 --
 -- Guarda el estado del gym justo antes de suspenderlo/cancelarlo, para que
 -- "Reactivar" restaure ese estado en vez de asumir siempre "activo" (un gym
