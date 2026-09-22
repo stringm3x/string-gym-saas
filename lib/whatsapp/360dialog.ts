@@ -29,6 +29,32 @@ export const TEMPLATE_MEMBRESIA_REACTIVACION = "membresia_reactivacion";
 // ⚠️ Debe crearse y aprobarse en Meta/360dialog antes de que envíe nada real.
 export const TEMPLATE_CUMPLEANOS = "cumpleanos_miembro";
 
+/**
+ * Categoría de Meta de cada plantilla (Bloque 10 sueltos — WhatsApp, la
+ * parte que no depende de la cuenta de Meta: registrar antes de contar).
+ * Una sola tabla de verdad para no repetir la categoría en cada sitio que
+ * llama registrarMensaje. "service" no aplica a ninguna plantilla — es
+ * para las respuestas libres del bot y del dueño dentro de la ventana de
+ * 24h, que no van por plantilla.
+ */
+export type WaCategoria = "utility" | "marketing" | "authentication" | "service";
+
+export const TEMPLATE_CATEGORIA: Record<string, WaCategoria> = {
+  [TEMPLATE_RECORDATORIO_VENCIMIENTO]: "utility",
+  [TEMPLATE_MEMBRESIA_VENCIDA]: "utility",
+  [TEMPLATE_PAGO_CONFIRMADO]: "utility",
+  [TEMPLATE_BIENVENIDA]: "utility",
+  [TEMPLATE_RESUMEN_DIARIO]: "utility",
+  [TEMPLATE_PROSPECTO_NUEVO]: "utility",
+  [TEMPLATE_MIEMBRO_INACTIVO]: "utility",
+  [TEMPLATE_CAMPANA]: "marketing",
+  [TEMPLATE_LISTA_ESPERA]: "utility",
+  [TEMPLATE_OTP]: "authentication",
+  [TEMPLATE_VISITAS_BAJAS]: "utility",
+  [TEMPLATE_MEMBRESIA_REACTIVACION]: "utility",
+  [TEMPLATE_CUMPLEANOS]: "utility",
+};
+
 const ENDPOINT = "https://waba.360dialog.io/v1/messages";
 const TIMEOUT_MS = 10_000;
 

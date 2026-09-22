@@ -95,3 +95,47 @@ describe("registrarMensaje: las tres escrituras ahora sí se revisan", () => {
     expect(logError).not.toHaveBeenCalled();
   });
 });
+
+describe("registrarMensaje: destinatario 'dueno' (Bloque 10 sueltos — avisos al dueño, sql/070)", () => {
+  it("no toca wa_conversaciones: un solo insert directo en wa_mensajes", async () => {
+    const from = vi.fn().mockReturnValueOnce(supaResult({ error: null }));
+    vi.mocked(createAdminClient).mockReturnValue(adminCon(from));
+
+    await registrarMensaje({
+      tenantId: "t-1",
+      telefono: "5512345678",
+      direccion: "saliente",
+      tipo: "template",
+      contenido: "Resumen diario enviado.",
+      destinatario: "dueno",
+      nombrePlantilla: "resumen_diario_owner",
+      categoria: "utility",
+    });
+
+    // Un solo from(): el insert en wa_mensajes. Si tocara wa_conversaciones
+    // (upsert + select + update) serían 4 llamadas, como en el camino
+    // 'socio' de arriba.
+    expect(from).toHaveBeenCalledTimes(1);
+    expect(from).toHaveBeenCalledWith("wa_mensajes");
+    expect(logError).not.toHaveBeenCalled();
+  });
+
+  it("insert falla → logError, sin excepción (fire-and-forget)", async () => {
+    const from = vi.fn().mockReturnValueOnce(supaResult({ error: ERROR }));
+    vi.mocked(createAdminClient).mockReturnValue(adminCon(from));
+
+    await registrarMensaje({
+      tenantId: "t-1",
+      telefono: "5512345678",
+      direccion: "saliente",
+      tipo: "template",
+      contenido: "Nuevo prospecto: Ana",
+      destinatario: "dueno",
+    });
+
+    expect(logError).toHaveBeenCalledWith(
+      "wa.registrar_mensaje_insert_fallo",
+      expect.objectContaining({ tenantId: "t-1", destinatario: "dueno", error: "boom" })
+    );
+  });
+});

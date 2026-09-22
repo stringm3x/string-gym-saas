@@ -8,6 +8,7 @@
  */
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/log";
+import type { WaCategoria } from "@/lib/whatsapp/360dialog";
 
 function ultimos10(s: string | null): string {
   return (s ?? "").replace(/\D/g, "").slice(-10);
@@ -22,6 +23,19 @@ export interface RegistrarMensajeParams {
   miembroId?: string | null;
   nombreContacto?: string | null;
   metadata?: Record<string, unknown>;
+  /** Categoría de Meta del mensaje saliente. null en entrantes (no se facturan). */
+  categoria?: WaCategoria | null;
+  /** Nombre de la plantilla aprobada, cuando el mensaje va por plantilla. */
+  nombrePlantilla?: string | null;
+  /**
+   * A quién va: 'socio' (default) crea/actualiza la conversación en
+   * wa_conversaciones como siempre. 'dueno' es un aviso al dueño del gym
+   * (prospecto nuevo, miembro sin actividad, resumen diario) — no es una
+   * conversación con ningún socio, así que no toca wa_conversaciones y se
+   * inserta con conversacion_id NULL (sql/070). El inbox nunca lo ve: sus
+   * queries siempre filtran por conversacion_id de una conversación real.
+   */
+  destinatario?: "socio" | "dueno";
 }
 
 /**
@@ -37,8 +51,32 @@ export interface RegistrarMensajeParams {
 export async function registrarMensaje(
   p: RegistrarMensajeParams
 ): Promise<void> {
+  const destinatario = p.destinatario ?? "socio";
   try {
     const admin = createAdminClient();
+
+    if (destinatario === "dueno") {
+      const { error } = await admin.from("wa_mensajes").insert({
+        tenant_id: p.tenantId,
+        conversacion_id: null,
+        direccion: p.direccion,
+        tipo: p.tipo,
+        contenido: p.contenido,
+        categoria: p.categoria ?? null,
+        nombre_plantilla: p.nombrePlantilla ?? null,
+        destinatario,
+        metadata: p.metadata ?? {},
+      });
+      if (error) {
+        logError("wa.registrar_mensaje_insert_fallo", {
+          tenantId: p.tenantId,
+          destinatario,
+          error: error.message,
+        });
+      }
+      return;
+    }
+
     const tel = ultimos10(p.telefono);
     if (tel.length < 8) return;
 
@@ -113,6 +151,9 @@ export async function registrarMensaje(
       direccion: p.direccion,
       tipo: p.tipo,
       contenido: p.contenido,
+      categoria: p.categoria ?? null,
+      nombre_plantilla: p.nombrePlantilla ?? null,
+      destinatario,
       metadata: p.metadata ?? {},
     });
     if (insErr) {

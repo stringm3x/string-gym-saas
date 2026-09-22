@@ -31,6 +31,15 @@ import { logError } from "@/lib/log";
 import { gymOperativo } from "@/lib/utils/gym-operativo";
 import { notifyWhatsapp, type WhatsappEvent } from "./notify";
 import { registrarMensaje, type RegistrarMensajeParams } from "./registro";
+import {
+  TEMPLATE_RECORDATORIO_VENCIMIENTO,
+  TEMPLATE_MEMBRESIA_VENCIDA,
+  TEMPLATE_MEMBRESIA_REACTIVACION,
+  TEMPLATE_CUMPLEANOS,
+  TEMPLATE_MIEMBRO_INACTIVO,
+  TEMPLATE_RESUMEN_DIARIO,
+  TEMPLATE_CATEGORIA,
+} from "./360dialog";
 
 interface GymRow {
   id: string;
@@ -290,6 +299,8 @@ export async function runWhatsappCron(): Promise<{
             tipo: "template",
             contenido: `Recordatorio: tu membresía vence el ${en7} (en 7 días).`,
             nombreContacto: m.nombre,
+            nombrePlantilla: TEMPLATE_RECORDATORIO_VENCIMIENTO,
+            categoria: TEMPLATE_CATEGORIA[TEMPLATE_RECORDATORIO_VENCIMIENTO],
           },
           c
         );
@@ -314,6 +325,8 @@ export async function runWhatsappCron(): Promise<{
             tipo: "template",
             contenido: `Recordatorio: tu membresía vence el ${en3} (en 3 días).`,
             nombreContacto: m.nombre,
+            nombrePlantilla: TEMPLATE_RECORDATORIO_VENCIMIENTO,
+            categoria: TEMPLATE_CATEGORIA[TEMPLATE_RECORDATORIO_VENCIMIENTO],
           },
           c
         );
@@ -336,6 +349,8 @@ export async function runWhatsappCron(): Promise<{
             tipo: "template",
             contenido: `Tu membresía venció hoy (${hoy}). Renueva para seguir entrenando.`,
             nombreContacto: m.nombre,
+            nombrePlantilla: TEMPLATE_MEMBRESIA_VENCIDA,
+            categoria: TEMPLATE_CATEGORIA[TEMPLATE_MEMBRESIA_VENCIDA],
           },
           c
         );
@@ -360,6 +375,8 @@ export async function runWhatsappCron(): Promise<{
             tipo: "template",
             contenido: `Te extrañamos por ${gym.nombre} — tu membresía venció hace 3 días. ¿Renovamos?`,
             nombreContacto: m.nombre,
+            nombrePlantilla: TEMPLATE_MEMBRESIA_REACTIVACION,
+            categoria: TEMPLATE_CATEGORIA[TEMPLATE_MEMBRESIA_REACTIVACION],
           },
           c
         );
@@ -381,13 +398,16 @@ export async function runWhatsappCron(): Promise<{
             tipo: "template",
             contenido: `¡Feliz cumpleaños de parte de ${gym.nombre}! 🎉`,
             nombreContacto: m.nombre,
+            nombrePlantilla: TEMPLATE_CUMPLEANOS,
+            categoria: TEMPLATE_CATEGORIA[TEMPLATE_CUMPLEANOS],
           },
           c
         );
       }
 
-      // 3. Inactivos 14+ días → al owner. Sin registro en el inbox del
-      //    socio: el destinatario es el dueño, no el miembro inactivo.
+      // 3. Inactivos 14+ días → al owner. No es una conversación con el
+      //    socio inactivo: se registra con destinatario "dueno" (sql/070),
+      //    conversacion_id NULL — el inbox del socio nunca lo ve.
       for (const m of await miembrosInactivos(admin, gym.id, hoy)) {
         await enviarYRegistrar(
           gym.id,
@@ -399,12 +419,20 @@ export async function runWhatsappCron(): Promise<{
             ownerTelefono: gym.telefono,
             diasSinVenir: m.dias,
           },
-          null,
+          {
+            tenantId: gym.id,
+            telefono: gym.telefono ?? "",
+            tipo: "template",
+            contenido: `${m.nombre} lleva ${m.dias} días sin venir.`,
+            destinatario: "dueno",
+            nombrePlantilla: TEMPLATE_MIEMBRO_INACTIVO,
+            categoria: TEMPLATE_CATEGORIA[TEMPLATE_MIEMBRO_INACTIVO],
+          },
           c
         );
       }
 
-      // 4. Resumen del día → al owner.
+      // 4. Resumen del día → al owner. Mismo criterio que el punto 3.
       const resumen = await resumenGym(admin, gym.id, hoy, en7);
       await enviarYRegistrar(
         gym.id,
@@ -414,7 +442,15 @@ export async function runWhatsappCron(): Promise<{
           ownerTelefono: gym.telefono,
           ...resumen,
         },
-        null,
+        {
+          tenantId: gym.id,
+          telefono: gym.telefono ?? "",
+          tipo: "template",
+          contenido: "Resumen diario enviado.",
+          destinatario: "dueno",
+          nombrePlantilla: TEMPLATE_RESUMEN_DIARIO,
+          categoria: TEMPLATE_CATEGORIA[TEMPLATE_RESUMEN_DIARIO],
+        },
         c
       );
     } catch (err) {
