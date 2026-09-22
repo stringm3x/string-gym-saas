@@ -166,6 +166,20 @@ export async function proxy(request: NextRequest) {
     segments.length === 0 || publicRoutes.includes(segments[0]);
 
   if (isPublicRoute) {
+    // Defensa en profundidad (privacidad, Bloque 10 sueltos): estas cuatro
+    // superficies exponen datos por token/slug sin sesión de staff —
+    // recibos y qr, datos del socio; portal y kiosco, PII o marca del gym.
+    // El header cubre cualquier página nueva bajo estos prefijos aunque
+    // alguien olvide ponerle su propio `robots` en el metadata. No se
+    // usa robots.txt (Disallow) para esto: si el crawler no puede entrar,
+    // tampoco lee este header ni el noindex de la página, y la URL puede
+    // quedar indexada igual si aparece enlazada desde otro lado.
+    if (
+      segments.length > 0 &&
+      ["recibos", "qr", "portal", "kiosco"].includes(segments[0])
+    ) {
+      response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    }
     return response;
   }
 
