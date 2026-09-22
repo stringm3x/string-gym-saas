@@ -14,6 +14,16 @@ import { hasFeature, type Plan } from "@/lib/features";
 import { notifyWhatsapp } from "./notify";
 import { registrarMensaje } from "./registro";
 import { logError } from "@/lib/log";
+import {
+  TEMPLATE_PAGO_CONFIRMADO,
+  TEMPLATE_BIENVENIDA,
+  TEMPLATE_PROSPECTO_NUEVO,
+  TEMPLATE_CAMPANA,
+  TEMPLATE_VISITAS_BAJAS,
+  TEMPLATE_OTP,
+  TEMPLATE_LISTA_ESPERA,
+  TEMPLATE_CATEGORIA,
+} from "./360dialog";
 
 interface GymCtx {
   id: string;
@@ -112,6 +122,8 @@ export async function emitPagoRegistrado(p: {
       contenido: `Pago registrado por $${p.monto.toLocaleString("es-MX")}. ¡Gracias!`,
       miembroId: p.miembroId,
       nombreContacto: miembro.nombre,
+      nombrePlantilla: TEMPLATE_PAGO_CONFIRMADO,
+      categoria: TEMPLATE_CATEGORIA[TEMPLATE_PAGO_CONFIRMADO],
     });
   } catch (err) {
     console.error("[whatsapp] emitPagoRegistrado:", err);
@@ -152,6 +164,8 @@ export async function emitBienvenidaMiembro(p: {
       contenido: `¡Bienvenido a ${gym.nombre}! Tu membresía ya está activa.`,
       miembroId: p.miembroId,
       nombreContacto: miembro.nombre,
+      nombrePlantilla: TEMPLATE_BIENVENIDA,
+      categoria: TEMPLATE_CATEGORIA[TEMPLATE_BIENVENIDA],
     });
   } catch (err) {
     console.error("[whatsapp] emitBienvenidaMiembro:", err);
@@ -170,7 +184,7 @@ export async function emitProspectoNuevo(p: {
   try {
     const gym = await gymCtx(p.tenantId);
     if (!gym) return;
-    await notifyWhatsapp({
+    const enviado = await notifyWhatsapp({
       tipo: "PROSPECTO_NUEVO",
       gymId: gym.id,
       gymSlug: gym.slug,
@@ -182,6 +196,18 @@ export async function emitProspectoNuevo(p: {
       prospectoTelefono: p.prospectoTelefono,
       planInteres: p.planInteres,
       origen: p.origen,
+    });
+    if (!enviado) return;
+    // Aviso al dueño, no una conversación de socio: sin conversacion_id.
+    await registrarMensaje({
+      tenantId: gym.id,
+      telefono: gym.telefono ?? "",
+      direccion: "saliente",
+      tipo: "template",
+      contenido: `Nuevo prospecto: ${p.prospectoNombre}`,
+      destinatario: "dueno",
+      nombrePlantilla: TEMPLATE_PROSPECTO_NUEVO,
+      categoria: TEMPLATE_CATEGORIA[TEMPLATE_PROSPECTO_NUEVO],
     });
   } catch (err) {
     console.error("[whatsapp] emitProspectoNuevo:", err);
@@ -208,8 +234,8 @@ export async function enviarCampanaWhatsapp(
 
   const envios = destinatarios
     .filter((d) => d.telefono && d.mensaje.trim())
-    .map((d) =>
-      notifyWhatsapp({
+    .map(async (d) => {
+      const enviado = await notifyWhatsapp({
         tipo: "CAMPANA",
         gymId: gym.id,
         gymSlug: gym.slug,
@@ -218,8 +244,21 @@ export async function enviarCampanaWhatsapp(
         whatsappApiKey: gym.whatsappApiKey,
         miembroTelefono: d.telefono,
         mensaje: d.mensaje,
-      })
-    );
+      });
+      if (enviado) {
+        // Reflejar el envío en el inbox (historial de la conversación).
+        await registrarMensaje({
+          tenantId: gym.id,
+          telefono: d.telefono,
+          direccion: "saliente",
+          tipo: "template",
+          contenido: d.mensaje,
+          nombrePlantilla: TEMPLATE_CAMPANA,
+          categoria: TEMPLATE_CATEGORIA[TEMPLATE_CAMPANA],
+        });
+      }
+      return enviado;
+    });
   const resultados = await Promise.allSettled(envios);
   const enviados = resultados.filter(
     (r) => r.status === "fulfilled" && r.value
@@ -251,7 +290,7 @@ export async function emitVisitasBajas(
       .maybeSingle();
     if (!m?.telefono) return;
 
-    await notifyWhatsapp({
+    const enviado = await notifyWhatsapp({
       tipo: "VISITAS_BAJAS",
       gymId: gym.id,
       gymSlug: gym.slug,
@@ -261,6 +300,18 @@ export async function emitVisitasBajas(
       miembroTelefono: m.telefono as string,
       miembroNombre: (m.nombre as string) ?? "",
       visitasRestantes,
+    });
+    if (!enviado) return;
+    await registrarMensaje({
+      tenantId: gym.id,
+      telefono: m.telefono as string,
+      direccion: "saliente",
+      tipo: "template",
+      contenido: `Te quedan ${visitasRestantes} visitas en tu plan.`,
+      miembroId,
+      nombreContacto: (m.nombre as string) ?? null,
+      nombrePlantilla: TEMPLATE_VISITAS_BAJAS,
+      categoria: TEMPLATE_CATEGORIA[TEMPLATE_VISITAS_BAJAS],
     });
   } catch (err) {
     console.error("[whatsapp] emitVisitasBajas:", err);
@@ -290,7 +341,7 @@ export async function emitOtpWhatsapp(
   const gym = await gymCtx(tenantId);
   if (!gym || !telefono) return false;
 
-  await notifyWhatsapp({
+  const enviado = await notifyWhatsapp({
     tipo: "OTP",
     gymId: gym.id,
     gymSlug: gym.slug,
@@ -300,6 +351,20 @@ export async function emitOtpWhatsapp(
     miembroTelefono: telefono,
     codigo,
   });
+  if (enviado) {
+    // El teléfono resuelve solo el miembro_id si existe (mismo mecanismo
+    // que el resto) — un teléfono nuevo sin socio aún crea la conversación
+    // igual, sin vincular.
+    await registrarMensaje({
+      tenantId: gym.id,
+      telefono,
+      direccion: "saliente",
+      tipo: "template",
+      contenido: "Código de acceso al portal enviado.",
+      nombrePlantilla: TEMPLATE_OTP,
+      categoria: TEMPLATE_CATEGORIA[TEMPLATE_OTP],
+    });
+  }
   return true;
 }
 
@@ -373,6 +438,8 @@ export async function emitListaEspera(
       contenido: `Se liberó un lugar en ${claseNombre} y quedaste confirmado. ¡Te esperamos!`,
       miembroId,
       nombreContacto: miembro.nombre as string,
+      nombrePlantilla: TEMPLATE_LISTA_ESPERA,
+      categoria: TEMPLATE_CATEGORIA[TEMPLATE_LISTA_ESPERA],
     });
     return true;
   } catch (err) {
