@@ -3,8 +3,6 @@ import { logoutAdmin } from "@/app/admin/(panel)/actions";
 import { AdminNav } from "@/components/admin/AdminNav";
 import type { StringAdmin } from "@/lib/types/admin";
 import { Grano } from "@/components/arte/Grano";
-import { MarcasRegistro } from "@/components/arte/MarcasRegistro";
-import { LogotipoVertical } from "@/components/layout/LogotipoVertical";
 
 /**
  * Shell del panel interno de STRING: mismo lenguaje que el panel del gym
@@ -26,8 +24,7 @@ export function AdminShell({
       <Grano opacidad={0.08} />
       {/* Sidebar */}
       <aside className="flex w-60 flex-col border-r border-border bg-surface py-6">
-        <div className="relative mb-4 flex items-center gap-3 px-5">
-          <MarcasRegistro className="text-text-muted/40" />
+        <div className="mb-4 flex items-center gap-3 px-5">
           <span
             aria-hidden="true"
             className="flex h-8 w-8 shrink-0 items-center justify-center bg-brand-green font-display text-lg leading-none text-on-brand"
@@ -46,7 +43,7 @@ export function AdminShell({
 
         <AdminNav />
 
-        <LogotipoVertical texto="STRING ADMIN" />
+        <div className="flex-1" />
 
         {appDomain && (
           <a
