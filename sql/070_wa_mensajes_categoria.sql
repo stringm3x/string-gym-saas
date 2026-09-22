@@ -1,6 +1,5 @@
--- 070_wa_mensajes_categoria.sql — PROPUESTA
--- ⚠️ NO APLICADA. Se corre manualmente y se confirma antes de dar el PR
--- por cerrado (ver feedback-migraciones-confirmar-antes-de-cerrar).
+-- 070_wa_mensajes_categoria.sql
+-- ✅ APLICADA en producción — confirmado por Carlos el 2026-09-21.
 --
 -- Requiere que sql/045_whatsapp_inbox.sql ya esté aplicada (crea
 -- wa_mensajes y wa_conversaciones). Si no se ha corrido, esta falla.
