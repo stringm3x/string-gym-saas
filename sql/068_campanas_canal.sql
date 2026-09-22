@@ -1,5 +1,6 @@
 -- 068_campanas_canal.sql — Distinguir campañas enviadas por API de las
--- registradas manualmente (bloque 07). Carlos la valida y corre manualmente.
+-- registradas manualmente (bloque 07).
+-- ✅ APLICADA en producción — confirmado por Carlos el 2026-09-20.
 --
 -- Antes `enviada_at` se escribía al crear la fila, antes de intentar el
 -- envío — así que una campaña quedaba "enviada" aunque el envío por API

@@ -1,5 +1,5 @@
 -- 067_pagos_externos_atomico.sql — Webhook de MercadoPago atómico (bloque-03)
--- ⚠️ NO APLICADA. Carlos la valida y corre manualmente en Supabase.
+-- ✅ APLICADA en producción — confirmado por Carlos el 2026-09-20.
 --
 -- El webhook insertaba en `pagos` directo (admin.from("pagos").insert), sin
 -- pasar por registrar_pago ni por pagos_caja, sin checar errores, y con el
